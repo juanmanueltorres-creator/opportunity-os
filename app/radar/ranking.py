@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from app.models.domain import Opportunity, SearchIntent
 from app.radar.models import (
@@ -16,6 +17,8 @@ from app.radar.models import (
     TrackAssessment,
 )
 
+SelectionMode = Literal["career_first", "income_first", "balanced"]
+
 
 @dataclass(frozen=True)
 class RadarPolicy:
@@ -24,18 +27,40 @@ class RadarPolicy:
     medium_fit: float = 65.0
     medium_confidence: float = 65.0
     stretch_fit: float = 55.0
+    income_high_fit: float = 75.0
+    income_high_confidence: float = 75.0
+    income_medium_fit: float = 62.0
+    income_medium_confidence: float = 65.0
     fit_weight: float = 0.80
     confidence_weight: float = 0.20
+    selection_mode: SelectionMode = "income_first"
 
     def __post_init__(self) -> None:
         if not (
             0.0 <= self.stretch_fit <= self.medium_fit <= self.high_fit <= 100.0
         ):
-            raise ValueError("fit thresholds must be ordered within 0..100")
+            raise ValueError("career fit thresholds must be ordered within 0..100")
         if not (0.0 <= self.medium_confidence <= self.high_confidence <= 100.0):
-            raise ValueError("confidence thresholds must be ordered within 0..100")
+            raise ValueError("career confidence thresholds must be ordered within 0..100")
+        if not (
+            0.0
+            <= self.stretch_fit
+            <= self.income_medium_fit
+            <= self.income_high_fit
+            <= 100.0
+        ):
+            raise ValueError("income fit thresholds must be ordered within 0..100")
+        if not (
+            0.0
+            <= self.income_medium_confidence
+            <= self.income_high_confidence
+            <= 100.0
+        ):
+            raise ValueError("income confidence thresholds must be ordered within 0..100")
         if round(self.fit_weight + self.confidence_weight, 10) != 1.0:
             raise ValueError("ranking weights must sum to 1")
+        if self.selection_mode not in {"career_first", "income_first", "balanced"}:
+            raise ValueError("unsupported selection mode")
 
 
 def classify_fit(
@@ -43,11 +68,28 @@ def classify_fit(
     confidence: float,
     policy: RadarPolicy,
 ) -> Tier | None:
+    """Classify the CAREER lane using the preserved V0.2A career thresholds."""
     if score is None:
         return None
     if score >= policy.high_fit and confidence >= policy.high_confidence:
         return "HIGH"
     if score >= policy.medium_fit and confidence >= policy.medium_confidence:
+        return "MEDIUM"
+    if score >= policy.stretch_fit:
+        return "STRETCH"
+    return "DISCARD"
+
+
+def _classify_income_fit(
+    score: float | None,
+    confidence: float,
+    policy: RadarPolicy,
+) -> Tier | None:
+    if score is None:
+        return None
+    if score >= policy.income_high_fit and confidence >= policy.income_high_confidence:
+        return "HIGH"
+    if score >= policy.income_medium_fit and confidence >= policy.income_medium_confidence:
         return "MEDIUM"
     if score >= policy.stretch_fit:
         return "STRETCH"
@@ -77,7 +119,7 @@ def rank_assessment(
 
     if eligibility.eligible:
         career_tier = classify_fit(career_score, confidence.score, policy)
-        income_tier = classify_fit(income_score, confidence.score, policy)
+        income_tier = _classify_income_fit(income_score, confidence.score, policy)
     else:
         career_tier = "DISCARD" if career_score is not None else None
         income_tier = "DISCARD" if income_score is not None else None
@@ -183,7 +225,8 @@ def _select_intent(
         return None
 
     # Higher priority wins. On exact ties, CAREER wins deterministically so the
-    # result is stable without suppressing a strictly better INCOME_NOW lane.
+    # assessment itself stays stable. Daily selection mode is applied later by
+    # the selector, not by mutating the per-opportunity assessment.
     candidates.sort(key=lambda item: (-item[0], 0 if item[1] == "CAREER" else 1))
     return candidates[0][1]
 
