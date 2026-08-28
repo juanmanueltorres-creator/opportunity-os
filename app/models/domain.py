@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 EvidenceType = Literal["project", "skill", "experience", "education", "document"]
 Recommendation = Literal["apply", "stretch", "nurture", "discard"]
+SearchIntent = Literal["CAREER", "INCOME_NOW"]
 
 
 class StrictModel(BaseModel):
@@ -20,6 +21,18 @@ class EvidenceItem(StrictModel):
     verified: bool
 
 
+class CandidateTrack(StrictModel):
+    id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    intents: list[SearchIntent] = Field(min_length=1)
+    roles: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    evidence: list[EvidenceItem] = Field(default_factory=list)
+    accepted_work_modes: list[str] = Field(default_factory=list)
+    no_go_constraints: list[str] = Field(default_factory=list)
+
+
 class CandidateProfile(StrictModel):
     name: str = Field(min_length=1)
     roles: list[str] = Field(default_factory=list)
@@ -28,6 +41,12 @@ class CandidateProfile(StrictModel):
     locations: list[str] = Field(default_factory=list)
     remote_preferences: list[str] = Field(default_factory=list)
     evidence: list[EvidenceItem] = Field(default_factory=list)
+    tracks: list[CandidateTrack] = Field(default_factory=list)
+    target_role_families: list[str] = Field(default_factory=list)
+    verified_licenses: list[str] = Field(default_factory=list)
+    work_authorizations: list[str] = Field(default_factory=list)
+    no_go_constraints: list[str] = Field(default_factory=list)
+    relocation_preferences: list[str] = Field(default_factory=list)
 
 
 class Opportunity(StrictModel):
