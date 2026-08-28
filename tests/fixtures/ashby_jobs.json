@@ -1,0 +1,19 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "title": "Geospatial Frontend Engineer",
+      "department": "Engineering",
+      "team": "Visualization",
+      "location": "Remote",
+      "employmentType": "FullTime",
+      "workplaceType": "Remote",
+      "descriptionHtml": "<p>Build interactive mapping experiences.</p>",
+      "descriptionPlain": "Build interactive mapping experiences.",
+      "publishedAt": "2026-08-26T16:00:00.000Z",
+      "jobUrl": "https://jobs.ashbyhq.com/example/123e4567-e89b-12d3-a456-426614174000",
+      "applyUrl": "https://jobs.ashbyhq.com/example/123e4567-e89b-12d3-a456-426614174000/application",
+      "isListed": true
+    }
+  ]
+}
