@@ -37,6 +37,12 @@ ApplicationMode = Literal[
     "RESTRICTED_MANUAL",
     "UNKNOWN",
 ]
+ApplicationContactHintKind = Literal[
+    "PUBLISHED_EMAIL",
+    "OFFICIAL_HR_EMAIL",
+    "RECRUITER",
+    "MANUAL_CHANNEL",
+]
 SourceReliability = Literal[
     "DIRECT_ATS",
     "DIRECT_OFFICIAL",
@@ -102,6 +108,22 @@ class Requirement(StrictRadarModel):
         return self
 
 
+class ApplicationContactHint(StrictRadarModel):
+    kind: ApplicationContactHintKind
+    value: str = Field(min_length=1)
+    source_url: str | None = None
+    source_field: str = Field(min_length=1)
+    source_text: str | None = None
+    extraction_method: ExtractionMethod
+    confidence: float = Field(ge=0, le=1)
+    discovered_at: datetime
+
+    @field_validator("discovered_at")
+    @classmethod
+    def discovered_at_must_be_aware(cls, value: datetime) -> datetime:
+        return _require_aware_datetime(value)
+
+
 class OpportunityEnrichment(StrictRadarModel):
     opportunity_id: str = Field(min_length=1)
     normalized_title: DerivedValue[str] | None = None
@@ -117,6 +139,7 @@ class OpportunityEnrichment(StrictRadarModel):
     salary_max: DerivedValue[float] | None = None
     salary_currency: DerivedValue[str] | None = None
     requirements: list[Requirement] = Field(default_factory=list)
+    application_contact_hints: list[ApplicationContactHint] = Field(default_factory=list)
     application_mode: ApplicationMode = "UNKNOWN"
     source_reliability: SourceReliability = "UNKNOWN"
     source_freshness_quality: FreshnessQuality = "UNKNOWN"
