@@ -24,7 +24,10 @@ from app.outreach.models import (
     SendRequest,
     StretchPromotion,
 )
-from app.outreach.preparation import OutreachPreparationService
+from app.outreach.preparation import (
+    OutreachPreparationService,
+    application_packet_error,
+)
 from app.outreach.repository import SQLiteOutreachRepository
 from app.outreach.send import (
     SendGate,
@@ -61,6 +64,13 @@ class OutreachService:
         now: datetime,
         stretch_promotion: StretchPromotion | None = None,
     ) -> OutreachPreparationResult:
+        packet_error = application_packet_error(assessment, application_packet)
+        if packet_error is not None:
+            return OutreachPreparationResult(
+                status="BLOCKED_INVALID_PACKET",
+                errors=[packet_error],
+            )
+
         self.repository.append_event(
             self._event(
                 opportunity_id=assessment.opportunity.id,
