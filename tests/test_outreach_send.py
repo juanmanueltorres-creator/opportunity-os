@@ -181,6 +181,40 @@ def test_expired_approval_blocks(tmp_path) -> None:
     assert result.error_code == "approval_expired"
 
 
+@pytest.mark.parametrize(
+    ("to", "cc", "bcc"),
+    [
+        (["careers@example.test", "other@example.test"], [], []),
+        (["careers@example.test"], ["other@example.test"], []),
+        (["careers@example.test"], [], ["other@example.test"]),
+    ],
+)
+def test_send_gate_blocks_extra_unresolved_recipients(tmp_path, to, cc, bcc) -> None:
+    repo = _repo(tmp_path)
+    draft = build_draft_snapshot(
+        opportunity_id="opp-1",
+        brief_sha256_value="a" * 64,
+        application_packet_sha256="b" * 64,
+        provider_draft_id="draft-extra-recipient",
+        to=to,
+        cc=cc,
+        bcc=bcc,
+        subject="Application",
+        body="Hello",
+        attachments=[DraftAttachment(filename="cv.pdf", sha256="c" * 64, role="CV")],
+        cv_sha256="c" * 64,
+        content_type="text/plain",
+        reply_message_id=None,
+        verification_basis="CREATED_EXACT",
+        now=NOW,
+    )
+    approval = _approval(draft)
+    request = _request(draft, approval)
+    result = _gate(repo, draft, approval, request)
+    assert result.authorized is False
+    assert result.error_code == "outreach_policy_blocked"
+
+
 def test_already_sent_idempotency_key_blocks_second_send(tmp_path) -> None:
     repo = _repo(tmp_path)
     draft = _draft()
