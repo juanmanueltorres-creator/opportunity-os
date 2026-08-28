@@ -16,3 +16,15 @@ def test_readme_documents_cv_factory_without_auto_send_claim() -> None:
     assert "profile/master_facts.local.yaml" in text
     assert "profile/evidence_catalog.local.yaml" in text
     assert "artifacts/applications/<application_id>/cv.pdf" in text
+
+
+def test_cv_privacy_rules_preserve_existing_gitignore_contract() -> None:
+    lines = {
+        line.strip()
+        for line in Path(".gitignore").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert "activemq-data/" in lines
+    assert "profile/master_facts.local.yaml" in lines
+    assert "profile/evidence_catalog.local.yaml" in lines
+    assert "artifacts/applications/" in lines
