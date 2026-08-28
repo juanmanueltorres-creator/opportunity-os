@@ -230,6 +230,34 @@ def test_income_first_prefers_income_lane_within_same_tier_but_keeps_strong_care
     assert [item.opportunity.id for item in batch.items] == ["income", "career", "medium-income"]
 
 
+def test_income_first_uses_income_lane_priority_not_max_cross_lane_priority() -> None:
+    inflated_by_career = _assessment(
+        "career-inflated",
+        tier="HIGH",
+        selected_intent="CAREER",
+        career_match=99.0,
+        income_viability=76.0,
+        confidence=80.0,
+        priority=95.2,
+    )
+    stronger_income = _assessment(
+        "stronger-income",
+        tier="HIGH",
+        selected_intent="INCOME_NOW",
+        career_match=80.0,
+        income_viability=90.0,
+        confidence=80.0,
+        priority=88.0,
+    )
+
+    batch = _select([inflated_by_career, stronger_income])
+
+    assert [item.opportunity.id for item in batch.items] == [
+        "stronger-income",
+        "career-inflated",
+    ]
+
+
 def test_configured_company_role_cooldown_excludes_recent_contact_only() -> None:
     policy = RadarPolicy(company_role_cooldown_days=14)
     recent = _assessment("recent", company="Example Co", title="Support Analyst")
