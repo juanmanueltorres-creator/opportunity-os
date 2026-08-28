@@ -4,7 +4,7 @@ Open-source opportunity discovery, matching, and application-preparation infrast
 
 Opportunity OS reduces repetitive job-search work without pretending that one score or one model can decide what a person should do. The system separates strategic career fit, near-term income viability, confidence, and candidate evidence so every consequential step remains inspectable.
 
-> **Current prerelease: V0.2B (`0.2.0b1`).** V0.2A discovers, enriches, scores, ranks, and selects opportunities. V0.2B adds a deterministic **CV Factory** that prepares evidence-backed CVs and reproducible `ApplicationPacket` records. V0.2B does not send email and does not submit applications.
+> **Current prerelease: V0.2C (`0.2.0c1`).** V0.2A discovers, enriches, scores, ranks, and selects opportunities. V0.2B adds a deterministic **CV Factory** that prepares evidence-backed CVs and reproducible `ApplicationPacket` records. V0.2C adds a deterministic email-outreach core with verified contact resolution, exact draft identity, explicit human approval, a separate send request, idempotent send receipts, and an auditable local ledger.
 
 ## V0.2A intelligent radar
 
@@ -154,6 +154,61 @@ Public examples under `profile/` are fictional fixtures only.
 
 Email-first outreach, recruiter/contact resolution, Gmail draft/send operations, form-assist flows, and explicit external-action approval belong to V0.2C.
 
+## V0.2C email outreach core
+
+V0.2C consumes an existing validated `ApplicationPacket`; it does not rewrite CV evidence or create new factual authority.
+
+```text
+ApplicationPacket
+-> verified contact
+-> OutreachBrief
+-> user-requested Gmail draft
+-> exact draft hash
+-> explicit approval
+-> separate explicit SendRequest
+-> idempotent SendReceipt
+```
+
+The deterministic core resolves only permitted contacts, prepares evidence-bounded outreach metadata, records exact semantic draft snapshots, binds approval to one exact draft hash, and requires a second explicit send instruction before authorization.
+
+### Operator boundary
+
+Opportunity OS does not create Gmail drafts automatically. ChatGPT may create a Gmail draft only when the user asks and must use the exact recipient, canonical subject/body, and validated CV attachment represented by the outreach state.
+
+**Approval is not a send command.** A valid `ApprovalRecord` cannot send anything by itself. Sending additionally requires a fresh explicit `SendRequest`, a successful `SendGate` validation, a recorded `SEND_ATTEMPTED` event, and provider success evidence before `SENT` may be recorded.
+
+The core does not instantiate Gmail or Apollo clients. Gmail and Apollo remain connected operator capabilities outside deterministic project code.
+
+### Contact priority and anti-spam
+
+Default resolution order:
+
+```text
+published vacancy email
+-> verified official Careers / HR email
+-> verified recruiter / Talent Acquisition contact
+-> manual/form route
+```
+
+Opportunity OS never guesses conventional addresses such as `jobs@company.com`. One successful initial contact blocks another initial send to the same requisition even when the later message body has a different hash. Recruiter contacts remain capped by policy.
+
+### Exact draft identity
+
+`DraftSnapshot` hashes semantic content rather than Gmail resource IDs. Recipient, subject, body, reply target, attachment filename, attachment SHA-256, selected CV hash, and content type are material. Provider draft ID and timestamps are not.
+
+Therefore an exact semantic replica can retain the same draft hash when Gmail returns a different draft ID. Any material mutation changes the hash and invalidates the previous approval.
+
+### Private/local outreach data
+
+Real outreach state remains local-only:
+
+```text
+state/outreach.local.sqlite3
+artifacts/applications/<application_id>/outreach/
+```
+
+No Gmail/Apollo credentials, mailbox exports, real recruiter data, approval records, send requests, or receipts belong in the public repository. Apollo enrichment remains optional and requires the connected tool's explicit credit confirmation before any credit-consuming action.
+
 ## Scoring
 
 ### CAREER match
@@ -265,9 +320,17 @@ Verified private facts + evidence
 CV Factory
                 ↓
 Validated ATS PDF + ApplicationPacket
+                ↓
+Verified contact + OutreachBrief
+                ↓
+Exact DraftSnapshot + ApprovalRecord
+                ↓
+Explicit SendRequest + SendGate
+                ↓
+Provider receipt + append-only outreach ledger
 ```
 
-Source-specific payloads stay inside connectors. Scoring and CV preparation do not depend on raw ATS JSON, a live taxonomy service, or an LLM correctness dependency.
+Source-specific payloads stay inside connectors. Scoring, CV preparation, and outreach policy do not depend on raw ATS JSON, a live taxonomy service, Gmail/Apollo SDKs, or an LLM correctness dependency.
 
 ## Sources
 
@@ -324,7 +387,7 @@ python -m pytest -v
 python -m compileall app
 ```
 
-Tests and CV preparation fixtures do not require live job-board or taxonomy access.
+Tests, CV preparation fixtures, and outreach integration fixtures do not require live job-board, taxonomy, Gmail, or Apollo access.
 
 ## Local configuration
 
@@ -339,7 +402,7 @@ OPPORTUNITY_ALIAS_REGISTRY_PATH=data/skill_aliases.yaml
 OPPORTUNITY_SOURCES_PATH=sources.local.yaml
 ```
 
-Private/local files such as `.env`, `profile.local.yaml`, `sources.local.yaml`, SQLite databases, master facts, evidence catalogs, CVs, and generated application documents must not be committed to the public repository.
+Private/local files such as `.env`, `profile.local.yaml`, `sources.local.yaml`, SQLite databases, master facts, evidence catalogs, CVs, generated application documents, and outreach state must not be committed to the public repository.
 
 ## HTTP API
 
@@ -375,11 +438,11 @@ V0.2A radar:
 POST /api/v1/radar/run
 ```
 
-V0.2B intentionally adds **no public HTTP endpoint**. CV preparation remains an internal/local application-preparation boundary until the later approval/outreach slice defines an external-action contract.
+V0.2B and V0.2C intentionally add **no public HTTP endpoint**. CV preparation and outreach orchestration remain internal/local boundaries; connected Gmail/Apollo operations are performed externally by the ChatGPT operator only after the relevant user instruction.
 
 ## Backward compatibility
 
-V0.2B extends Opportunity OS rather than replacing earlier slices:
+V0.2C extends Opportunity OS rather than replacing earlier slices:
 
 - the original `Opportunity` storage contract remains intact;
 - V0.1 API routes remain available;
@@ -387,7 +450,9 @@ V0.2B extends Opportunity OS rather than replacing earlier slices:
 - existing single-profile YAML still works as an implicit default radar track;
 - V0.2A enrichment remains separately versioned;
 - V0.2B does not change radar scoring or selection thresholds;
-- CV preparation is downstream from a typed `RadarAssessment`.
+- CV preparation is downstream from a typed `RadarAssessment`;
+- V0.2C consumes the validated `ApplicationPacket` without weakening V0.2B evidence rules;
+- Gmail/Apollo are not deterministic-core dependencies.
 
 ## Safety and privacy defaults
 
@@ -396,16 +461,18 @@ V0.2B extends Opportunity OS rather than replacing earlier slices:
 - no public real CV by default;
 - private master facts and evidence catalogs are gitignored;
 - generated PDFs/DOCX files are forbidden from tracked public source by CI;
+- real outreach SQLite state and generated outreach artifacts are gitignored and CI-guarded;
 - external source errors are sanitized;
 - unknown candidate facts remain unknown;
 - application tracks are hard evidence boundaries;
 - numeric/title/date claims require verified support;
-- scoring, evidence selection, composition, validation, PDF rendering, and packet hashing are deterministic from explicit inputs;
-- consequential external actions remain outside V0.2B.
+- scoring, evidence selection, composition, validation, PDF rendering, packet hashing, outreach hashing, approval checks, and send authorization are deterministic from explicit inputs;
+- Approval is not a send command;
+- provider success evidence is required before `SENT` is recorded.
 
 ## Development
 
-The implementation is intentionally incremental. Domain models, connectors, persistence, radar enrichment/scoring, evidence selection, composition, validation, rendering, and packet orchestration remain separate boundaries.
+The implementation is intentionally incremental. Domain models, connectors, persistence, radar enrichment/scoring, evidence selection, composition, validation, rendering, packet orchestration, contact resolution, approval, and send authorization remain separate boundaries.
 
 V0.1 design and plan:
 
@@ -428,6 +495,14 @@ V0.2B design and implementation plan:
 ```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2b-cv-factory.md
+```
+
+V0.2C design and implementation plans:
+
+```text
+docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
+docs/superpowers/plans/2026-08-28-opportunity-os-v0.2c-email-outreach.md
+docs/superpowers/plans/2026-08-28-opportunity-os-v0.2c-email-outreach-self-review.md
 ```
 
 ## License
