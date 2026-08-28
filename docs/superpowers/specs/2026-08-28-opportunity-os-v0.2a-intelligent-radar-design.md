@@ -18,16 +18,16 @@ Operational invariant:
 
 V0.1 already provides:
 
-- `Opportunity`, `CandidateProfile`, `EvidenceItem`, and `OpportunityAssessment` strict Pydantic models;
+- strict Pydantic `Opportunity`, `CandidateProfile`, `EvidenceItem`, and `OpportunityAssessment` models;
 - Remotive, Greenhouse, Lever, and Ashby connectors;
-- normalized `Opportunity` objects;
+- normalized opportunities;
 - SQLite persistence and deduplication;
 - deterministic scoring;
 - FastAPI read/assessment routes;
 - source isolation and sanitized connector errors;
 - offline tests and Python 3.12 CI.
 
-The V0.1 score is retained as the **match score**:
+The V0.1 score remains the **match score**:
 
 ```text
 mandatory/core skill fit   40%
@@ -37,7 +37,7 @@ location/remote fit        10%
 freshness                  10%
 ```
 
-V0.2A must not silently change V0.1 results for opportunities that have no new enrichment data. Regression fixtures will lock this behavior.
+V0.2A must not silently change V0.1 results when no new enrichment is available. Regression fixtures lock this behavior.
 
 ## 3. Scope
 
@@ -46,13 +46,14 @@ V0.2A includes:
 1. multi-source radar orchestration over the existing connectors;
 2. structured requirement extraction with provenance;
 3. approved skill aliases and taxonomy-assisted normalization;
-4. eligibility gates before scoring;
-5. V0.1-compatible match scoring with richer normalized inputs;
-6. an independent confidence score;
-7. decision tiers and priority ranking;
-8. a deterministic daily selector capped at 20;
-9. API/read contracts for running and inspecting the radar;
-10. version metadata so historical decisions remain reproducible.
+4. a minimal backward-compatible candidate eligibility-constraints contract;
+5. eligibility gates before scoring;
+6. V0.1-compatible match scoring with richer normalized inputs;
+7. an independent confidence score;
+8. decision tiers and priority ranking;
+9. a deterministic daily selector capped at 20;
+10. a radar API contract;
+11. version metadata so decisions remain reproducible.
 
 V0.2A excludes:
 
@@ -63,7 +64,7 @@ V0.2A excludes:
 - browser/form automation;
 - approval workflows;
 - Gmail/Calendar integration;
-- application ledger persistence beyond reading existing status/history inputs;
+- the full application ledger;
 - LinkedIn or Indeed scraping;
 - CAPTCHA handling/bypass;
 - LLM-owned numeric scoring;
@@ -75,9 +76,9 @@ V0.2A excludes:
 
 ### 4.1 ESCO
 
-ESCO is used as an external vocabulary for occupations, skills, multilingual labels, and skill↔occupation context. It is appropriate for competence-based job matching, but it is **not evidence that the candidate possesses a skill**.
+ESCO is used as an external vocabulary for occupations, skills, multilingual labels, and skill↔occupation context. It is suitable for competence-based job matching, but it is **not evidence that the candidate possesses a skill**.
 
-Target source version for the first snapshot: ESCO v1.2.1.
+Target first snapshot: ESCO v1.2.1.
 
 References:
 
@@ -87,17 +88,15 @@ References:
 
 ### 4.2 O*NET
 
-O*NET is used as occupational context for skills, knowledge, preparation, tasks, work activities, and related occupation metadata. It can help interpret ambiguous role titles and expected occupational preparation.
+O*NET is used as occupational context for skills, knowledge, preparation, tasks, work activities, and related occupations. It helps interpret ambiguous role titles and expected occupational preparation.
 
-Target source version for the first snapshot: O*NET 31.0.
+Target first snapshot: O*NET 31.0.
 
 Reference:
 
 - https://www.onetcenter.org/database.html
 
-### 4.3 Runtime taxonomy rule
-
-Scoring must not depend on live ESCO/O*NET availability.
+### 4.3 No live taxonomy dependency in scoring
 
 ```text
 live source / downloadable dataset
@@ -109,13 +108,13 @@ TaxonomyResolver
 radar scoring
 ```
 
-A missing taxonomy cache degrades safely to exact matching + approved local aliases. It must not make the radar unavailable.
+A missing taxonomy snapshot degrades safely to exact matching + approved aliases. It never makes the radar unavailable.
 
-CI uses small deterministic fixtures and never calls ESCO/O*NET over the network.
+CI uses deterministic fixtures and never calls ESCO/O*NET over the network.
 
-### 4.4 ATS submission is not part of this slice
+### 4.4 ATS submission is outside this slice
 
-Greenhouse application submission requires authenticated employer/job-board access; Lever programmatic apply requires an account API key and is rate limited; Ashby candidate/application write APIs require write permissions. Therefore V0.2A only records future `application_mode` classification when it can do so confidently. It does not assume a universal applicant-side submission API.
+Greenhouse application submission requires authenticated employer/job-board access; Lever programmatic apply requires an account API key and is rate limited; Ashby candidate/application writes require write permission. V0.2A therefore does not assume a universal applicant-side submission API.
 
 ## 5. Architecture
 
@@ -131,7 +130,7 @@ RequirementExtractor
 OpportunityEnrichment + provenance
         ↓
 SkillResolver
-  exact / approved alias / taxonomy relation
+ exact / alias / taxonomy relation
         ↓
 EligibilityEvaluator
         ↓
@@ -148,35 +147,37 @@ DailySelector (max 20)
 DailyRadarBatch
 ```
 
-All scoring/ranking components are pure or deterministic given their explicit inputs. Network access is confined to source ingestion and optional offline taxonomy refresh operations.
+Scoring/ranking components are deterministic given explicit inputs. Network access is confined to source ingestion and explicit taxonomy-refresh tooling.
 
 ## 6. Preserve `Opportunity`; add companion enrichment
 
-Do **not** overload the existing `Opportunity` storage model with dozens of nullable V0.2 fields. V0.1 APIs and deduplication depend on that contract.
+Do **not** overload the existing `Opportunity` storage contract with dozens of nullable V0.2 fields. V0.1 APIs and deduplication already depend on it.
 
-Instead add a companion model:
+Add a companion model:
 
 ```text
 Opportunity
-  1 ─── 0..1 OpportunityEnrichment
+  1 ─── 0..N versioned OpportunityEnrichment
 ```
 
-This keeps source normalization separate from interpretation and lets enrichment be recomputed when extractors/taxonomies evolve.
+This separates source normalization from interpretation and allows enrichment to be recomputed when extractors, aliases, or taxonomy versions change.
 
 ### 6.1 Provenance model
 
-Every derived field must retain its origin.
+Every derived field retains its origin.
 
-```python
+```text
 DerivedValue[T]
-- value: T
-- source_text: str | None
-- source_field: str
-- extraction_method: str
-- confidence: float  # 0..1
+- value
+- source_text optional
+- source_field
+- extraction_method
+- confidence 0..1
 ```
 
-`source_field` examples:
+`source_text` may be absent only when the source is already a structured field; `source_field` and `extraction_method` remain mandatory.
+
+Examples of `source_field`:
 
 ```text
 title
@@ -188,7 +189,7 @@ remote_policy
 source_metadata
 ```
 
-`extraction_method` examples:
+Examples of `extraction_method`:
 
 ```text
 source_structured
@@ -198,11 +199,34 @@ taxonomy_snapshot
 manual_override
 ```
 
-Derived facts without provenance are invalid.
+A derived fact without provenance is invalid.
+
+### 6.2 Minimal candidate eligibility constraints
+
+V0.2A needs explicit candidate facts for hard gates, but the full V0.2 profile redesign belongs to V0.2B. Therefore extend `CandidateProfile` only with optional/defaulted fields required by radar eligibility:
+
+```text
+target_role_families[]
+verified_licenses[]
+work_authorizations[]
+no_go_constraints[]
+relocation_preferences[]
+```
+
+Rules:
+
+- all fields default to empty lists so existing V0.1 YAML remains valid;
+- empty means unknown/not configured, never incompatible;
+- personal values remain in `profile.local.yaml`, which stays gitignored;
+- the public example uses fictional/empty values;
+- no protected/sensitive self-identification fields are added;
+- a legal/work-authorization gate can only use an explicitly stored verified value.
+
+The full master-facts/evidence-module profile remains V0.2B scope.
 
 ## 7. Enrichment contract
 
-`OpportunityEnrichment` contains only interpreted/derived information:
+`OpportunityEnrichment` contains interpreted/derived information:
 
 ```text
 opportunity_id
@@ -265,9 +289,9 @@ unknown
 `exactness`:
 
 ```text
-conceptual       # a related competency may partially satisfy it
-exact_product    # named tool/product must not be silently substituted
-declarative      # legal/credential statement; never inferred from similarity
+conceptual       # related competency may partially support it
+exact_product    # named tool/product cannot be silently substituted
+declarative      # legal/credential statement; never inferred by similarity
 ```
 
 ## 8. Requirement extraction
@@ -279,16 +303,14 @@ class RequirementExtractor(Protocol):
     def extract(self, opportunity: Opportunity) -> OpportunityEnrichment: ...
 ```
 
-First implementation is deterministic and rule-based.
+First implementation is deterministic/rule-based and consumes:
 
-Inputs:
-
-- structured source fields already present on `Opportunity`;
+- existing structured `Opportunity` fields;
 - title;
 - description;
 - location/remote metadata.
 
-V0.2A recognizes explicit English/Spanish cues such as:
+Initial explicit cues include English and Spanish forms such as:
 
 ```text
 required / must / mandatory / minimum
@@ -297,7 +319,9 @@ requerido / obligatorio / excluyente / mínimo
 preferido / deseable / será un plus
 ```
 
-The extractor may segment text into sentences/bullets, but each extracted requirement must keep its exact supporting span in `source_text`.
+The extractor may segment text into sentences/bullets, but each derived requirement retains its supporting span when it comes from free text.
+
+Ambiguous wording remains `unknown`; the extractor must not promote it to mandatory merely to increase structure.
 
 An optional future LLM extractor may implement the same interface, but V0.2A correctness cannot depend on it.
 
@@ -309,11 +333,11 @@ An optional future LLM extractor may implement the same interface, but V0.2A cor
 EXACT_VERIFIED       1.00
 APPROVED_ALIAS       1.00
 TAXONOMY_RELATED     0.70
-SEMANTIC_CANDIDATE   0.40   # reserved; does not assert possession
+SEMANTIC_CANDIDATE   0.40   # reserved for later suggestions
 UNKNOWN              0.00
 ```
 
-V0.2A implements exact, approved alias, taxonomy-related, and unknown. `SEMANTIC_CANDIDATE` is reserved for later experimentation and is not required for V0.2A done.
+V0.2A implements exact, approved alias, taxonomy-related, and unknown. `SEMANTIC_CANDIDATE` is reserved and not required for done.
 
 ### 9.2 Alias registry
 
@@ -328,7 +352,7 @@ approved_by
 approved_at
 ```
 
-Only relationships explicitly classified as equivalence can produce `APPROVED_ALIAS = 1.00`.
+Only `relationship=equivalence` can produce `APPROVED_ALIAS = 1.00`.
 
 Examples:
 
@@ -342,60 +366,56 @@ No automatically suggested alias becomes authoritative without being added to th
 
 ### 9.3 Taxonomy resolver
 
-Public interface:
-
 ```python
 class TaxonomyResolver(Protocol):
     def resolve_skill(self, term: str) -> ResolvedSkill: ...
     def resolve_role(self, title: str) -> ResolvedRole: ...
 ```
 
-Runtime implementations read local snapshots/cache. Live network clients, if added for refresh tooling, stay outside scoring services.
+Runtime resolution reads local snapshots/cache. Live network clients, if added for refresh tooling, stay outside scoring services.
 
 ### 9.4 Exact-product rule
 
-A taxonomy relation does not silently satisfy an explicitly named mandatory product/tool.
+A taxonomy relation never silently satisfies an explicitly named mandatory product/tool.
 
 Example:
 
 ```text
 Requirement: "PostGIS required"
 Candidate evidence: generic spatial databases
-Taxonomy: related
+Taxonomy relation: related
 
 Result:
-- relation may be displayed as nearby evidence;
+- nearby evidence may be shown;
 - mandatory PostGIS gap remains;
-- it cannot receive full mandatory credit.
+- no full mandatory credit.
 ```
 
 ## 10. Eligibility gates
 
 Eligibility runs before match scoring.
 
-Output:
-
 ```text
 EligibilityResult
-- eligible: bool
+- eligible
 - hard_fail_reasons[]
 - soft_risks[]
 - unknowns[]
 ```
 
-Hard fail requires explicit evidence of incompatibility. Unknown data is never a hard fail.
+Hard fail requires explicit evidence of incompatibility. Unknown is never a hard fail.
 
 Initial hard-fail policies:
 
-- closed/unlisted/non-public posting when known;
+- posting known to be closed/unlisted/non-public;
 - explicit on-site/location requirement incompatible with configured candidate constraints;
-- explicit work-authorization condition contradicted by verified profile data;
-- mandatory license/certification explicitly absent;
+- explicit work-authorization condition contradicted by verified local profile data;
+- mandatory license/certification explicitly required and verified absent;
 - explicit schedule/work pattern matching a configured `no_go` constraint;
-- role family explicitly outside configured target families;
-- another mandatory condition explicitly contradicted by verified profile facts.
+- role family explicitly outside non-empty configured target families;
+- another mandatory condition explicitly contradicted by a verified candidate fact.
 
-Unknown legal/work-authorization data goes to `unknowns` and lowers confidence; the radar must not infer a legal answer.
+Unknown legal/work-authorization/location data goes to `unknowns`, lowers confidence when relevant, and never creates an inferred legal answer.
 
 ## 11. Match score V0.2A
 
@@ -409,15 +429,15 @@ Keep the public 100-point structure:
 | Location/remote fit | 10 |
 | Freshness | 10 |
 
-### 11.1 Compatibility rule
+### 11.1 Regression rule
 
-When V0.2A has no enrichment beyond the original V0.1 fields and no alias/taxonomy resolution is used, the result must equal the current V0.1 assessment for the same profile/opportunity/time.
+With no new enrichment/alias/taxonomy information, the same opportunity/profile/time must produce the current V0.1 assessment.
 
 ### 11.2 Mandatory skill fit
 
 Mandatory requirements dominate preferred requirements.
 
-Priority of evidence:
+Evidence priority:
 
 ```text
 exact verified candidate skill
@@ -426,32 +446,30 @@ taxonomy-related competency
 unknown / absent
 ```
 
-Preferred requirements can improve context but cannot erase a serious mandatory gap.
+Preferred requirements may improve context but cannot erase a serious mandatory gap.
 
 ### 11.3 Role/domain fit
 
 Role-family normalization may use:
 
 - local role aliases;
-- ESCO occupation relationships;
+- ESCO occupations;
 - O*NET occupation context;
 - configured internal role families.
 
-Taxonomy context refines interpretation; it does not replace the actual job description.
+Taxonomy context refines interpretation; the actual posting remains authoritative.
 
 ### 11.4 Evidence fit
 
-Only `verified=True` candidate evidence can award verified-evidence credit.
-
-Every evidence-based strength must point back to an existing evidence item. No new claim is generated by the matcher.
+Only `verified=True` evidence can award verified-evidence credit. Every evidence-backed strength points to a real evidence item; the matcher never manufactures a claim.
 
 ### 11.5 Location
 
-Explicit incompatible location may already have failed eligibility. Otherwise location remains a scored factor for remote/LATAM/relocation preferences.
+Explicit incompatibility may already fail eligibility. Otherwise location remains a scored factor for remote/location/relocation preferences.
 
 ### 11.6 Freshness
 
-Retain the current age curve for backward compatibility:
+Retain the V0.1 age curve:
 
 ```text
 <= 7 days    100
@@ -461,15 +479,11 @@ unknown       50
 > 90 days      0
 ```
 
-Add `source_freshness_quality` to the explanation so an aggregator-delayed timestamp is not presented as equal provenance to a direct ATS timestamp.
+Also expose `source_freshness_quality` so direct ATS timestamps and delayed/indirect sources are distinguishable in explanations.
 
 ## 12. Confidence score
 
-`confidence_score` answers:
-
-> How much do we trust this assessment given the quality/completeness of its inputs?
-
-It does **not** answer whether the job is a good fit.
+`confidence_score` measures trust in the assessment inputs, not job fit.
 
 Initial deterministic weights:
 
@@ -485,14 +499,14 @@ Initial deterministic weights:
 Rules:
 
 - missing information lowers confidence, not match by default;
-- source incompleteness must not fabricate a negative fit;
+- source incompleteness cannot fabricate negative fit;
 - verified provenance improves confidence;
-- taxonomy availability may improve normalization coverage but cannot prove candidate experience;
-- the full component breakdown is returned with the total.
+- taxonomy coverage may improve normalization confidence but cannot prove candidate experience;
+- API/model returns the full component breakdown.
 
 ## 13. Decision tiers
 
-Thresholds are configuration, with these defaults:
+Defaults are configuration:
 
 ```text
 HIGH
@@ -514,13 +528,13 @@ DISCARD
   hard fail OR match < 55
 ```
 
-Only HIGH and MEDIUM are candidates for the automatic daily radar batch.
+Only HIGH and MEDIUM can enter the daily batch.
 
-Threshold configuration must be explicit and serializable in output metadata.
+Threshold configuration is serialized in batch metadata.
 
 ## 14. Priority score
 
-Match and priority remain separate concepts.
+Match and priority remain separate.
 
 Default formula:
 
@@ -528,24 +542,38 @@ Default formula:
 priority_score =
     0.80 * match_score
   + 0.20 * confidence_score
-  - policy_penalties
+  - ranking_penalties
 ```
 
-Allowed initial penalties are observable process rules only, for example:
+Ranking penalties are limited to properties of the opportunity/source itself, for example:
 
-- probable duplicate of a stronger/original posting;
-- already applied requisition;
-- same-company daily cap interaction;
-- configured recent-company/role cooldown supplied by history;
-- stale/indirect source when a direct ATS copy exists.
+- indirect/stale copy when a stronger direct ATS source exists;
+- unresolved probable duplicate where deduplication cannot prove identity.
 
-No sensitive personal attribute can be used as a ranking penalty.
+Every penalty is numeric and explained.
 
-The output must list every applied penalty and its numeric value.
+**Do not** encode already-applied status, company caps, or cooldown as ranking penalties. Those are selector constraints and exclusions.
 
-## 15. Daily selector
+No sensitive personal attribute is used as a ranking penalty.
 
-Public pure interface:
+## 15. Candidate universe and daily selector
+
+The radar does not use the existing generic `list(limit=100)` as its universe.
+
+Add a repository read query for radar candidates with an explicit configurable lookback:
+
+```text
+candidate_lookback_days = 30  # default
+```
+
+Eligibility for the candidate universe:
+
+- use `published_at` when known;
+- otherwise use `discovered_at`;
+- exclude known terminal/applied statuses supplied by the history/status policy;
+- no arbitrary 100-row truncation before ranking.
+
+Pure selection interface:
 
 ```python
 select_daily_batch(
@@ -562,6 +590,7 @@ Default policy:
 ```text
 max_items = 20
 max_per_company = 2
+candidate_lookback_days = 30
 allowed_tiers = [HIGH, MEDIUM]
 ```
 
@@ -569,7 +598,7 @@ Selection order:
 
 1. remove ineligible/STRETCH/DISCARD;
 2. remove known already-applied requisitions;
-3. apply duplicate and company/cooldown policies;
+3. apply duplicate/company/cooldown constraints from explicit history/policy;
 4. HIGH before MEDIUM;
 5. within tier sort by:
    - priority desc,
@@ -579,13 +608,13 @@ Selection order:
    - opportunity id asc for deterministic ties;
 6. stop at `max_items`.
 
-If only 7 items survive, return 7.
+If only 7 survive, return 7.
 
-History is passed through a small read interface. V0.2A tests the policy with fixtures; the full auditable application ledger is a later slice.
+History is consumed through a small read interface. V0.2A tests selection with history fixtures; the durable auditable application ledger remains V0.2D scope.
+
+If history has no timestamp information, cooldown is not guessed; only known requisition/status exclusions are applied.
 
 ## 16. Radar orchestration
-
-V0.2A adds a service that composes existing source connectors without changing their source-specific boundaries.
 
 ```python
 RadarService.run(config, profile, now) -> RadarRunResult
@@ -594,19 +623,20 @@ RadarService.run(config, profile, now) -> RadarRunResult
 Responsibilities:
 
 1. run enabled connectors independently;
-2. persist/dedupe normalized opportunities through the existing repository;
-3. continue when one connector fails;
-4. collect source-level ingestion diagnostics;
-5. enrich and assess candidate opportunities;
-6. build the daily batch.
+2. persist/dedupe through the existing opportunity repository;
+3. continue when one source fails;
+4. collect sanitized source diagnostics;
+5. query the full configured radar candidate universe;
+6. enrich/assess candidates;
+7. build the daily batch.
 
-A source failure must not invalidate successful source results.
+A source failure never invalidates successful source results.
 
 ### 16.1 Source configuration
 
-Use a local config file such as `sources.local.yaml` plus a fictional public example.
+Use `sources.local.yaml` plus a fictional public example.
 
-Supported V0.2A source entries map only to existing connectors:
+Supported V0.2A source types map to existing connectors:
 
 ```text
 remotive
@@ -615,19 +645,19 @@ lever
 ashby
 ```
 
-Greenhouse board tokens, Lever site names, and Ashby board names are public routing identifiers. Secrets, if a future connector needs them, belong in environment variables and never in source YAML.
+Greenhouse board tokens, Lever site names, and Ashby board names are public routing identifiers. Any future secret belongs in environment variables, not YAML.
 
-V0.2A does not require Adzuna or another new feed connector to be complete. New feeds can be added independently after the radar core is stable.
+V0.2A does not require Adzuna or another new connector to be done. Additional feeds can be added independently after the radar core is stable.
 
 ## 17. Persistence
 
 ### 17.1 Existing opportunities
 
-Keep the current `opportunities` table and repository behavior stable.
+Keep the current `opportunities` table/API behavior stable. Add radar-specific read methods instead of changing `list()` semantics.
 
 ### 17.2 Enrichment
 
-Persist enrichment separately so it can be invalidated/recomputed by version.
+Persist enrichment separately and version it.
 
 Conceptual table:
 
@@ -641,11 +671,11 @@ opportunity_enrichments
 - created_at
 ```
 
-One current enrichment per `(opportunity_id, version tuple)` is sufficient for V0.2A. The repository boundary should hide SQLite details.
+A version tuple identifies reusable enrichment. Changing extractor/alias/taxonomy versions permits recomputation without mutating the source opportunity.
 
-### 17.3 Batch persistence
+### 17.3 Batch/history persistence
 
-V0.2A may return a computed `DailyRadarBatch` without making it an approval artifact. Immutable/persisted `ApplicationPacket` and approval hashes belong to V0.2B/V0.2C.
+V0.2A may return a computed `DailyRadarBatch`; it is **not** an approval artifact. Immutable Application Packets, approval hashes, and a durable submission ledger belong to later slices.
 
 ## 18. Output models
 
@@ -660,8 +690,9 @@ confidence_score
 confidence_breakdown
 tier
 priority_score
-priority_penalties
+ranking_penalties
 scoring_version
+extractor_version
 alias_registry_version
 taxonomy_versions
 ```
@@ -674,6 +705,7 @@ generated_at
 policy
 profile_fingerprint
 scoring_version
+extractor_version
 alias_registry_version
 taxonomy_versions
 items[]
@@ -683,30 +715,32 @@ medium_count
 source_diagnostics
 ```
 
-`profile_fingerprint` is a non-secret hash/version identifier, not the personal profile contents.
+`profile_fingerprint` is a local non-secret version/hash identifier, not profile contents.
 
-`batch_id` must be reproducible from the run snapshot or generated once and returned with complete version metadata. No downstream code may treat it as application approval.
+`batch_id` identifies a radar result only; downstream code must not treat it as application approval.
 
 ## 19. API surface
 
-Keep V0.1 routes compatible.
+Keep all V0.1 routes compatible.
 
-Add V0.2A endpoints under the existing `/api/v1` prefix:
+Add one V0.2A endpoint:
 
 ```text
 POST /api/v1/radar/run
-GET  /api/v1/radar/opportunities/{opportunity_id}
 ```
 
-`POST /radar/run` performs the configured radar run and returns `DailyRadarBatch` plus source diagnostics.
+It returns the computed `DailyRadarBatch` with each selected item's full `RadarAssessment` and sanitized source diagnostics.
 
-It has no submission side effects.
+It has no CV/submission side effects.
 
-If no profile is configured: `503 Candidate profile unavailable`.
+Failure behavior:
 
-If one source fails but others succeed: return a successful radar result with a sanitized source diagnostic for the failed connector.
+- no candidate profile: `503 Candidate profile unavailable`;
+- one/more sources fail but stored/successful candidates exist: successful batch + source diagnostics;
+- all enabled sources fail but stored candidates remain inside the lookback: score stored candidates + diagnostics;
+- all enabled sources fail and no stored candidates are available: sanitized upstream failure, not ambiguous empty success.
 
-If all enabled sources fail and there are no stored candidates to assess: return a sanitized upstream failure response rather than an empty-success ambiguity.
+No extra per-opportunity radar endpoint is required in V0.2A; the existing opportunity and assessment routes remain available, and the batch already contains its full assessment snapshot.
 
 ## 20. Error handling and degradation
 
@@ -716,7 +750,7 @@ Typed failure categories:
 source_unavailable
 invalid_source_config
 extraction_failed
-taxonomy_unavailable_or_missing
+taxonomy_missing
 invalid_enrichment
 profile_unavailable
 ```
@@ -724,19 +758,19 @@ profile_unavailable
 Rules:
 
 - raw upstream bodies/secrets never reach API responses;
-- one source failure is isolated;
-- missing taxonomy snapshot is a warning and deterministic fallback, not fatal;
-- one malformed opportunity enrichment does not delete the original opportunity;
+- source failures are isolated;
+- missing taxonomy snapshot is a warning + exact/alias fallback, not fatal;
+- malformed enrichment never deletes the source opportunity;
 - unknown requirement data lowers confidence;
-- no exception converts unknown into a hard incompatibility.
+- no exception converts unknown into incompatibility.
 
 ## 21. Versioning and reproducibility
 
-Every radar assessment/batch records:
+Every radar result records:
 
 ```text
 scoring_version
-enrichment/extractor_version
+extractor_version
 alias_registry_version
 taxonomy source versions
 threshold/policy configuration
@@ -745,90 +779,95 @@ profile fingerprint
 
 Initial scoring version: `v0.2a.1`.
 
-Changing weights, tier thresholds, match-level multipliers, or gate semantics requires a scoring-version change.
-
-Alias changes require an alias-registry version/hash change.
+Changing weights, thresholds, match multipliers, or gate semantics requires a scoring-version change. Alias changes require an alias-registry version/hash change.
 
 ## 22. Security and privacy
 
 - personal profile remains local and gitignored;
 - public repo ships fictional profile/source examples only;
-- no CV is introduced in V0.2A;
-- no job portal credentials are stored;
+- no CV exists in V0.2A;
+- no portal credentials are stored;
 - no LinkedIn/Indeed scraping;
 - no submission endpoint;
-- no legal/declarative fact is inferred from taxonomy/semantic similarity;
-- taxonomy refresh uses explicit timeouts and pinned source versions;
-- offline CI never requires personal data or external network access.
+- no legal/declarative fact is inferred from taxonomy similarity;
+- taxonomy refresh uses explicit timeouts and pinned versions;
+- offline CI requires no personal data or external network.
 
 ## 23. Testing strategy
 
 Tests remain offline and fixture-driven.
 
-### Contract tests
+### Contract
 
 - strict enrichment/provenance models reject unknown fields;
 - derived values without provenance fail;
 - timestamps are timezone-aware;
-- unknown values remain unknown.
+- unknown remains unknown;
+- old V0.1 profile YAML still loads with default eligibility fields.
 
-### Extraction tests
+### Extraction
 
 - English mandatory/preferred cues;
 - Spanish mandatory/preferred cues;
-- source-structured skills outrank weaker text inference;
-- exact supporting source span is retained;
-- ambiguous wording remains `unknown` rather than mandatory.
+- structured source skills outrank weaker text inference;
+- exact source span is retained;
+- ambiguous wording remains `unknown`.
 
-### Resolver tests
+### Resolver
 
-- exact match = 1.00;
+- exact = 1.00;
 - approved equivalence alias = 1.00;
 - taxonomy relation = 0.70;
-- taxonomy relation does not become exact-product satisfaction;
+- taxonomy relation cannot satisfy exact-product silently;
 - missing taxonomy cache falls back safely;
-- alias resolution is case/whitespace stable.
+- case/whitespace normalization is stable.
 
-### Eligibility tests
+### Eligibility
 
 - explicit hard fail never enters batch;
+- empty/unconfigured candidate constraints do not hard fail;
 - unknown legal/location information is not a hard fail;
 - explicit location conflict blocks;
-- missing mandatory license blocks when absence is verified;
+- verified missing mandatory license blocks;
 - configured no-go constraint blocks.
 
-### Match regression tests
+### Match regression
 
-- existing V0.1 fixtures preserve scores without new enrichment;
-- unverified evidence never receives verified-evidence credit;
+- V0.1 fixtures preserve scores without enrichment;
+- unverified evidence never receives verified credit;
 - approved alias can satisfy equivalent skill;
 - related skill remains partial/nearby evidence;
 - freshness curve remains unchanged.
 
-### Confidence tests
+### Confidence
 
 - missing/ambiguous extraction lowers confidence;
 - source incompleteness lowers confidence without lowering match automatically;
 - better provenance raises confidence;
-- confidence components sum deterministically.
+- component total is deterministic.
 
-### Rank/selector tests
+### Candidate query/ranking/selector
 
+- radar query is not capped by the legacy 100-row `list()` default;
+- items outside lookback are excluded by policy;
 - never returns more than 20;
 - never fills with STRETCH;
-- 7 valid items returns exactly 7;
+- 7 valid items returns 7;
 - HIGH precedes MEDIUM;
 - max two per company by default;
 - same requisition never appears twice;
-- history exclusion works;
+- known applied history is excluded;
+- cooldown is only applied from explicit timestamped history;
 - ordering is deterministic under ties.
 
-### Orchestration tests
+### Orchestration/API
 
 - one connector failure does not suppress successful sources;
-- all connectors are mocked;
+- all connector HTTP is mocked;
 - source diagnostics are sanitized;
-- no taxonomy network call occurs during scoring.
+- missing taxonomy does not cause live network fallback;
+- all-sources-failed behavior distinguishes stored-candidate fallback from true no-data failure;
+- `POST /api/v1/radar/run` has no write side effects outside opportunity/enrichment persistence.
 
 ## 24. Proposed module boundaries
 
@@ -846,57 +885,58 @@ app/
 ├── matching/
 │   └── scorer.py           # preserve/refactor carefully
 ├── repositories/
-│   ├── opportunities.py    # existing contract remains stable
+│   ├── opportunities.py    # existing contract stable
 │   └── enrichments.py
 └── api/
     └── routes.py
 
-profiles/
-├── example_profile.yaml
-└── ...
-
 sources/
 └── example_sources.yaml
 
-data or cache boundary/
-└── taxonomy metadata/fixtures as needed
+profiles/
+└── example_profile.yaml    # backward-compatible defaulted fields
+
+local/ignored taxonomy cache or generated snapshots
++ small deterministic test fixtures
 ```
 
-Exact filenames may change during planning if a smaller boundary is clearer; responsibilities must remain separated.
+Exact filenames may change in the implementation plan if a smaller boundary is clearer; responsibilities may not be collapsed into one large service.
 
 ## 25. Definition of V0.2A done
 
 V0.2A is complete when a developer can:
 
-1. configure one or more supported public sources;
+1. configure one or more existing supported public sources;
 2. run one radar operation;
-3. ingest/dedupe available opportunities with connector isolation;
+3. ingest/dedupe with connector isolation;
 4. extract structured requirements in English/Spanish with provenance;
-5. normalize skills through exact matches, approved aliases, and optional local taxonomy snapshots;
-6. evaluate explicit hard eligibility constraints;
+5. normalize skills through exact, approved aliases, and optional local taxonomy snapshots;
+6. evaluate explicit hard eligibility constraints using only configured/verified candidate facts;
 7. retain the V0.1 100-point match contract;
-8. receive an independent confidence score and component breakdown;
-9. classify opportunities into HIGH/MEDIUM/STRETCH/DISCARD;
-10. rank eligible candidates with explicit priority penalties;
-11. receive no more than 20 HIGH/MEDIUM opportunities and never pad the batch with lower-quality items;
-12. see selected evidence, mandatory matches/gaps, risks, unknowns, source diagnostics, and version metadata;
-13. run the complete suite without network access;
-14. pass CI from a clean Python 3.12 installation;
-15. perform all of the above without generating or sending a CV/application.
+8. receive independent confidence + component breakdown;
+9. classify HIGH/MEDIUM/STRETCH/DISCARD;
+10. rank with explicit opportunity/source penalties;
+11. query a configured lookback without arbitrary pre-ranking truncation;
+12. receive no more than 20 HIGH/MEDIUM opportunities and never pad with lower-quality items;
+13. see evidence, mandatory matches/gaps, risks, unknowns, source diagnostics, and version metadata;
+14. run the complete suite offline;
+15. pass CI from a clean Python 3.12 install;
+16. do all of the above without generating or sending a CV/application.
 
 ## 26. Design constraints
 
 - evidence before inference;
 - unknown is not false;
-- hard constraints cannot be averaged away by a high score;
+- hard constraints cannot be averaged away;
 - match and confidence are separate;
 - match and priority are separate;
-- taxonomies interpret vocabulary; they do not invent candidate experience;
+- selection constraints are not ranking penalties;
+- taxonomies interpret vocabulary, not candidate truth;
 - deterministic core before optional AI enrichment;
-- no live taxonomy dependency in scoring;
+- no live taxonomy dependency during scoring;
 - no hidden side effects;
-- explicit schemas and provenance;
-- keep V0.1 API/storage compatibility where practical;
+- explicit schemas + provenance;
+- preserve V0.1 API/storage behavior where practical;
 - simplest correct implementation first.
 
 ## 27. Follow-on slices
@@ -905,6 +945,6 @@ After V0.2A is stable:
 
 - **V0.2B — CV Factory:** master facts, evidence modules, structured CV model, rendering, immutable application packet.
 - **V0.2C — Approval + Submission:** batch approval, direct email/authorized channels, form assist/manual fallback, idempotent submission.
-- **V0.2D — Learning Loop:** application ledger, follow-up, response/interview metrics, explicit score calibration reports.
+- **V0.2D — Learning Loop:** durable application ledger, follow-up, response/interview metrics, explicit score calibration reports.
 
 None of those capabilities should leak into V0.2A merely to make the demo look more complete.
