@@ -203,12 +203,11 @@ async def test_ineligible_high_scoring_track_cannot_win_over_eligible_track(tmp_
         tracks=[
             CandidateTrack(
                 id="blocked-perfect",
-                label="Perfect skills but explicit no-go",
+                label="Perfect skills but incompatible work mode",
                 intents=["INCOME_NOW"],
                 roles=["Support Analyst"],
                 skills=["Python", "SQL", "Excel", "CRM"],
-                accepted_work_modes=["remote"],
-                no_go_constraints=["remote"],
+                accepted_work_modes=["onsite"],
             ),
             CandidateTrack(
                 id="eligible-partial",
