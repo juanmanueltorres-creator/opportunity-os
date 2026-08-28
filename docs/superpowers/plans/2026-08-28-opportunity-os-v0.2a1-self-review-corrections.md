@@ -4,7 +4,7 @@ Date: 2026-08-28
 Status: normative plan addendum
 Applies to: `docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a1-multi-intent-radar-core.md`
 
-This file closes two concrete spec-coverage gaps found during the mandatory writing-plan self-review. Read it with the A1 implementation plan. If it conflicts with that plan, this correction wins.
+This file closes concrete spec-coverage gaps found during plan/implementation review. Read it with the A1 implementation plan. If it conflicts with that plan, this correction wins.
 
 ## Correction 1 — Application mode is part of enrichment
 
@@ -23,50 +23,22 @@ ApplicationMode = Literal[
 ]
 ```
 
-`OpportunityEnrichment` must include:
+`OpportunityEnrichment` must include `application_mode`, default `UNKNOWN`. V0.2A1 only classifies a mode when source evidence is explicit; it never assumes applicant-side ATS credentials exist.
 
-```text
-application_mode
-```
-
-Default is `UNKNOWN`. V0.2A1 only classifies a mode when source evidence is explicit; it never assumes applicant-side ATS credentials exist.
-
-### Task 2 test additions
-
-Add failing tests before implementation:
-
-```python
-def test_explicit_application_email_is_direct_email() -> None:
-    ...
-    assert enrichment.application_mode == "DIRECT_EMAIL"
-
-
-def test_known_hosted_ats_without_applicant_api_is_hosted_manual() -> None:
-    ...
-    assert enrichment.application_mode == "HOSTED_MANUAL"
-
-
-def test_unknown_application_channel_remains_unknown() -> None:
-    ...
-    assert enrichment.application_mode == "UNKNOWN"
-```
-
-Classification rules for V0.2A1:
+Classification rules:
 
 ```text
 explicit published application email -> DIRECT_EMAIL
-known Greenhouse/Lever/Ashby hosted posting without an authorized applicant-side credential -> HOSTED_MANUAL
-manual/restricted platform explicitly marked restricted by source config -> RESTRICTED_MANUAL
-explicit supported form-assist flag supplied by source metadata -> FORM_ASSIST
-AUTHORIZED_API -> only when an integration is explicitly configured as authorized; never infer from ATS brand
+known Greenhouse/Lever/Ashby hosted posting without authorized applicant-side credential -> HOSTED_MANUAL
+manual/restricted platform explicitly marked restricted -> RESTRICTED_MANUAL
+explicit supported form-assist flag -> FORM_ASSIST
+AUTHORIZED_API -> only when explicitly configured as authorized
 otherwise -> UNKNOWN
 ```
 
-V0.2A1 does not submit through any of these modes. The field exists to prepare V0.2B/V0.2C.
+V0.2A1 does not submit through any of these modes.
 
 ## Correction 2 — Source reliability and freshness provenance are explicit
-
-### Task 1 contract addition
 
 Define:
 
@@ -87,15 +59,6 @@ FreshnessQuality = Literal[
 ]
 ```
 
-`OpportunityEnrichment` must include:
-
-```text
-source_reliability
-source_freshness_quality
-```
-
-### Task 2/9 behavior additions
-
 Known defaults:
 
 ```text
@@ -115,19 +78,48 @@ no publication timestamp; only discovered_at -> DISCOVERED_AT_ONLY
 insufficient metadata -> UNKNOWN
 ```
 
-Remotive must be representable as delayed/aggregated even when it has a date, so explanations do not present its freshness provenance as equivalent to a direct ATS timestamp.
+Source quality can change confidence and explicit ranking penalties. It must never manufacture or erase candidate skills, legal facts or requirements.
 
-### Task 6 confidence test additions
+## Correction 3 — Multi-intent thresholds and daily selection mode follow the normative amendment
 
-Add tests proving:
+During Task 8 preflight, implementation review found that the A1 plan text incorrectly reused CAREER thresholds for `INCOME_NOW`. The normative multi-intent amendment explicitly overrides that assumption.
 
-```python
-def test_direct_ats_timestamp_has_higher_source_completeness_than_discovered_only(): ...
-def test_delayed_aggregator_quality_does_not_change_match_score(): ...
-def test_source_quality_changes_confidence_explanation_not_candidate_truth(): ...
+The versioned default policy is therefore:
+
+```text
+CAREER HIGH     fit >= 78 && confidence >= 75
+CAREER MEDIUM   fit >= 65 && confidence >= 65
+
+INCOME HIGH     fit >= 75 && confidence >= 75
+INCOME MEDIUM   fit >= 62 && confidence >= 65
+
+STRETCH diagnostic floor = 55
 ```
 
-Source quality can change confidence and ranking penalties where explicitly configured. It must not manufacture or erase candidate skills, legal facts or requirements.
+The daily selection mode is explicit and configurable:
+
+```text
+career_first
+income_first
+balanced
+```
+
+Default for V0.2A is:
+
+```text
+selection_mode = income_first
+```
+
+`income_first` affects **daily batch selection**, not candidate truth or the per-opportunity fit calculation. A strong CAREER opportunity must remain visible; the same opportunity may qualify for both intents but may appear only once in a batch.
+
+TDD evidence for this correction:
+
+```text
+RED: 2 failures — INCOME 76/75 classified MEDIUM; selection_mode absent
+GREEN: 94/94 tests
+```
+
+Implementation commit: `72ffc613037b392530f671c8e8bc11631534e2cd`.
 
 ## Updated self-review result
 
@@ -140,13 +132,14 @@ After these corrections, the A1 plan covers:
 - aliases/taxonomy fallback;
 - factual eligibility;
 - V0.1-compatible career score;
-- INCOME_NOW score;
+- independent INCOME_NOW score and thresholds;
 - independent confidence;
 - ranking/tiers;
+- default `income_first` batch policy;
 - full lookback candidate universe;
 - max-20 selection;
 - source isolation;
 - generic manual import;
 - API/error/privacy boundaries.
 
-No implementation is performed by this addendum.
+No submission automation is introduced by this addendum.
