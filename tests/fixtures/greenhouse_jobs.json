@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "id": 4012345,
+      "title": "GIS Software Engineer",
+      "absolute_url": "https://boards.greenhouse.io/example/jobs/4012345",
+      "location": {"name": "Remote - Americas"},
+      "content": "<p>Build mapping services with Python.</p>",
+      "updated_at": "2026-08-27T10:00:00-04:00"
+    }
+  ]
+}
