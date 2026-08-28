@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opportunity-os"
-version = "0.1.0"
+version = "0.2.0a1"
 description = "Open-source opportunity discovery, matching and application preparation with explainable scoring and human approval."
 requires-python = ">=3.12"
 dependencies = [
