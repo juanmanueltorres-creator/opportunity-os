@@ -1,10 +1,17 @@
 from pathlib import Path
 import tomllib
 
+from app.main import create_app
+
 
 def test_package_version_is_v02c_prerelease() -> None:
     payload = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     assert payload["project"]["version"] == "0.2.0c1"
+
+
+def test_fastapi_metadata_matches_v02c_prerelease() -> None:
+    api = create_app(enable_default_radar=False)
+    assert api.version == "0.2.0c1"
 
 
 def test_readme_documents_operator_boundary() -> None:
