@@ -4,55 +4,54 @@
 
 **Goal:** Build a deterministic, evidence-backed CV factory that turns one selected `RadarAssessment` into a truthful ATS-first PDF and a reproducible `ApplicationPacket` without sending, submitting, or inventing candidate claims.
 
-**Architecture:** V0.2B adds a focused `app/cv/` subsystem. Private master facts and evidence catalogs are loaded into strict snapshots, a winning radar track limits the candidate evidence pool, a deterministic selector chooses relevant verified evidence, a composer builds a provenance-backed `CVDocumentModel`, a hard `ClaimValidator` gates rendering, and a deterministic ReportLab renderer produces a private PDF. `CVPreparationService` orchestrates those units and returns either a prepared packet or a typed blocked result; Gmail/recruiter/submission work remains V0.2C.
+**Architecture:** V0.2B adds a focused `app/cv/` subsystem. Strict private snapshots hold verified facts and approved evidence modules; the radar-selected track limits the evidence pool; a deterministic selector maps posting requirements to verified support; a composer builds a provenance-backed structured document; a validator hard-gates every visible candidate claim; a deterministic ReportLab renderer creates one ATS-first PDF; and `CVPreparationService` returns either a prepared packet or a typed blocked result. Recruiter discovery, Gmail, approval, and submission remain V0.2C.
 
-**Tech Stack:** Python >=3.12, Pydantic v2, PyYAML, existing Opportunity OS radar models/taxonomy resolver, ReportLab >=4.2 for PDF generation, pypdf >=5 as a dev-only PDF text/structure assertion dependency, pytest/pytest-asyncio, SHA-256 canonical JSON hashing.
+**Tech Stack:** Python >=3.12, Pydantic v2, PyYAML, existing Opportunity OS radar models and `TaxonomyResolver`, ReportLab >=4.2, pypdf >=5 as a dev-only assertion dependency, pytest/pytest-asyncio, SHA-256 canonical JSON hashing.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md` plus normative clarification `docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-self-review.md`
 
 ## Global Constraints
 
 - Python remains `>=3.12`.
-- V0.1 and V0.2A1 public API contracts and radar scoring behavior remain unchanged.
-- Real master facts, contact data, recruiter data, generated CV PDF/DOCX files, and real application packets must never be committed to the public repository.
-- V0.2B performs no Gmail operations, recruiter discovery, Apollo enrichment, form submission, ATS submission, browser automation, or approval/send action.
-- Only verified facts may support candidate claims; `verified=true` requires a verification method and timezone-aware `verified_at`.
-- Evidence-backed verification methods require a non-empty source reference; `manual_confirmation` is limited to legitimate self-attested facts/approved wording and cannot establish employment, education, certifications, metrics, tools, dates, or external outcomes.
-- The selected application track is a hard evidence boundary. No silent cross-track borrowing is allowed.
-- Unsupported job requirements are gaps/warnings by default, not invented CV claims and not automatic preparation hard-fails.
-- The composer and renderer require no LLM or network access.
-- The renderer may add only fixed localized section labels without provenance; all candidate/application content must come from validated structured claims.
-- `ApplicationPacket` exists only for `PREPARED`; blocked outcomes return `PreparationResult(packet=None, ...)`.
+- Existing V0.1 and V0.2A1 API routes and radar scoring behavior remain unchanged.
+- Real master facts, contact data, recruiter data, real generated CV files, and real application packets never enter the public repository.
+- V0.2B performs no Gmail operation, recruiter discovery, Apollo enrichment, form submission, ATS submission, browser automation, approval, or send action.
+- `verified=true` requires a verification method and timezone-aware `verified_at`.
+- Evidence-backed verification methods require `source_ref`; `manual_confirmation` is allowed only for legitimate self-attested identity/contact/location data and explicitly reviewed wording.
+- `manual_confirmation` does not establish employment, education, certifications, metrics, tools, dates, or external outcomes.
+- The selected application track is a hard evidence boundary. No other track may be borrowed to fill a section.
+- An unsupported posting requirement remains a gap or warning unless `CVPolicy` explicitly declares it a preparation prerequisite.
+- The composer and renderer need no network and no LLM.
+- The renderer may add only fixed localized section labels without provenance. Every candidate-specific visible string must come from a validated `CVClaim`.
+- `ApplicationPacket` exists only for `PREPARED`. Blocked outcomes have `packet=None`.
 - `packet_sha256` excludes `application_id`, `created_at`, `cv_pdf_path`, load timestamps, and filesystem-specific values.
-- Identical validated `CVDocumentModel` + renderer version + renderer policy must produce stable PDF bytes and therefore stable `cv_sha256` in test fixtures.
-- One ATS-first, one-column PDF layout only; DOCX and alternative visual designs remain out of scope.
+- Identical validated `CVDocumentModel` plus identical renderer version and renderer policy must produce stable PDF bytes in fixtures.
+- V0.2B ships one ATS-first, one-column PDF layout. DOCX and alternative visual layouts remain excluded.
 - CI remains offline.
 
 ## File Structure
 
-New subsystem:
-
 ```text
 app/cv/
-  __init__.py          package exports/version constants
-  models.py            strict facts/evidence/CV/packet/result contracts
-  hashing.py           canonical content normalization and SHA-256 helpers
-  loaders.py           private YAML snapshot loading and verification validation
-  track.py             selected application-track resolution and minimum-evidence gate
-  selector.py          deterministic requirement-to-evidence selection
-  composer.py          provenance-backed CVDocumentModel construction
-  validator.py         hard claim/provenance validation
-  renderer.py          deterministic one-column ATS PDF rendering
-  service.py           end-to-end CV preparation orchestration
+  __init__.py
+  models.py
+  hashing.py
+  loaders.py
+  track.py
+  selector.py
+  composer.py
+  validator.py
+  renderer.py
+  service.py
 
 config/
   master_facts.example.yaml
   evidence_catalog.example.yaml
 
 tests/
-  fixtures/cv/
-    master_facts.yaml
-    evidence_catalog.yaml
+  cv_factories.py
+  fixtures/cv/master_facts.yaml
+  fixtures/cv/evidence_catalog.yaml
   test_cv_models.py
   test_cv_loaders.py
   test_cv_track.py
@@ -61,9 +60,10 @@ tests/
   test_cv_validator.py
   test_cv_renderer.py
   test_cv_service.py
+  test_cv_release_contract.py
 ```
 
-Existing files changed only where necessary:
+Existing files modified only where necessary:
 
 ```text
 .gitignore
@@ -74,21 +74,22 @@ README.md
 
 ---
 
-### Task 1: CV contracts and canonical hashing
+### Task 1: CV contracts, test factories, and canonical hashing
 
 **Files:**
 - Create: `app/cv/__init__.py`
 - Create: `app/cv/models.py`
 - Create: `app/cv/hashing.py`
-- Test: `tests/test_cv_models.py`
+- Create: `tests/cv_factories.py`
+- Create: `tests/test_cv_models.py`
 
 **Interfaces:**
-- Consumes: `SearchIntent` from `app.models.domain`; no filesystem or network.
-- Produces: `MasterFact`, `ApprovedClaim`, `EvidenceModule`, `MasterFactsSnapshot`, `EvidenceCatalogSnapshot`, `CVPolicy`, `RequirementSupport`, `EvidenceSelection`, `CVClaim`, `CVEntry`, `ClaimProvenance`, `CVDocumentModel`, `ValidationIssue`, `ValidationResult`, `RenderedCVArtifact`, `ApplicationPacket`, `PreparationResult`, `canonical_sha256()`.
+- Consumes: `SearchIntent`, `Opportunity`, `OpportunityEnrichment`, `EligibilityResult`, `ConfidenceAssessment`, `RadarAssessment`.
+- Produces: all V0.2B domain contracts plus `canonical_json_bytes()` and `canonical_sha256()`.
 
-- [ ] **Step 1: Write failing strict-contract tests**
+- [ ] **Step 1: Write the contract tests first**
 
-Create `tests/test_cv_models.py` with at least these cases:
+Create `tests/test_cv_models.py`:
 
 ```python
 from datetime import datetime, timezone
@@ -96,10 +97,13 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.cv.models import MasterFact
+from app.cv.hashing import canonical_sha256
+from app.cv.models import MasterFact, PreparationResult, ValidationIssue
+
+NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
 
-def test_verified_fact_requires_method_and_aware_timestamp() -> None:
+def test_verified_fact_requires_verification_metadata() -> None:
     with pytest.raises(ValidationError):
         MasterFact(
             id="skill-postgis",
@@ -110,20 +114,20 @@ def test_verified_fact_requires_method_and_aware_timestamp() -> None:
         )
 
 
-def test_manual_confirmation_may_verify_self_attested_contact() -> None:
+def test_manual_confirmation_allows_self_attested_contact_without_source_ref() -> None:
     fact = MasterFact(
         id="contact-email",
         kind="contact",
         value="alex@example.test",
-        track_ids=["tech", "ops"],
+        track_ids=["tech", "hospitality"],
         verified=True,
         verification_method="manual_confirmation",
-        verified_at=datetime(2026, 8, 28, tzinfo=timezone.utc),
+        verified_at=NOW,
     )
     assert fact.source_ref is None
 
 
-def test_repository_evidence_requires_source_ref() -> None:
+def test_evidence_backed_fact_requires_source_ref() -> None:
     with pytest.raises(ValidationError):
         MasterFact(
             id="skill-python",
@@ -132,25 +136,35 @@ def test_repository_evidence_requires_source_ref() -> None:
             track_ids=["tech"],
             verified=True,
             verification_method="repository_evidence",
-            verified_at=datetime(2026, 8, 28, tzinfo=timezone.utc),
+            verified_at=NOW,
         )
+
+
+def test_blocked_result_cannot_contain_packet() -> None:
+    with pytest.raises(ValidationError):
+        PreparationResult(
+            status="BLOCKED_VALIDATION",
+            packet={"status": "PREPARED"},
+            errors=[ValidationIssue(code="claim_validation_failed", message="blocked")],
+        )
+
+
+def test_canonical_hash_ignores_mapping_key_order_but_keeps_list_order() -> None:
+    assert canonical_sha256({"a": 1, "b": 2}) == canonical_sha256({"b": 2, "a": 1})
+    assert canonical_sha256({"bullets": ["A", "B"]}) != canonical_sha256({"bullets": ["B", "A"]})
 ```
 
-Also test `extra="forbid"`, non-empty stable IDs, and timezone-aware verification dates.
-
-- [ ] **Step 2: Run the tests and verify RED**
-
-Run:
+- [ ] **Step 2: Run the test and confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_models.py -v
 ```
 
-Expected: collection/import failure because `app.cv.models` does not exist.
+Expected: import failure because `app.cv` does not exist.
 
-- [ ] **Step 3: Implement the strict model surface**
+- [ ] **Step 3: Implement strict contracts**
 
-Create `app/cv/models.py` with these public contracts and exact initial literals:
+Create `app/cv/models.py` with `ConfigDict(extra="forbid")` and these public literals/classes:
 
 ```python
 FactKind = Literal[
@@ -171,6 +185,7 @@ ClaimKind = Literal[
     "identity", "contact", "location", "headline", "summary", "organization",
     "title", "date", "bullet", "project", "education", "skill", "language", "link",
 ]
+SupportLevel = Literal["EXACT", "ALIAS", "RELATED", "UNSUPPORTED"]
 PreparationStatus = Literal[
     "PREPARED", "BLOCKED_VALIDATION", "BLOCKED_MISSING_FACTS",
     "BLOCKED_TRACK_UNAVAILABLE", "BLOCKED_RENDER",
@@ -205,29 +220,134 @@ class EvidenceModule(StrictCVModel):
     keywords: list[str] = Field(default_factory=list)
     source_refs: list[str] = Field(default_factory=list)
     verified: bool
+
+class MasterFactsSnapshot(StrictCVModel):
+    schema_version: str = Field(min_length=1)
+    content_sha256: str = Field(min_length=64, max_length=64)
+    facts: list[MasterFact]
+
+class EvidenceCatalogSnapshot(StrictCVModel):
+    schema_version: str = Field(min_length=1)
+    content_sha256: str = Field(min_length=64, max_length=64)
+    modules: list[EvidenceModule]
+
+class CVPolicy(StrictCVModel):
+    language: Literal["es", "en"] = "en"
+    required_sections: list[CVSection] = Field(default_factory=lambda: ["experience"])
+    max_summary_claims: int = Field(default=2, ge=0, le=4)
+    max_experience_modules: int = Field(default=3, ge=0, le=6)
+    max_project_modules: int = Field(default=3, ge=0, le=6)
+    max_bullets_per_module: int = Field(default=4, ge=1, le=8)
+
+class RequirementSupport(StrictCVModel):
+    requirement_value: str
+    importance: str
+    exactness: str
+    level: SupportLevel
+    fact_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+
+class EvidenceSelection(StrictCVModel):
+    application_track_id: str
+    selected_fact_ids: list[str]
+    selected_evidence_ids: list[str]
+    requirement_support: list[RequirementSupport]
+    unsupported_requirements: list[str]
+    selection_explanations: list[str]
+
+class CVClaim(StrictCVModel):
+    claim_id: str
+    kind: ClaimKind
+    text: str
+
+class ClaimProvenance(StrictCVModel):
+    fact_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    approved_claim_id: str | None = None
+
+class CVEntry(StrictCVModel):
+    entry_id: str
+    heading: CVClaim
+    subheading: CVClaim | None = None
+    date_range: CVClaim | None = None
+    bullets: list[CVClaim] = Field(default_factory=list)
+
+class CVDocumentModel(StrictCVModel):
+    document_version: str
+    language: Literal["es", "en"]
+    header: list[CVClaim]
+    headline: CVClaim | None = None
+    summary: list[CVClaim] = Field(default_factory=list)
+    skills: list[CVClaim] = Field(default_factory=list)
+    experience: list[CVEntry] = Field(default_factory=list)
+    projects: list[CVEntry] = Field(default_factory=list)
+    education: list[CVEntry] = Field(default_factory=list)
+    languages: list[CVClaim] = Field(default_factory=list)
+    links: list[CVClaim] = Field(default_factory=list)
+    provenance_map: dict[str, ClaimProvenance]
+
+class ValidationIssue(StrictCVModel):
+    code: str
+    message: str
+    claim_id: str | None = None
+
+class ValidationResult(StrictCVModel):
+    valid: bool
+    errors: list[ValidationIssue] = Field(default_factory=list)
+    warnings: list[ValidationIssue] = Field(default_factory=list)
+    validated_claim_ids: list[str] = Field(default_factory=list)
+
+class RenderedCVArtifact(StrictCVModel):
+    path: str
+    sha256: str = Field(min_length=64, max_length=64)
+    byte_size: int = Field(gt=0)
+    renderer_version: str
+
+class ApplicationPacket(StrictCVModel):
+    application_id: str
+    opportunity_id: str
+    opportunity_snapshot_hash: str
+    radar_batch_id: str | None = None
+    selected_intent: SearchIntent | None = None
+    application_track_id: str
+    match_score: float | None = None
+    income_viability: float | None = None
+    confidence_score: float
+    scoring_version: str
+    extractor_version: str
+    alias_registry_version: str
+    taxonomy_versions: dict[str, str]
+    master_facts_version: str
+    evidence_catalog_version: str
+    composer_version: str
+    cv_document_version: str
+    renderer_version: str
+    selected_fact_ids: list[str]
+    selected_evidence_ids: list[str]
+    unresolved_gaps: list[str]
+    cv_document: CVDocumentModel
+    cv_pdf_path: str
+    cv_sha256: str
+    packet_sha256: str
+    status: Literal["PREPARED"] = "PREPARED"
+    created_at: datetime
+
+class PreparationResult(StrictCVModel):
+    status: PreparationStatus
+    packet: ApplicationPacket | None = None
+    errors: list[ValidationIssue] = Field(default_factory=list)
+    warnings: list[ValidationIssue] = Field(default_factory=list)
 ```
 
-Add snapshot wrappers with `schema_version`, `content_sha256`, and lists of facts/modules. Add document/validation/packet/result models named in **Interfaces**. `ApplicationPacket.status` is fixed to `Literal["PREPARED"]`; blocked statuses belong only to `PreparationResult`.
+Add model validators enforcing aware datetimes, verification metadata, and `packet is not None` if and only if status is `PREPARED`.
 
-Add validators so:
+Add `CVDocumentModel.iter_visible_claims()` returning header, headline, summary, skills, every entry heading/subheading/date/bullet, languages, and links in rendered order.
 
-```python
-if self.verified:
-    assert self.verification_method is not None
-    assert self.verified_at is not None and self.verified_at.tzinfo is not None
-    if self.verification_method != "manual_confirmation":
-        assert self.source_ref and self.source_ref.strip()
-```
-
-Do not attempt to infer whether a user-confirmed claim is legitimate inside the Pydantic model; loader/policy tests will restrict example usage.
-
-- [ ] **Step 4: Add canonical SHA-256 helpers and tests**
+- [ ] **Step 4: Implement hashing helpers**
 
 Create `app/cv/hashing.py`:
 
 ```python
-from __future__ import annotations
-
 import hashlib
 import json
 from typing import Any
@@ -247,29 +367,117 @@ def canonical_sha256(payload: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
 ```
 
-Add tests showing dictionary key order does not change a hash and semantically ordered CV bullet lists do change a hash.
+- [ ] **Step 5: Create reusable fictional test factories**
 
-- [ ] **Step 5: Run Task 1 tests and full regression suite**
+Create `tests/cv_factories.py` with a fixed aware `NOW`, `make_fact()`, `make_master_snapshot()`, `make_evidence_catalog()`, `make_policy()`, and this radar factory:
 
-Run:
+```python
+from datetime import datetime, timezone
+
+from app.models.domain import Opportunity
+from app.radar.models import (
+    ConfidenceAssessment,
+    EligibilityResult,
+    OpportunityEnrichment,
+    RadarAssessment,
+    Requirement,
+    DerivedValue,
+)
+
+NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
+
+
+def make_radar_assessment(
+    *,
+    selected_intent: str = "CAREER",
+    best_career_track: str | None = "tech",
+    best_income_track: str | None = "tech",
+    requirement_value: str = "PostGIS",
+    requirement_exactness: str = "exact_product",
+) -> RadarAssessment:
+    opportunity = Opportunity(
+        id="opp-1",
+        source="manual",
+        source_id="fixture-1",
+        source_url="https://example.test/jobs/1",
+        company="Example Labs",
+        title="GIS Developer",
+        description="Required: PostGIS.",
+        discovered_at=NOW,
+        published_at=NOW,
+        status="found",
+        location="Cordoba, Argentina",
+        remote_policy="remote",
+        required_skills=[requirement_value],
+    )
+    requirement = Requirement(
+        kind="skill",
+        value=requirement_value,
+        importance="mandatory",
+        exactness=requirement_exactness,
+        provenance=DerivedValue[str](
+            value=requirement_value,
+            source_text=f"Required: {requirement_value}.",
+            source_field="description",
+            extraction_method="explicit_rule",
+            confidence=0.9,
+        ),
+    )
+    enrichment = OpportunityEnrichment(
+        opportunity_id=opportunity.id,
+        requirements=[requirement],
+        extractor_version="rules-v1",
+        created_at=NOW,
+    )
+    confidence = ConfidenceAssessment(
+        score=80,
+        requirement_extraction_quality=80,
+        skill_normalization_coverage=80,
+        evidence_traceability=80,
+        seniority_location_legal_clarity=80,
+        source_freshness_completeness=80,
+    )
+    return RadarAssessment(
+        opportunity=opportunity,
+        enrichment=enrichment,
+        eligibility=EligibilityResult(eligible=True),
+        best_career_track=best_career_track,
+        career_match=82 if best_career_track else None,
+        best_income_track=best_income_track,
+        income_viability=78 if best_income_track else None,
+        confidence_score=80,
+        confidence_breakdown=confidence,
+        intent_tiers={"CAREER": "HIGH", "INCOME_NOW": "HIGH"},
+        priority_score=81,
+        selected_intent=selected_intent,
+        scoring_version="v0.2a.1",
+        extractor_version="rules-v1",
+        alias_registry_version="aliases-v1",
+        taxonomy_versions={},
+    )
+```
+
+All other test factories use only fictional values and `.test` domains.
+
+- [ ] **Step 6: Run Task 1 and full regression tests**
 
 ```bash
 python -m pytest tests/test_cv_models.py -v
 python -m pytest -v
 ```
 
-Expected: all tests pass, including the existing V0.1/V0.2A1 suite.
+Expected: all tests pass.
 
-- [ ] **Step 6: Commit Task 1**
+- [ ] **Step 7: Commit Task 1**
 
 ```bash
-git add app/cv/__init__.py app/cv/models.py app/cv/hashing.py tests/test_cv_models.py
+git add app/cv tests/cv_factories.py tests/test_cv_models.py
 git commit -m "feat: add CV factory contracts and hashing"
 ```
 
 ---
 
-### Task 2: Private snapshot loaders, canonical fingerprints, and public fictional examples
+### Task 2: Private snapshot loaders, canonical fingerprints, examples, and privacy guards
 
 **Files:**
 - Create: `app/cv/loaders.py`
@@ -282,44 +490,84 @@ git commit -m "feat: add CV factory contracts and hashing"
 - Modify: `.github/workflows/tests.yml`
 
 **Interfaces:**
-- Consumes: Task 1 models/hashing.
-- Produces: `load_master_facts(path: str | Path) -> MasterFactsSnapshot`, `load_evidence_catalog(path: str | Path) -> EvidenceCatalogSnapshot`.
+- Consumes: Task 1 models and hashes.
+- Produces: `load_master_facts()`, `load_evidence_catalog()`, `validate_catalog_against_facts()`.
 
-- [ ] **Step 1: Write RED loader/fingerprint tests**
+- [ ] **Step 1: Write complete RED loader tests**
 
-Create `tests/test_cv_loaders.py` with:
+Create `tests/test_cv_loaders.py`:
 
 ```python
 from pathlib import Path
 
-from app.cv.loaders import load_evidence_catalog, load_master_facts
+import pytest
 
-FIXTURES = Path(__file__).parent / "fixtures" / "cv"
+from app.cv.loaders import (
+    load_evidence_catalog,
+    load_master_facts,
+    validate_catalog_against_facts,
+)
 
 
-def test_master_facts_fingerprint_is_independent_of_yaml_item_order(tmp_path: Path) -> None:
-    original = load_master_facts(FIXTURES / "master_facts.yaml")
-    reordered = tmp_path / "reordered.yaml"
-    reordered.write_text(
+def _write(path: Path, text: str) -> Path:
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_master_fingerprint_ignores_fact_order(tmp_path: Path) -> None:
+    first = _write(
+        tmp_path / "first.yaml",
+        "schema_version: v1\nfacts:\n"
+        "  - {id: a, kind: skill, value: PostGIS, track_ids: [tech], verified: false}\n"
+        "  - {id: b, kind: skill, value: Python, track_ids: [tech], verified: false}\n",
+    )
+    second = _write(
+        tmp_path / "second.yaml",
         "schema_version: v1\nfacts:\n"
         "  - {id: b, kind: skill, value: Python, track_ids: [tech], verified: false}\n"
         "  - {id: a, kind: skill, value: PostGIS, track_ids: [tech], verified: false}\n",
-        encoding="utf-8",
     )
-    # A companion source with a/b reversed must hash the same once canonicalized by stable ID.
-    # The fixture created in this task will use matching semantic records for this assertion.
-    assert len(original.content_sha256) == 64
+    assert load_master_facts(first).content_sha256 == load_master_facts(second).content_sha256
 
 
-def test_loader_rejects_duplicate_fact_ids() -> None:
-    ...
+def test_duplicate_fact_ids_are_rejected(tmp_path: Path) -> None:
+    source = _write(
+        tmp_path / "duplicate.yaml",
+        "schema_version: v1\nfacts:\n"
+        "  - {id: a, kind: skill, value: PostGIS, verified: false}\n"
+        "  - {id: a, kind: skill, value: Python, verified: false}\n",
+    )
+    with pytest.raises(ValueError, match="duplicate fact id"):
+        load_master_facts(source)
+
+
+def test_catalog_reference_to_missing_fact_is_rejected(tmp_path: Path) -> None:
+    facts = load_master_facts(
+        _write(
+            tmp_path / "facts.yaml",
+            "schema_version: v1\nfacts:\n"
+            "  - {id: known, kind: skill, value: PostGIS, track_ids: [tech], verified: false}\n",
+        )
+    )
+    catalog = load_evidence_catalog(
+        _write(
+            tmp_path / "catalog.yaml",
+            "schema_version: v1\nmodules:\n"
+            "  - id: module-1\n"
+            "    track_ids: [tech]\n"
+            "    label: Missing ref\n"
+            "    fact_ids: [missing]\n"
+            "    claims: []\n"
+            "    verified: false\n",
+        )
+    )
+    with pytest.raises(ValueError, match="missing fact"):
+        validate_catalog_against_facts(catalog, facts)
 ```
 
-Replace the illustrative first test body with two complete semantically identical temp YAML files whose facts differ only in order; assert identical `content_sha256`. Add tests for duplicate IDs, module references to missing fact IDs, and evidence modules marked verified while containing unverified facts.
+Add one more test where a `verified: true` module contains an unverified fact and assert `ValueError("verified module references unverified fact")`.
 
-- [ ] **Step 2: Verify RED**
-
-Run:
+- [ ] **Step 2: Run RED**
 
 ```bash
 python -m pytest tests/test_cv_loaders.py -v
@@ -327,41 +575,48 @@ python -m pytest tests/test_cv_loaders.py -v
 
 Expected: import failure because `app.cv.loaders` does not exist.
 
-- [ ] **Step 3: Implement deterministic YAML loading**
+- [ ] **Step 3: Implement deterministic YAML loaders**
 
-Create `app/cv/loaders.py` with strict `yaml.safe_load()` parsing. Canonicalize snapshot identity using stable ID ordering:
+Create `app/cv/loaders.py` with `yaml.safe_load()`, mapping checks, unique-ID checks, and stable-ID canonicalization:
 
 ```python
 def _master_payload(schema_version: str, facts: list[MasterFact]) -> dict[str, object]:
-    ordered = sorted(facts, key=lambda fact: fact.id)
     return {
         "schema_version": schema_version,
-        "facts": [fact.model_dump(mode="json") for fact in ordered],
+        "facts": [
+            fact.model_dump(mode="json")
+            for fact in sorted(facts, key=lambda item: item.id)
+        ],
     }
 
 
 def load_master_facts(path: str | Path) -> MasterFactsSnapshot:
-    payload = _load_yaml_mapping(path, "master facts")
+    payload = _load_yaml_mapping(path, label="master facts")
     schema_version = str(payload.get("schema_version", "")).strip()
-    facts = [MasterFact.model_validate(item) for item in payload.get("facts", [])]
-    _require_unique_ids(facts, label="fact")
+    if not schema_version:
+        raise ValueError("master facts schema_version is required")
+    raw_facts = payload.get("facts")
+    if not isinstance(raw_facts, list):
+        raise ValueError("master facts facts must be a list")
+    facts = [MasterFact.model_validate(raw) for raw in raw_facts]
+    _require_unique_ids([fact.id for fact in facts], label="fact")
     content_sha256 = canonical_sha256(_master_payload(schema_version, facts))
     return MasterFactsSnapshot(
         schema_version=schema_version,
         content_sha256=content_sha256,
-        facts=sorted(facts, key=lambda fact: fact.id),
+        facts=sorted(facts, key=lambda item: item.id),
     )
 ```
 
-Implement the evidence-catalog analogue. Validate every module `fact_id` and every approved claim `fact_id` against the master-facts-independent catalog syntax where possible; cross-snapshot consistency is exposed as `validate_catalog_against_facts(catalog, master_facts)` and called by the service later.
+Implement the analogous catalog loader. `validate_catalog_against_facts()` builds fact/module indexes and enforces every module/claim reference, verified module integrity, and non-empty approved-claim language text.
 
-- [ ] **Step 4: Add fictional examples only**
+- [ ] **Step 4: Add fictional public YAML examples**
 
-`config/master_facts.example.yaml` uses a fictional candidate such as `Alex Example` and `.test` email domains. Include two tracks (`tech`, `hospitality`) so isolation is testable. No real names, phones, emails, employers, schools, or repository URLs.
+`config/master_facts.example.yaml` and test fixture use only `Alex Example`, `.test` contact values, fictional employers, and two tracks named `tech` and `hospitality`. Include verified examples for identity, contact, location, PostGIS, Python, a fictional tech role, a fictional hospitality role, and one metric with evidence-backed verification.
 
-`config/evidence_catalog.example.yaml` includes one tech module and one hospitality module with approved ES/EN claims.
+`config/evidence_catalog.example.yaml` includes one `tech-project`, one `tech-experience`, and one `hospitality-experience` module. Each approved claim contains `es` and `en` text and references explicit fact IDs.
 
-- [ ] **Step 5: Strengthen private-file guards**
+- [ ] **Step 5: Extend private file ignores and CI guard**
 
 Append to `.gitignore`:
 
@@ -371,19 +626,15 @@ profile/evidence_catalog.local.yaml
 artifacts/applications/
 ```
 
-Extend the workflow guard command to include:
+Extend the CI tracked-file guard with these exact patterns while preserving the existing PDF/DOCX ban:
 
 ```bash
-'profile/master_facts.local.yaml' \
-'profile/evidence_catalog.local.yaml' \
+'profile/master_facts.local.yaml'
+'profile/evidence_catalog.local.yaml'
 'artifacts/applications/**'
 ```
 
-Keep the existing global `*.pdf` and `*.docx` tracked-file checks.
-
-- [ ] **Step 6: Run loader tests and privacy regression**
-
-Run:
+- [ ] **Step 6: Run loaders, full tests, and compile check**
 
 ```bash
 python -m pytest tests/test_cv_loaders.py -v
@@ -391,7 +642,7 @@ python -m pytest -v
 python -m compileall app
 ```
 
-Expected: all pass.
+Expected: all exit 0.
 
 - [ ] **Step 7: Commit Task 2**
 
@@ -409,22 +660,30 @@ git commit -m "feat: load private CV evidence snapshots safely"
 - Create: `tests/test_cv_track.py`
 
 **Interfaces:**
-- Consumes: `RadarAssessment`, `MasterFactsSnapshot`, `EvidenceCatalogSnapshot`, `CVPolicy`.
-- Produces: `resolve_application_track(assessment: RadarAssessment) -> str`, `check_minimum_evidence(track_id: str, master_facts: MasterFactsSnapshot, catalog: EvidenceCatalogSnapshot, policy: CVPolicy) -> list[ValidationIssue]`.
+- Consumes: `RadarAssessment`, snapshots, `CVPolicy`.
+- Produces: `resolve_application_track()` and `check_minimum_evidence()`.
 
-- [ ] **Step 1: Write RED tests for lane-aware track choice**
+- [ ] **Step 1: Write RED track tests**
+
+Create `tests/test_cv_track.py`:
 
 ```python
-def test_income_selected_intent_uses_best_income_track() -> None:
+import pytest
+
+from app.cv.track import TrackUnavailableError, check_minimum_evidence, resolve_application_track
+from tests.cv_factories import make_evidence_catalog, make_master_snapshot, make_policy, make_radar_assessment
+
+
+def test_selected_income_lane_uses_income_track() -> None:
     assessment = make_radar_assessment(
         selected_intent="INCOME_NOW",
-        best_income_track="hospitality",
         best_career_track="tech",
+        best_income_track="hospitality",
     )
     assert resolve_application_track(assessment) == "hospitality"
 
 
-def test_missing_selected_lane_falls_back_to_other_qualifying_track() -> None:
+def test_missing_selected_lane_falls_back_to_other_winning_track() -> None:
     assessment = make_radar_assessment(
         selected_intent="CAREER",
         best_career_track=None,
@@ -433,23 +692,36 @@ def test_missing_selected_lane_falls_back_to_other_qualifying_track() -> None:
     assert resolve_application_track(assessment) == "tech"
 
 
-def test_no_winning_track_raises_typed_track_unavailable() -> None:
-    ...
+def test_no_winning_track_fails_safely() -> None:
+    assessment = make_radar_assessment(
+        best_career_track=None,
+        best_income_track=None,
+    )
+    with pytest.raises(TrackUnavailableError, match="No qualifying application track"):
+        resolve_application_track(assessment)
+
+
+def test_hospitality_evidence_does_not_satisfy_tech_minimum() -> None:
+    issues = check_minimum_evidence(
+        track_id="tech",
+        master_facts=make_master_snapshot(include_tech_evidence=False),
+        catalog=make_evidence_catalog(include_tech=False, include_hospitality=True),
+        policy=make_policy(),
+    )
+    assert "insufficient_verified_evidence" in {issue.code for issue in issues}
 ```
 
-Also test that a tech application cannot satisfy minimum evidence using hospitality-only modules.
-
-- [ ] **Step 2: Verify RED**
-
-Run:
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_track.py -v
 ```
 
-Expected: import failure because `app.cv.track` does not exist.
+Expected: import failure for `app.cv.track`.
 
-- [ ] **Step 3: Implement exact track rules**
+- [ ] **Step 3: Implement exact track and minimum-evidence rules**
+
+Create `app/cv/track.py`:
 
 ```python
 class TrackUnavailableError(ValueError):
@@ -468,18 +740,18 @@ def resolve_application_track(assessment: RadarAssessment) -> str:
     raise TrackUnavailableError("No qualifying application track is available")
 ```
 
-`check_minimum_evidence()` must require only policy-defined CV structure, not all job requirements. Initial default policy requirements:
+`check_minimum_evidence()` returns issues if any of these are missing:
 
 ```text
-identity fact present and verified
-at least one verified contact fact
-at least one verified experience or project evidence module for application_track_id
-all policy.required_sections have truthful content when declared required
+one verified identity fact allowed for the selected track
+one verified contact fact allowed for the selected track
+one verified experience or project module allowed for the selected track
+any section named in policy.required_sections
 ```
 
-Return typed issues; do not mutate facts or borrow another track.
+Facts explicitly shared by listing multiple `track_ids` are allowed. No other cross-track fallback is allowed.
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 4: Run task and full tests**
 
 ```bash
 python -m pytest tests/test_cv_track.py -v
@@ -492,51 +764,54 @@ Expected: all pass.
 
 ```bash
 git add app/cv/track.py tests/test_cv_track.py
-git commit -m "feat: resolve CV application track safely"
+git commit -m "feat: resolve CV application tracks safely"
 ```
 
 ---
 
-### Task 4: Deterministic evidence selector with exact/alias/related distinctions
+### Task 4: Deterministic evidence selector with exact, alias, related, and unsupported support levels
 
 **Files:**
 - Create: `app/cv/selector.py`
 - Create: `tests/test_cv_selector.py`
 
 **Interfaces:**
-- Consumes: `RadarAssessment.enrichment.requirements`, `MasterFactsSnapshot`, `EvidenceCatalogSnapshot`, `CVPolicy`, existing `TaxonomyResolver` from `app.radar.taxonomy`.
-- Produces: `EvidenceSelector.select(...) -> EvidenceSelection`.
+- Consumes: posting requirements, snapshots, `application_track_id`, `CVPolicy`, existing `TaxonomyResolver`.
+- Produces: `EvidenceSelector.select() -> EvidenceSelection`.
 
-- [ ] **Step 1: Write RED selection tests**
+- [ ] **Step 1: Write RED selector tests**
 
-Cover these exact invariants:
+Create explicit fixtures using Task 1 factories and the existing `AliasRegistry`/`TaxonomyResolver`. Required assertions:
 
 ```python
-def test_exact_verified_skill_support_outranks_related_skill() -> None:
-    selection = selector.select(...)
-    support = selection.requirement_support[0]
+def test_exact_verified_skill_is_exact_support(selector, inputs) -> None:
+    selection = selector.select(**inputs)
+    support = next(item for item in selection.requirement_support if item.requirement_value == "PostGIS")
     assert support.level == "EXACT"
-    assert support.fact_ids == ["skill-postgresql"]
+    assert support.fact_ids == ["skill-postgis"]
 
 
-def test_approved_alias_counts_as_full_support() -> None:
-    # requirement "Postgres", verified fact "PostgreSQL", approved equivalence alias
+def test_approved_equivalence_alias_is_full_support(selector, postgres_inputs) -> None:
+    selection = selector.select(**postgres_inputs)
+    support = next(item for item in selection.requirement_support if item.requirement_value == "Postgres")
     assert support.level == "ALIAS"
 
 
-def test_taxonomy_related_does_not_support_exact_product_requirement() -> None:
-    # requirement exact_product "PostGIS", candidate fact only "spatial databases"
+def test_related_skill_cannot_satisfy_exact_product(selector, related_inputs) -> None:
+    selection = selector.select(**related_inputs)
+    support = next(item for item in selection.requirement_support if item.requirement_value == "PostGIS")
     assert support.level == "UNSUPPORTED"
     assert "PostGIS" in selection.unsupported_requirements
 
 
-def test_hospitality_module_cannot_enter_tech_selection() -> None:
-    assert "hospitality-role" not in selection.selected_evidence_ids
+def test_other_track_module_is_never_selected(selector, tech_inputs) -> None:
+    selection = selector.select(**tech_inputs)
+    assert "hospitality-experience" not in selection.selected_evidence_ids
 ```
 
-Add deterministic-order test: equal relevance sorts by stable evidence-module ID.
+Add an equal-score test asserting stable ID tiebreak order `module-a` before `module-b`.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_selector.py -v
@@ -544,44 +819,45 @@ python -m pytest tests/test_cv_selector.py -v
 
 Expected: import failure for `app.cv.selector`.
 
-- [ ] **Step 3: Implement selector scoring without prose generation**
+- [ ] **Step 3: Implement requirement support using the existing resolver**
 
-Use only verified facts/modules in `application_track_id`. For skill requirements, pass verified skill fact values to the existing resolver:
+Create `EvidenceSelector` with:
 
 ```python
-resolved = taxonomy_resolver.resolve_skill(requirement.value, candidate_skill_values)
-
+resolved = self.taxonomy_resolver.resolve_skill(requirement.value, candidate_skill_values)
 if resolved.level == SkillMatchLevel.EXACT_VERIFIED:
-    level, credit = "EXACT", 1.0
+    level = "EXACT"
 elif resolved.level == SkillMatchLevel.APPROVED_ALIAS:
-    level, credit = "ALIAS", 1.0
+    level = "ALIAS"
 elif resolved.level == SkillMatchLevel.TAXONOMY_RELATED and requirement.exactness != "exact_product":
-    level, credit = "RELATED", 0.70
+    level = "RELATED"
 else:
-    level, credit = "UNSUPPORTED", 0.0
+    level = "UNSUPPORTED"
 ```
+
+Map supporting skill facts to evidence modules through module `fact_ids`.
 
 Initial deterministic module relevance:
 
 ```text
-+100 each mandatory EXACT/ALIAS requirement supported by module facts
- +70 each mandatory RELATED conceptual requirement
- +50 each preferred EXACT/ALIAS requirement
- +35 each preferred RELATED conceptual requirement
- +10 each normalized requirement/title keyword overlap with module keywords
-  +5 if module contains evidence ID already cited by the radar match assessment
+mandatory EXACT or ALIAS support       +100
+mandatory RELATED conceptual support    +70
+preferred EXACT or ALIAS support         +50
+preferred RELATED conceptual support     +35
+normalized title/requirement keyword hit +10 each unique hit
+radar evidence overlap                    +5
 ```
 
-Sort by `(-score, module.id)` and cap by policy section limits. Store human-readable `selection_explanations`; selector does not write CV prose.
+Sort modules by `(-relevance, module.id)`. Apply `max_experience_modules` and `max_project_modules` by section. `selected_fact_ids` is the sorted union of selected module facts plus direct supported skill facts. The selector writes explanations, never CV prose.
 
-- [ ] **Step 4: Run selector and full regression tests**
+- [ ] **Step 4: Run selector and regression tests**
 
 ```bash
 python -m pytest tests/test_cv_selector.py -v
 python -m pytest -v
 ```
 
-Expected: all pass and V0.2A taxonomy tests remain unchanged.
+Expected: all pass and existing taxonomy tests remain unchanged.
 
 - [ ] **Step 5: Commit Task 4**
 
@@ -592,7 +868,7 @@ git commit -m "feat: select CV evidence deterministically"
 
 ---
 
-### Task 5: Provenance-backed deterministic CV composer
+### Task 5: Deterministic provenance-backed `CVDocumentModel` composer
 
 **Files:**
 - Create: `app/cv/composer.py`
@@ -600,35 +876,36 @@ git commit -m "feat: select CV evidence deterministically"
 
 **Interfaces:**
 - Consumes: `EvidenceSelection`, snapshots, `CVPolicy`.
-- Produces: `CVComposer.compose(...) -> CVDocumentModel`.
+- Produces: `CVComposer.compose() -> CVDocumentModel`.
 
 - [ ] **Step 1: Write RED composer tests**
 
-Required cases:
-
 ```python
-def test_same_inputs_produce_identical_document_model() -> None:
-    first = composer.compose(...)
-    second = composer.compose(...)
+def test_same_inputs_produce_identical_document_model(composer_inputs) -> None:
+    first = CVComposer().compose(**composer_inputs)
+    second = CVComposer().compose(**composer_inputs)
     assert first.model_dump(mode="json") == second.model_dump(mode="json")
 
 
-def test_every_visible_claim_has_provenance() -> None:
-    document = composer.compose(...)
+def test_every_visible_claim_has_provenance(composer_inputs) -> None:
+    document = CVComposer().compose(**composer_inputs)
     for claim in document.iter_visible_claims():
         assert claim.claim_id in document.provenance_map
 
 
-def test_role_specific_order_can_change_without_changing_fact_values() -> None:
-    tech_document = composer.compose(...tech selection...)
-    hospitality_document = composer.compose(...hospitality selection...)
-    assert tech_document.experience != hospitality_document.experience
-    assert master_facts.content_sha256 == original_hash
+def test_requested_language_uses_only_approved_text(composer_inputs) -> None:
+    composer_inputs["policy"] = composer_inputs["policy"].model_copy(update={"language": "es"})
+    document = CVComposer().compose(**composer_inputs)
+    assert any("Desarroll" in claim.text for claim in document.summary + ([document.headline] if document.headline else []))
+    assert all("Generated translation" not in claim.text for claim in document.iter_visible_claims())
+
+
+def test_unselected_hospitality_claim_never_enters_tech_document(composer_inputs) -> None:
+    document = CVComposer().compose(**composer_inputs)
+    assert all("Restaurant" not in claim.text for claim in document.iter_visible_claims())
 ```
 
-Also test ES/EN claim selection: if an approved claim has no requested-language text, it is omitted or blocked according to policy; it is never machine-translated silently.
-
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_composer.py -v
@@ -636,46 +913,52 @@ python -m pytest tests/test_cv_composer.py -v
 
 Expected: import failure for `app.cv.composer`.
 
-- [ ] **Step 3: Implement claim construction with stable IDs**
+- [ ] **Step 3: Implement stable claim creation**
 
-Use fact IDs or approved-claim IDs as stable claim IDs rather than UUIDs:
+Use these exact conventions:
 
 ```python
-def _fact_claim(fact: MasterFact, *, kind: ClaimKind, language: str) -> CVClaim:
+def fact_claim(fact: MasterFact, kind: ClaimKind, language: str) -> tuple[CVClaim, ClaimProvenance]:
     text = fact.display_values.get(language, fact.value)
-    return CVClaim(claim_id=f"fact:{fact.id}:{language}", kind=kind, text=text)
+    claim = CVClaim(claim_id=f"fact:{fact.id}:{language}", kind=kind, text=text)
+    provenance = ClaimProvenance(fact_ids=[fact.id])
+    return claim, provenance
 
 
-def _approved_claim(module: EvidenceModule, claim: ApprovedClaim, language: str) -> CVClaim | None:
-    text = claim.text_by_language.get(language)
+def evidence_claim(module: EvidenceModule, approved: ApprovedClaim, language: str) -> tuple[CVClaim, ClaimProvenance] | None:
+    text = approved.text_by_language.get(language)
     if text is None:
         return None
-    return CVClaim(
-        claim_id=f"evidence:{module.id}:{claim.id}:{language}",
-        kind=claim.kind,
+    claim = CVClaim(
+        claim_id=f"evidence:{module.id}:{approved.id}:{language}",
+        kind=approved.kind,
         text=text,
     )
+    provenance = ClaimProvenance(
+        fact_ids=sorted(approved.fact_ids),
+        evidence_ids=[module.id],
+        approved_claim_id=approved.id,
+    )
+    return claim, provenance
 ```
 
-For every created claim, populate `provenance_map[claim_id] = ClaimProvenance(fact_ids=[...], evidence_ids=[...])`.
-
-Initial composition policy:
+Composition order:
 
 ```text
-header: verified identity + contact + optional location
-headline: highest-ranked approved headline claim for selected modules
-summary: up to 2 approved summary claims
-skills: supported/relevant verified skill facts, deterministic relevance then ID
-experience: selected experience modules
-projects: selected project modules
-education: verified education facts/modules allowed for track
-languages: verified language facts
-links: verified link facts
+header      verified identity, contact, optional location facts
+headline    highest-ranked selected approved headline; fallback to verified role fact
+summary     first policy.max_summary_claims selected approved summary claims
+skills      relevant verified skill facts from selection, sorted by selector relevance then fact ID
+experience  selected experience modules in selector order
+projects    selected project modules in selector order
+education   verified education modules/facts allowed for selected track
+languages   verified language facts allowed for selected track
+links       verified link facts allowed for selected track
 ```
 
-The composer may reorder or omit; it may not alter an approved claim text.
+For an experience entry, approved `title`, `organization`, and `date` claims populate heading/subheading/date and approved `bullet` claims populate bullets up to `max_bullets_per_module`. A project entry uses `project` as heading, optional date, and bullets. Missing requested-language text is omitted; no translation is generated.
 
-- [ ] **Step 4: Run tests and regression suite**
+- [ ] **Step 4: Run composer and full tests**
 
 ```bash
 python -m pytest tests/test_cv_composer.py -v
@@ -693,51 +976,56 @@ git commit -m "feat: compose provenance-backed CV models"
 
 ---
 
-### Task 6: ClaimValidator hard gate
+### Task 6: `ClaimValidator` hard gate
 
 **Files:**
 - Create: `app/cv/validator.py`
 - Create: `tests/test_cv_validator.py`
 
 **Interfaces:**
-- Consumes: `CVDocumentModel`, snapshots, `application_track_id`.
-- Produces: `ClaimValidator.validate(...) -> ValidationResult`.
+- Consumes: `CVDocumentModel`, snapshots, selected track, unresolved requirements.
+- Produces: `ClaimValidator.validate() -> ValidationResult`.
 
-- [ ] **Step 1: Write RED validation tests for every hard-error category**
-
-Add focused tests:
+- [ ] **Step 1: Write RED hard-gate tests**
 
 ```python
-def test_unverified_fact_hard_fails() -> None:
-    result = validator.validate(...)
+def test_unverified_fact_is_hard_error(validation_inputs) -> None:
+    result = ClaimValidator().validate(**validation_inputs_with_unverified_fact(validation_inputs))
     assert result.valid is False
-    assert "unverified_fact" in {issue.code for issue in result.errors}
+    assert "unverified_fact" in {item.code for item in result.errors}
 
 
-def test_cross_track_provenance_hard_fails() -> None:
-    assert "incompatible_track" in error_codes
+def test_cross_track_fact_is_hard_error(validation_inputs) -> None:
+    result = ClaimValidator().validate(**validation_inputs_with_cross_track_fact(validation_inputs))
+    assert "incompatible_track" in {item.code for item in result.errors}
 
 
-def test_missing_provenance_hard_fails() -> None:
-    assert "missing_provenance" in error_codes
+def test_missing_claim_provenance_is_hard_error(validation_inputs) -> None:
+    result = ClaimValidator().validate(**validation_inputs_without_one_provenance_entry(validation_inputs))
+    assert "missing_provenance" in {item.code for item in result.errors}
 
 
-def test_modified_title_hard_fails() -> None:
-    # visible title differs from direct fact/approved claim it cites
-    assert "claim_text_mismatch" in error_codes
+def test_modified_direct_fact_text_is_hard_error(validation_inputs) -> None:
+    result = ClaimValidator().validate(**validation_inputs_with_modified_title(validation_inputs))
+    assert "claim_text_mismatch" in {item.code for item in result.errors}
 
 
-def test_numeric_bullet_requires_metric_fact() -> None:
-    # approved bullet contains "30%" but provenance contains no metric fact
-    assert "unsupported_metric" in error_codes
+def test_numeric_bullet_requires_metric_fact(validation_inputs) -> None:
+    result = ClaimValidator().validate(**validation_inputs_with_unbacked_numeric_bullet(validation_inputs))
+    assert "unsupported_metric" in {item.code for item in result.errors}
 
 
-def test_unsupported_job_requirement_is_warning_not_invention() -> None:
+def test_unsupported_requirement_is_warning_only(validation_inputs) -> None:
+    payload = dict(validation_inputs)
+    payload["unresolved_requirements"] = ["Kubernetes"]
+    result = ClaimValidator().validate(**payload)
     assert result.valid is True
-    assert "unsupported_requirement" in warning_codes
+    assert "unsupported_requirement" in {item.code for item in result.warnings}
 ```
 
-- [ ] **Step 2: Verify RED**
+The helper transforms named above are local pure test helpers in `tests/test_cv_validator.py`; each copies the base Pydantic model with `model_copy(deep=True)` and changes exactly one fact/claim/provenance field.
+
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_validator.py -v
@@ -745,32 +1033,24 @@ python -m pytest tests/test_cv_validator.py -v
 
 Expected: import failure for `app.cv.validator`.
 
-- [ ] **Step 3: Implement validation indexes and exact-text authority rules**
+- [ ] **Step 3: Implement validation authority rules**
 
-Implement:
+`ClaimValidator.validate()` must perform these checks in deterministic claim order:
 
-```python
-class ClaimValidator:
-    def validate(
-        self,
-        document: CVDocumentModel,
-        master_facts: MasterFactsSnapshot,
-        evidence_catalog: EvidenceCatalogSnapshot,
-        application_track_id: str,
-        unresolved_requirements: list[str],
-    ) -> ValidationResult:
-        ...
+```text
+1. every visible claim has provenance
+2. every referenced fact exists and is verified
+3. every referenced evidence module exists and is verified
+4. every referenced fact/module permits application_track_id
+5. direct fact claim text exactly equals the fact's requested display value
+6. evidence claim text exactly equals the approved claim text for document.language
+7. summary/headline/bullet text containing digits requires a referenced metric fact
+8. unresolved posting requirements create warnings only
 ```
 
-Rules:
+For direct facts, identify authority from `ClaimProvenance.approved_claim_id is None` and require one primary fact whose display text matches. For evidence claims, locate `approved_claim_id` inside the referenced module and require exact text equality.
 
-1. Every `document.iter_visible_claims()` claim ID exists in `provenance_map`.
-2. Every referenced fact/module exists and is verified.
-3. Referenced fact/module contains `application_track_id` unless the fact is explicitly shared via multiple track IDs.
-4. Direct fact claims (`fact:*`) must equal that fact's requested display value exactly.
-5. Evidence claims (`evidence:*`) must equal one approved claim text in that module exactly.
-6. Any visible numeric claim containing `\d` in a `summary`, `headline`, or `bullet` requires at least one referenced `metric` fact, except a `date` claim whose exact text is backed by a date/source fact.
-7. Unknown posting requirements become warnings from `unresolved_requirements`; validator never writes replacement content.
+Return `validated_claim_ids` only for claims with no hard error. `valid` is `not errors`.
 
 - [ ] **Step 4: Run validator and full tests**
 
@@ -790,7 +1070,7 @@ git commit -m "feat: validate CV claims against verified evidence"
 
 ---
 
-### Task 7: Deterministic ATS-first PDF renderer
+### Task 7: Deterministic one-column ATS PDF renderer
 
 **Files:**
 - Create: `app/cv/renderer.py`
@@ -798,57 +1078,54 @@ git commit -m "feat: validate CV claims against verified evidence"
 - Modify: `pyproject.toml`
 
 **Interfaces:**
-- Consumes: validated `CVDocumentModel`, `ValidationResult`, output path.
-- Produces: `ATSRenderer.render(...) -> RenderedCVArtifact` with path, SHA-256, byte size, renderer version.
+- Consumes: validated `CVDocumentModel` and output path.
+- Produces: `ATSRenderer.render() -> RenderedCVArtifact`.
 
-- [ ] **Step 1: Add PDF dependencies and RED tests**
+- [ ] **Step 1: Add dependencies and RED renderer tests**
 
-Modify `pyproject.toml`:
+Modify dependencies to include:
 
 ```toml
-# runtime
-dependencies = [
-  "fastapi",
-  "httpx",
-  "pydantic>=2",
-  "PyYAML",
-  "reportlab>=4.2",
-  "uvicorn",
-]
-
-[project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "pypdf>=5"]
+"reportlab>=4.2"
 ```
 
-Create `tests/test_cv_renderer.py`:
+Modify dev dependencies to include:
+
+```toml
+"pypdf>=5"
+```
+
+Create tests:
 
 ```python
-from io import BytesIO
 from pathlib import Path
 
+import pytest
 from pypdf import PdfReader
 
+from app.cv.renderer import ATSRenderer
 
-def test_renderer_refuses_invalid_document(tmp_path: Path) -> None:
+
+def test_renderer_rejects_invalid_validation(valid_document, invalid_validation, tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="validated"):
-        renderer.render(document, invalid_validation, tmp_path / "cv.pdf")
+        ATSRenderer().render(valid_document, invalid_validation, tmp_path / "cv.pdf")
 
 
-def test_pdf_contains_selectable_candidate_text(tmp_path: Path) -> None:
-    artifact = renderer.render(document, valid_validation, tmp_path / "cv.pdf")
+def test_pdf_contains_selectable_candidate_text(valid_document, valid_validation, tmp_path: Path) -> None:
+    artifact = ATSRenderer().render(valid_document, valid_validation, tmp_path / "cv.pdf")
     text = "\n".join(page.extract_text() or "" for page in PdfReader(artifact.path).pages)
     assert "Alex Example" in text
     assert "PostGIS" in text
 
 
-def test_identical_document_produces_identical_pdf_bytes(tmp_path: Path) -> None:
-    first = renderer.render(document, valid_validation, tmp_path / "a.pdf")
-    second = renderer.render(document, valid_validation, tmp_path / "b.pdf")
+def test_identical_document_produces_identical_pdf_bytes(valid_document, valid_validation, tmp_path: Path) -> None:
+    first = ATSRenderer().render(valid_document, valid_validation, tmp_path / "a.pdf")
+    second = ATSRenderer().render(valid_document, valid_validation, tmp_path / "b.pdf")
     assert Path(first.path).read_bytes() == Path(second.path).read_bytes()
     assert first.sha256 == second.sha256
 ```
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_renderer.py -v
@@ -856,9 +1133,9 @@ python -m pytest tests/test_cv_renderer.py -v
 
 Expected: import failure for `app.cv.renderer`.
 
-- [ ] **Step 3: Implement one-column deterministic ReportLab renderer**
+- [ ] **Step 3: Implement deterministic ReportLab rendering**
 
-Use Platypus for text flow and a deterministic canvas:
+Use Platypus plus invariant canvas:
 
 ```python
 class DeterministicCanvas(canvas.Canvas):
@@ -878,49 +1155,57 @@ class ATSRenderer:
     ) -> RenderedCVArtifact:
         if not validation.valid:
             raise ValueError("CVDocumentModel must be validated before rendering")
-        ...
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        temp = output.with_suffix(".tmp.pdf")
+        story = self._build_story(document)
+        doc = SimpleDocTemplate(
+            str(temp),
+            pagesize=A4,
+            leftMargin=42,
+            rightMargin=42,
+            topMargin=36,
+            bottomMargin=36,
+            title="CV",
+            author="",
+        )
         doc.build(story, canvasmaker=DeterministicCanvas)
-        pdf_bytes = temp_path.read_bytes()
-        sha256 = hashlib.sha256(pdf_bytes).hexdigest()
-        temp_path.replace(output_path)
-        return RenderedCVArtifact(...)
+        payload = temp.read_bytes()
+        sha256 = hashlib.sha256(payload).hexdigest()
+        temp.replace(output)
+        return RenderedCVArtifact(
+            path=str(output),
+            sha256=sha256,
+            byte_size=len(payload),
+            renderer_version=self.renderer_version,
+        )
 ```
 
-Renderer rules:
+`_build_story()` uses only built-in Helvetica/Helvetica-Bold fonts, 9.5-11 pt body text, one column, no images, no icons, no tables, no skill bars. Escape claim text before `Paragraph`. Fixed section labels are selected only from:
 
-```text
-A4
-single column
-Helvetica / Helvetica-Bold built-in fonts only
-9.5-11 pt body text
-standard margins
-no images
-no icons
-no skill bars
-no tables/multi-column layout
-fixed labels only from an es/en label dictionary
-candidate text copied verbatim from CVDocumentModel
-atomic temp-file -> final-file rename
+```python
+LABELS = {
+    "en": {"experience": "Experience", "projects": "Projects", "education": "Education", "skills": "Skills", "languages": "Languages"},
+    "es": {"experience": "Experiencia", "projects": "Proyectos", "education": "Educacion", "skills": "Habilidades", "languages": "Idiomas"},
+}
 ```
 
-Do not embed current timestamps or paths in metadata.
+The renderer must never rewrite a claim string.
 
-- [ ] **Step 4: Run renderer tests and verify PDF visually**
-
-Run unit tests:
+- [ ] **Step 4: Run tests and render-first visual verification**
 
 ```bash
 python -m pytest tests/test_cv_renderer.py -v
 python -m pytest -v
 ```
 
-Then generate a fictional fixture PDF in a temporary directory and, when the execution environment has the PDF skill installed, render it to PNG:
+Generate one fictional PDF under `/tmp/opportunity-os-v02b-render/cv.pdf`. If the PDF skill exists in the execution environment, render it:
 
 ```bash
-python /home/oai/skills/pdfs/scripts/render_pdf.py /tmp/opportunity-os-cv-fixture.pdf --out_dir /tmp/opportunity-os-cv-render --dpi 200
+python /home/oai/skills/pdfs/scripts/render_pdf.py /tmp/opportunity-os-v02b-render/cv.pdf --out_dir /tmp/opportunity-os-v02b-render/png --dpi 200
 ```
 
-Inspect the rendered page(s) and reject the task if there is clipping, overlap, broken glyphs, unexpected columns, or invisible/selectability issues. Do not commit the PDF or render images.
+Inspect every PNG. Acceptance: no clipped text, no overlap, no broken glyphs, single-column reading order, standard headings, and all candidate text visibly matches the structured model. Do not commit generated PDF/PNG files.
 
 - [ ] **Step 5: Commit Task 7**
 
@@ -931,30 +1216,25 @@ git commit -m "feat: render deterministic ATS CV PDFs"
 
 ---
 
-### Task 8: ApplicationPacket and end-to-end CVPreparationService
+### Task 8: `ApplicationPacket` semantic hashing and `CVPreparationService`
 
 **Files:**
 - Create: `app/cv/service.py`
 - Create: `tests/test_cv_service.py`
 
 **Interfaces:**
-- Consumes: all Task 1-7 units plus one `RadarAssessment`.
-- Produces: `CVPreparationService.prepare(...) -> PreparationResult`.
+- Consumes: Tasks 1-7 plus one `RadarAssessment`.
+- Produces: `CVPreparationService.prepare() -> PreparationResult`.
 
-- [ ] **Step 1: Write RED end-to-end preparation tests**
-
-Required tests:
+- [ ] **Step 1: Write RED service tests**
 
 ```python
-def test_prepare_returns_packet_only_after_validation_and_render(tmp_path: Path) -> None:
-    result = service.prepare(
-        assessment=assessment,
-        master_facts=master_facts,
-        evidence_catalog=evidence_catalog,
-        policy=policy,
-        output_root=tmp_path,
-        now=NOW,
-    )
+from datetime import timedelta
+from pathlib import Path
+
+
+def test_prepare_returns_packet_only_after_validation_and_render(service_inputs, tmp_path: Path) -> None:
+    result = service_inputs.service.prepare(output_root=tmp_path, **service_inputs.kwargs)
     assert result.status == "PREPARED"
     assert result.packet is not None
     assert Path(result.packet.cv_pdf_path).exists()
@@ -962,27 +1242,36 @@ def test_prepare_returns_packet_only_after_validation_and_render(tmp_path: Path)
     assert len(result.packet.packet_sha256) == 64
 
 
-def test_blocked_missing_facts_creates_no_packet_or_pdf(tmp_path: Path) -> None:
-    result = service.prepare(...insufficient facts...)
+def test_missing_minimum_evidence_writes_no_pdf(blocked_service_inputs, tmp_path: Path) -> None:
+    result = blocked_service_inputs.service.prepare(output_root=tmp_path, **blocked_service_inputs.kwargs)
     assert result.status == "BLOCKED_MISSING_FACTS"
     assert result.packet is None
     assert list(tmp_path.rglob("*.pdf")) == []
 
 
-def test_packet_hash_ignores_application_id_time_and_path(tmp_path: Path) -> None:
-    first = service.prepare(...id_factory=lambda: "app-a", now=TIME_A, output_root=tmp_path / "a")
-    second = service.prepare(...id_factory=lambda: "app-b", now=TIME_B, output_root=tmp_path / "b")
+def test_packet_hash_excludes_id_time_and_path(service_inputs, tmp_path: Path) -> None:
+    first_service = service_inputs.with_id("app-a")
+    second_service = service_inputs.with_id("app-b")
+    first = first_service.service.prepare(output_root=tmp_path / "a", now=service_inputs.now, **first_service.kwargs_without_now)
+    second = second_service.service.prepare(output_root=tmp_path / "b", now=service_inputs.now + timedelta(hours=1), **second_service.kwargs_without_now)
+    assert first.packet is not None
+    assert second.packet is not None
     assert first.packet.packet_sha256 == second.packet.packet_sha256
 
 
-def test_packet_hash_changes_when_cv_semantics_change(tmp_path: Path) -> None:
-    changed = master_facts_with_changed_verified_claim()
-    assert prepare(changed).packet.packet_sha256 != prepare(original).packet.packet_sha256
+def test_semantic_fact_change_changes_packet_hash(service_inputs, changed_fact_service_inputs, tmp_path: Path) -> None:
+    first = service_inputs.service.prepare(output_root=tmp_path / "a", **service_inputs.kwargs)
+    second = changed_fact_service_inputs.service.prepare(output_root=tmp_path / "b", **changed_fact_service_inputs.kwargs)
+    assert first.packet is not None
+    assert second.packet is not None
+    assert first.packet.packet_sha256 != second.packet.packet_sha256
 ```
 
-Also test track unavailable, validator hard fail, renderer failure, and that renderer failure leaves no `PREPARED` packet.
+Implement `service_inputs` as a local pytest fixture dataclass containing `service`, `kwargs`, `kwargs_without_now`, `now`, and `with_id()`; all values are fictional and use factories from Task 1.
 
-- [ ] **Step 2: Verify RED**
+Add tests for `BLOCKED_TRACK_UNAVAILABLE`, `BLOCKED_VALIDATION`, and `BLOCKED_RENDER`, each asserting `packet is None` and no final CV is left on disk.
+
+- [ ] **Step 2: Confirm RED**
 
 ```bash
 python -m pytest tests/test_cv_service.py -v
@@ -990,9 +1279,9 @@ python -m pytest tests/test_cv_service.py -v
 
 Expected: import failure for `app.cv.service`.
 
-- [ ] **Step 3: Implement semantic snapshot and packet hashing**
+- [ ] **Step 3: Implement semantic packet-hash payload**
 
-Add private helpers in `service.py`:
+Create:
 
 ```python
 def _opportunity_snapshot_hash(assessment: RadarAssessment) -> str:
@@ -1004,6 +1293,9 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict[str, object]:
         "opportunity_snapshot_hash": packet.opportunity_snapshot_hash,
         "selected_intent": packet.selected_intent,
         "application_track_id": packet.application_track_id,
+        "match_score": packet.match_score,
+        "income_viability": packet.income_viability,
+        "confidence_score": packet.confidence_score,
         "scoring_version": packet.scoring_version,
         "extractor_version": packet.extractor_version,
         "alias_registry_version": packet.alias_registry_version,
@@ -1021,9 +1313,9 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict[str, object]:
     }
 ```
 
-Explicitly exclude `application_id`, `created_at`, `cv_pdf_path`.
+Do not include `application_id`, `created_at`, or `cv_pdf_path`.
 
-- [ ] **Step 4: Implement orchestration and typed failure mapping**
+- [ ] **Step 4: Implement orchestration**
 
 Public signature:
 
@@ -1031,11 +1323,13 @@ Public signature:
 class CVPreparationService:
     def __init__(
         self,
-        *,
         taxonomy_resolver: TaxonomyResolver,
         id_factory: Callable[[], str] | None = None,
         renderer: ATSRenderer | None = None,
-    ) -> None: ...
+    ) -> None:
+        self.taxonomy_resolver = taxonomy_resolver
+        self.id_factory = id_factory or (lambda: str(uuid4()))
+        self.renderer = renderer or ATSRenderer()
 
     def prepare(
         self,
@@ -1046,29 +1340,39 @@ class CVPreparationService:
         output_root: str | Path,
         now: datetime,
     ) -> PreparationResult:
-        ...
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("now must be timezone-aware")
 ```
 
-Exact orchestration order:
+Then perform this exact order:
 
 ```text
-validate catalog↔facts consistency
+validate catalog against master facts
 resolve application track
-minimum evidence gate
-EvidenceSelector.select
-CVComposer.compose
-ClaimValidator.validate
-if invalid -> BLOCKED_VALIDATION, no renderer
-render to artifacts/applications-like output root/application_id/cv.pdf
-compute cv_sha256
-construct PREPARED ApplicationPacket
-compute semantic packet_sha256
-return PreparationResult(status=PREPARED, packet=packet)
+run minimum evidence gate
+run EvidenceSelector
+run CVComposer
+run ClaimValidator
+if validation invalid: return BLOCKED_VALIDATION without renderer call
+create application_id
+render to output_root/application_id/cv.pdf
+construct PREPARED ApplicationPacket with empty packet_sha256 initially
+compute semantic packet_sha256 from _packet_content_payload
+return PreparationResult(status=PREPARED, packet=final packet, warnings=validation warnings)
 ```
 
-Catch only known typed preparation/render exceptions and return sanitized `ValidationIssue` codes. Unexpected programming errors should still fail tests rather than be swallowed.
+Map only known failures:
 
-- [ ] **Step 5: Run end-to-end and full regression tests**
+```text
+TrackUnavailableError -> BLOCKED_TRACK_UNAVAILABLE
+minimum evidence issues -> BLOCKED_MISSING_FACTS
+invalid ValidationResult -> BLOCKED_VALIDATION
+OSError/renderer ValueError during rendering -> BLOCKED_RENDER
+```
+
+Unexpected exceptions are not swallowed.
+
+- [ ] **Step 5: Run service and full tests**
 
 ```bash
 python -m pytest tests/test_cv_service.py -v
@@ -1076,7 +1380,7 @@ python -m pytest -v
 python -m compileall app
 ```
 
-Expected: all pass.
+Expected: all exit 0.
 
 - [ ] **Step 6: Commit Task 8**
 
@@ -1087,42 +1391,49 @@ git commit -m "feat: prepare reproducible CV application packets"
 
 ---
 
-### Task 9: Release documentation, versioning, privacy CI, and final verification
+### Task 9: V0.2B release contract, documentation, privacy CI, and Draft PR
 
 **Files:**
+- Create: `tests/test_cv_release_contract.py`
 - Modify: `README.md`
 - Modify: `pyproject.toml`
-- Modify: `.github/workflows/tests.yml` only if final privacy assertions need adjustment after Task 2
-- Test: full existing suite + all V0.2B tests
+- Modify: `.github/workflows/tests.yml` only if Task 2 guard needs a correction
 
 **Interfaces:**
-- Consumes: completed V0.2B subsystem.
-- Produces: documented prerelease surface `0.2.0b1`, no new HTTP endpoints.
+- Consumes: completed CV subsystem.
+- Produces: documented prerelease `0.2.0b1`; no new HTTP endpoint.
 
-- [ ] **Step 1: Write documentation assertions before changing README/version**
+- [ ] **Step 1: Write RED release-contract tests**
 
-Add a small regression in an existing README/version test file or create `tests/test_cv_release_contract.py`:
+Create:
 
 ```python
 from pathlib import Path
 import tomllib
 
 
-def test_package_is_v02b_prerelease() -> None:
+def test_package_version_is_v02b_prerelease() -> None:
     payload = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     assert payload["project"]["version"] == "0.2.0b1"
 
 
-def test_readme_documents_cv_factory_without_claiming_auto_send() -> None:
+def test_readme_documents_cv_factory_without_auto_send_claim() -> None:
     text = Path("README.md").read_text(encoding="utf-8")
     assert "CV Factory" in text
     assert "ApplicationPacket" in text
-    assert "does not send" in text or "does not submit" in text
+    assert "does not send" in text
+    assert "does not submit" in text
 ```
 
-Run and confirm RED because version/README still describe `0.2.0a1`.
+Run:
 
-- [ ] **Step 2: Update prerelease version and README**
+```bash
+python -m pytest tests/test_cv_release_contract.py -v
+```
+
+Expected: fail because version is still `0.2.0a1` and README has no complete V0.2B contract.
+
+- [ ] **Step 2: Update version and README**
 
 Set:
 
@@ -1130,21 +1441,19 @@ Set:
 version = "0.2.0b1"
 ```
 
-README V0.2B section must document:
+README must document this flow verbatim in meaning:
 
 ```text
-Radar selects opportunity
-→ private verified facts/evidence
-→ deterministic evidence selection
-→ provenance-backed CVDocumentModel
-→ hard ClaimValidator
-→ one-column ATS PDF
-→ reproducible ApplicationPacket
+Radar-selected opportunity
+-> private verified facts and evidence
+-> deterministic evidence selection
+-> provenance-backed CVDocumentModel
+-> ClaimValidator hard gate
+-> one-column ATS PDF
+-> reproducible ApplicationPacket
 ```
 
-State explicitly that V0.2B does **not** discover recruiters, draft/send Gmail, submit forms, or auto-apply.
-
-Document local private paths:
+Also document local-only paths:
 
 ```text
 profile/master_facts.local.yaml
@@ -1152,26 +1461,9 @@ profile/evidence_catalog.local.yaml
 artifacts/applications/<application_id>/cv.pdf
 ```
 
-- [ ] **Step 3: Strengthen final CI privacy guard if necessary**
+State explicitly: "V0.2B does not send email and does not submit applications."
 
-The final workflow tracked-file guard must include at least:
-
-```bash
-'.env'
-'profile.local.yaml'
-'sources.local.yaml'
-'profile/master_facts.local.yaml'
-'profile/evidence_catalog.local.yaml'
-'artifacts/applications/**'
-'*.pdf'
-'*.docx'
-```
-
-Public fictional YAML examples remain allowed.
-
-- [ ] **Step 4: Run full release verification**
-
-Run:
+- [ ] **Step 3: Run complete release verification**
 
 ```bash
 python -m pytest -v
@@ -1179,91 +1471,81 @@ python -m compileall app
 git diff --check origin/main...HEAD
 ```
 
-Then verify no forbidden tracked files:
+Run the tracked-private-file check:
 
 ```bash
 forbidden="$(git ls-files -- '.env' 'profile.local.yaml' 'sources.local.yaml' 'profile/master_facts.local.yaml' 'profile/evidence_catalog.local.yaml' 'artifacts/applications/**' '*.pdf' '*.docx')"
 test -z "$forbidden"
 ```
 
-Expected: all commands exit 0.
+Expected: every command exits 0.
 
-- [ ] **Step 5: Verify final fictional PDF artifact without committing it**
+- [ ] **Step 4: Run final fictional end-to-end PDF verification**
 
-Generate one end-to-end fictional CV using `CVPreparationService`, confirm `PreparationResult.status == PREPARED`, and inspect the PDF with pypdf plus render-first visual verification:
+Use `CVPreparationService` with fictional fixtures to produce `/tmp/opportunity-os-v02b-final/cv.pdf`. Assert with pypdf that candidate name, headline, one skill, and one experience bullet are extractable. Then render the PDF if the PDF skill exists:
 
 ```bash
 python /home/oai/skills/pdfs/scripts/render_pdf.py /tmp/opportunity-os-v02b-final/cv.pdf --out_dir /tmp/opportunity-os-v02b-final/rendered --dpi 200
 ```
 
-Acceptance criteria: no clipping/overlap, one-column reading order, selectable text, standard headings, no images/bars/icons, and visible text matches the validated `CVDocumentModel`.
+Inspect all rendered pages. Reject completion if there is clipping, overlap, broken glyphs, hidden content, multi-column ambiguity, or text not present in the validated model. Delete `/tmp/opportunity-os-v02b-final` after verification.
 
-- [ ] **Step 6: Review the full branch against `main`**
+- [ ] **Step 5: Review the complete branch against `main`**
 
-Review specifically:
+Review these exact risks:
 
 ```text
-privacy boundary
+private data leakage
 track isolation
-fact verification semantics
-exact-product/related distinction
+verification-method semantics
+exact-product versus related skill support
 provenance completeness
-metric/title/date validation
-PDF deterministic bytes
-packet semantic hash exclusions
-no V0.2C email/submission scope creep
-V0.1/V0.2A API/scoring regression
+unsupported metric/title/date claims
+renderer byte determinism
+packet hash volatile-field exclusions
+V0.2C email/submission scope creep
+V0.1/V0.2A API and scoring regressions
 ```
 
-Any discovered defect receives a new failing regression test before its fix.
+For every real defect discovered, first add a regression test that fails for that defect, confirm RED, then implement the minimal fix and rerun the full suite.
 
-- [ ] **Step 7: Commit Task 9**
+- [ ] **Step 6: Commit Task 9**
 
 ```bash
-git add README.md pyproject.toml .github/workflows/tests.yml tests/test_cv_release_contract.py
+git add README.md pyproject.toml tests/test_cv_release_contract.py .github/workflows/tests.yml
 git commit -m "docs: finalize Opportunity OS V0.2B CV Factory"
 ```
 
-- [ ] **Step 8: Open a Draft PR only after fresh verification**
+- [ ] **Step 7: Open a Draft PR after fresh verification**
 
-Target `main`, summarize exact scope and include test/compile/privacy/PDF-verification evidence. Keep it Draft during code review. Do not merge until the user explicitly chooses merge after the PR checks and review are green.
+Open a Draft PR from `feat/v0.2b-cv-factory` to `main`. The PR body must include exact pytest count, compile result, `git diff --check` result, private-file-guard result, deterministic PDF hash test result, and visual PDF verification result. Keep the PR Draft until code review is complete. Merge only after explicit user approval.
 
 ---
 
-## Implementation Order and Checkpoints
-
-Execute strictly in this order:
+## Execution Order and Checkpoints
 
 ```text
-Task 1  contracts + hashing
-  ↓
-Task 2  private loaders + privacy guards
-  ↓
-Task 3  application track + minimum evidence
-  ↓
-Task 4  evidence selector
-  ↓
-Task 5  composer
-  ↓
-Task 6  validator hard gate
-  ↓
-Task 7  deterministic ATS PDF
-  ↓
-Task 8  ApplicationPacket + service
-  ↓
-Task 9  release verification + Draft PR
+Task 1 contracts + hashing
+Task 2 loaders + examples + privacy
+Task 3 track + minimum evidence
+Task 4 evidence selector
+Task 5 composer
+Task 6 validator
+Task 7 deterministic ATS PDF
+Task 8 packet + preparation service
+Task 9 release verification + Draft PR
 ```
 
-Checkpoint after every task:
+After every task:
 
 ```text
-1. confirm the intended RED reason
-2. minimal GREEN implementation
-3. run task-specific tests
-4. run full pytest regression
-5. inspect task diff for scope creep/private data
-6. commit
-7. update private Opportunity OS handoff with task status/SHA only when useful
+confirm RED failed for the intended new behavior
+implement minimal GREEN
+run task-specific tests
+run full pytest regression
+inspect the task diff for scope creep/private data
+commit
+update the private handoff only when the checkpoint materially changes restart context
 ```
 
-Do not create a real personal master-facts file in GitHub. When the public engine is green, real candidate facts may be assembled privately from user-reviewed CV/context in a later local/private operation.
+Do not create or commit a real personal master-facts file during this public-engine implementation. Real candidate facts are assembled only in a private/local operation after the engine is green and reviewed.
