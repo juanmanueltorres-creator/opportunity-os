@@ -5,7 +5,12 @@ import re
 from typing import Protocol
 
 from app.models.domain import Opportunity
-from app.radar.models import DerivedValue, OpportunityEnrichment, Requirement
+from app.radar.models import (
+    ApplicationContactHint,
+    DerivedValue,
+    OpportunityEnrichment,
+    Requirement,
+)
 
 MANDATORY_CUES = (
     "required",
@@ -90,6 +95,7 @@ class RuleBasedRequirementExtractor:
         sentences = _sentences(opportunity.description)
         salary_min, salary_max, salary_currency = _extract_salary(sentences)
         application_deadline = _extract_deadline(sentences)
+        application_contact_hints = _extract_published_email_hints(opportunity)
         language = next(
             (
                 DerivedValue[str](
@@ -134,7 +140,8 @@ class RuleBasedRequirementExtractor:
             salary_max=salary_max,
             salary_currency=salary_currency,
             requirements=list(requirements.values()),
-            application_mode=_application_mode(opportunity),
+            application_contact_hints=application_contact_hints,
+            application_mode=_application_mode(opportunity, application_contact_hints),
             source_reliability=source_reliability,
             source_freshness_quality=source_freshness_quality,
             application_deadline=application_deadline,
@@ -294,8 +301,59 @@ def _requirement_kind(term: str) -> str:
     return "skill"
 
 
-def _application_mode(opportunity: Opportunity) -> str:
-    if _EMAIL_RE.search(opportunity.description):
+def _supporting_sentence(text: str, start: int, end: int) -> str:
+    left_boundary = max(
+        text.rfind(".", 0, start),
+        text.rfind("!", 0, start),
+        text.rfind("?", 0, start),
+        text.rfind("\n", 0, start),
+    )
+    right_candidates = [
+        index
+        for index in (
+            text.find(".", end),
+            text.find("!", end),
+            text.find("?", end),
+            text.find("\n", end),
+        )
+        if index != -1
+    ]
+    sentence_end = min(right_candidates) + 1 if right_candidates else len(text)
+    return text[left_boundary + 1 : sentence_end].strip()
+
+
+def _extract_published_email_hints(
+    opportunity: Opportunity,
+) -> list[ApplicationContactHint]:
+    by_email: dict[str, ApplicationContactHint] = {}
+    description = opportunity.description
+    for match in _EMAIL_RE.finditer(description):
+        email = match.group(0).strip().casefold()
+        by_email.setdefault(
+            email,
+            ApplicationContactHint(
+                kind="PUBLISHED_EMAIL",
+                value=email,
+                source_url=opportunity.source_url,
+                source_field="description",
+                source_text=_supporting_sentence(
+                    description,
+                    match.start(),
+                    match.end(),
+                ),
+                extraction_method="explicit_rule",
+                confidence=1.0,
+                discovered_at=opportunity.discovered_at,
+            ),
+        )
+    return list(by_email.values())
+
+
+def _application_mode(
+    opportunity: Opportunity,
+    hints: list[ApplicationContactHint],
+) -> str:
+    if any(hint.kind == "PUBLISHED_EMAIL" for hint in hints):
         return "DIRECT_EMAIL"
     if opportunity.source.casefold() in _DIRECT_ATS_SOURCES:
         return "HOSTED_MANUAL"

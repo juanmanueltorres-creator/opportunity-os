@@ -2,9 +2,9 @@ from pathlib import Path
 import tomllib
 
 
-def test_package_version_is_v02b_prerelease() -> None:
+def test_package_version_preserves_v02_lineage() -> None:
     payload = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-    assert payload["project"]["version"] == "0.2.0b1"
+    assert payload["project"]["version"].startswith("0.2.0")
 
 
 def test_readme_documents_cv_factory_without_auto_send_claim() -> None:

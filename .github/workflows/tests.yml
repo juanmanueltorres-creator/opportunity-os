@@ -46,7 +46,9 @@ jobs:
             'sources.local.yaml' \
             'profile/master_facts.local.yaml' \
             'profile/evidence_catalog.local.yaml' \
+            'state/outreach.local.sqlite3' \
             'artifacts/applications/**' \
+            'artifacts/applications/**/outreach/**' \
             '*.pdf' \
             '*.docx')"
           if [[ -n "$forbidden" ]]; then
