@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
@@ -153,5 +154,31 @@ class SQLiteOpportunityRepository:
             rows = conn.execute(
                 "SELECT * FROM opportunities ORDER BY discovered_at DESC, id ASC LIMIT ?",
                 (limit,),
+            ).fetchall()
+        return [self._row_to_opportunity(row) for row in rows]
+
+    def list_radar_candidates(
+        self,
+        *,
+        now: datetime,
+        lookback_days: int,
+    ) -> list[Opportunity]:
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("now must be timezone-aware")
+        if lookback_days < 0:
+            raise ValueError("lookback_days must be non-negative")
+
+        now_utc = now.astimezone(timezone.utc)
+        cutoff = now_utc - timedelta(days=lookback_days)
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM opportunities
+                WHERE COALESCE(published_at, discovered_at) >= ?
+                  AND COALESCE(published_at, discovered_at) <= ?
+                ORDER BY COALESCE(published_at, discovered_at) DESC, id ASC
+                """,
+                (cutoff.isoformat(), now_utc.isoformat()),
             ).fetchall()
         return [self._row_to_opportunity(row) for row in rows]

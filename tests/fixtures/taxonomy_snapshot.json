@@ -1,0 +1,11 @@
+{
+  "version": "fixture-v1",
+  "relations": [
+    {
+      "term": "geospatial database",
+      "candidate_skill": "PostGIS",
+      "relationship": "related",
+      "confidence": 0.7
+    }
+  ]
+}

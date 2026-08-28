@@ -1,0 +1,18 @@
+sources:
+  - type: remotive
+    enabled: true
+
+  - type: greenhouse
+    enabled: true
+    company_name: Example GIS Co
+    board_token: example-gis
+
+  - type: lever
+    enabled: false
+    company_name: Example Data Co
+    site: example-data
+
+  - type: ashby
+    enabled: false
+    company_name: Example AI Co
+    board_name: example-ai

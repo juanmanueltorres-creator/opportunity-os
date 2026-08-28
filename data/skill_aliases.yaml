@@ -1,0 +1,17 @@
+version: "1"
+entries:
+  - canonical_skill: PostgreSQL
+    aliases: [postgres]
+    relationship: equivalence
+    confidence: 1.0
+    approved_by: maintainers
+  - canonical_skill: JavaScript
+    aliases: [js]
+    relationship: equivalence
+    confidence: 1.0
+    approved_by: maintainers
+  - canonical_skill: PostGIS
+    aliases: [spatial database]
+    relationship: related
+    confidence: 0.7
+    approved_by: maintainers

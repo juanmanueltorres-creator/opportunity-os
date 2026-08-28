@@ -24,3 +24,9 @@ evidence:
       - gis
     url: https://example.com/project
     verified: true
+tracks: []
+target_role_families: []
+verified_licenses: []
+work_authorizations: []
+no_go_constraints: []
+relocation_preferences: []

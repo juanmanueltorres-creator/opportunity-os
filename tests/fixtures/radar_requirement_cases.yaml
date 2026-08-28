@@ -1,0 +1,33 @@
+- id: english_required_preferred
+  title: Python Developer
+  description: "Required: Python and SQL. Nice to have: Docker."
+  expected:
+    - kind: skill
+      value: Python
+      importance: mandatory
+      source_text: "Required: Python and SQL."
+    - kind: skill
+      value: SQL
+      importance: mandatory
+      source_text: "Required: Python and SQL."
+    - kind: skill
+      value: Docker
+      importance: preferred
+      source_text: "Nice to have: Docker."
+
+- id: spanish_required_preferred
+  title: Analista GIS
+  description: "Python excluyente. PostGIS deseable. Inglés será un plus."
+  expected:
+    - kind: skill
+      value: Python
+      importance: mandatory
+      source_text: "Python excluyente."
+    - kind: skill
+      value: PostGIS
+      importance: preferred
+      source_text: "PostGIS deseable."
+    - kind: language
+      value: Inglés
+      importance: preferred
+      source_text: "Inglés será un plus."

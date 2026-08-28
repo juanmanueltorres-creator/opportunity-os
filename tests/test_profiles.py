@@ -38,6 +38,8 @@ evidence:
     assert profile.name == "Example Candidate"
     assert profile.skills == ["python", "postgis"]
     assert profile.evidence[0].verified is True
+    assert profile.tracks == []
+    assert profile.no_go_constraints == []
 
 
 def test_invalid_profile_raises_safe_value_error(tmp_path) -> None:

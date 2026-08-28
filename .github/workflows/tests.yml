@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -27,3 +29,19 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -v
+
+      - name: Compile application
+        run: python -m compileall app
+
+      - name: Check feature diff whitespace
+        run: git diff --check origin/main...HEAD
+
+      - name: Check private files are not tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git ls-files -- '.env' 'profile.local.yaml' 'sources.local.yaml' '*.pdf' '*.docx')"
+          if [[ -n "$forbidden" ]]; then
+            printf 'Forbidden private/generated files are tracked:\n%s\n' "$forbidden"
+            exit 1
+          fi

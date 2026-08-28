@@ -63,3 +63,59 @@ def test_freshness_buckets_are_explicit() -> None:
     assert scorer.assess_opportunity(_opportunity(required=["python"], published_at=NOW - timedelta(days=30)), profile, now=NOW).freshness_fit == 75.0
     assert scorer.assess_opportunity(_opportunity(required=["python"], published_at=NOW - timedelta(days=60)), profile, now=NOW).freshness_fit == 25.0
     assert scorer.assess_opportunity(_opportunity(required=["python"], published_at=NOW - timedelta(days=91)), profile, now=NOW).freshness_fit == 0.0
+
+
+def test_v01_complete_assessment_contract_is_frozen() -> None:
+    evidence = EvidenceItem(
+        label="Python GIS project",
+        type="project",
+        skills=["python"],
+        domains=["gis"],
+        url="https://example.com/evidence/python-gis",
+        verified=True,
+    )
+    opportunity = _opportunity(
+        required=["python", "kubernetes"],
+        preferred=["docker"],
+        description="Python GIS platform engineering",
+        location="Córdoba, Argentina",
+        remote_policy="remote",
+        published_at=NOW - timedelta(days=10),
+    )
+    profile = _profile(
+        skills=["python", "sql"],
+        domains=["gis"],
+        locations=["Córdoba, Argentina"],
+        remote_preferences=["remote"],
+        evidence=[evidence],
+    )
+
+    assessment = _scorer().assess_opportunity(opportunity, profile, now=NOW)
+
+    assert assessment.model_dump() == {
+        "opportunity_id": "job-1",
+        "overall_score": 67.5,
+        "mandatory_fit": 50.0,
+        "domain_fit": 100.0,
+        "evidence_fit": 50.0,
+        "location_fit": 100.0,
+        "freshness_fit": 75.0,
+        "strengths": ["python"],
+        "gaps": ["kubernetes"],
+        "risks": [],
+        "evidence": [
+            {
+                "label": "Python GIS project",
+                "type": "project",
+                "skills": ["python"],
+                "domains": ["gis"],
+                "url": "https://example.com/evidence/python-gis",
+                "verified": True,
+            }
+        ],
+        "recommendation": "stretch",
+        "explanation": (
+            "mandatory=50.0; domain=100.0; evidence=50.0; location=100.0; "
+            "freshness=75.0; matched=['python']; gaps=['kubernetes']; risks=[]"
+        ),
+    }
