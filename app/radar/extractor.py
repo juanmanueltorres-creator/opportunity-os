@@ -5,7 +5,12 @@ import re
 from typing import Protocol
 
 from app.models.domain import Opportunity
-from app.radar.models import DerivedValue, OpportunityEnrichment, Requirement
+from app.radar.models import (
+    ApplicationContactHint,
+    DerivedValue,
+    OpportunityEnrichment,
+    Requirement,
+)
 
 MANDATORY_CUES = (
     "required",
@@ -90,6 +95,7 @@ class RuleBasedRequirementExtractor:
         sentences = _sentences(opportunity.description)
         salary_min, salary_max, salary_currency = _extract_salary(sentences)
         application_deadline = _extract_deadline(sentences)
+        application_contact_hints = _extract_published_email_hints(opportunity)
         language = next(
             (
                 DerivedValue[str](
@@ -134,7 +140,8 @@ class RuleBasedRequirementExtractor:
             salary_max=salary_max,
             salary_currency=salary_currency,
             requirements=list(requirements.values()),
-            application_mode=_application_mode(opportunity),
+            application_contact_hints=application_contact_hints,
+            application_mode=_application_mode(opportunity, application_contact_hints),
             source_reliability=source_reliability,
             source_freshness_quality=source_freshness_quality,
             application_deadline=application_deadline,
@@ -294,8 +301,34 @@ def _requirement_kind(term: str) -> str:
     return "skill"
 
 
-def _application_mode(opportunity: Opportunity) -> str:
-    if _EMAIL_RE.search(opportunity.description):
+def _extract_published_email_hints(
+    opportunity: Opportunity,
+) -> list[ApplicationContactHint]:
+    by_email: dict[str, ApplicationContactHint] = {}
+    for sentence in _sentences(opportunity.description):
+        for match in _EMAIL_RE.finditer(sentence):
+            email = match.group(0).strip().casefold()
+            by_email.setdefault(
+                email,
+                ApplicationContactHint(
+                    kind="PUBLISHED_EMAIL",
+                    value=email,
+                    source_url=opportunity.source_url,
+                    source_field="description",
+                    source_text=sentence,
+                    extraction_method="explicit_rule",
+                    confidence=1.0,
+                    discovered_at=opportunity.discovered_at,
+                ),
+            )
+    return list(by_email.values())
+
+
+def _application_mode(
+    opportunity: Opportunity,
+    hints: list[ApplicationContactHint],
+) -> str:
+    if any(hint.kind == "PUBLISHED_EMAIL" for hint in hints):
         return "DIRECT_EMAIL"
     if opportunity.source.casefold() in _DIRECT_ATS_SOURCES:
         return "HOSTED_MANUAL"
