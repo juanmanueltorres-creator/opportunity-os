@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from app.cv.composer import COMPOSER_VERSION, compose_cv
 from app.cv.hashing import canonical_sha256
+from app.cv.loaders import validate_catalog_against_facts
 from app.cv.models import (
     ApplicationPacket,
     CVPolicy,
@@ -49,6 +50,8 @@ class CVPreparationService:
     ) -> PreparationResult:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("now must be timezone-aware")
+
+        validate_catalog_against_facts(evidence_catalog, master_facts)
 
         try:
             application_track_id = resolve_application_track(assessment)
@@ -116,7 +119,7 @@ class CVPreparationService:
         output_path = Path(output_root) / application_id / "cv.pdf"
         try:
             artifact = self.renderer.render(document, validation, output_path)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError):
             _remove_partial_pdf(output_path)
             return _blocked(
                 "BLOCKED_RENDER",
