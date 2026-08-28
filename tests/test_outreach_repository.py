@@ -85,7 +85,7 @@ def test_events_are_append_only_and_ordered(tmp_path) -> None:
     ]
 
 
-def test_ledger_rejects_impossible_send_transitions(tmp_path) -> None:
+def test_ledger_rejects_send_requested_before_approval(tmp_path) -> None:
     repo = SQLiteOutreachRepository(tmp_path / "outreach.sqlite3")
     repo.initialize()
     repo.append_event(_event("PACKET_ACCEPTED", "event-1", NOW))
@@ -94,8 +94,6 @@ def test_ledger_rejects_impossible_send_transitions(tmp_path) -> None:
         repo.append_event(
             _event("SEND_REQUESTED", "event-bad-1", NOW + timedelta(seconds=1))
         )
-
-    _append_until_approved(SQLiteOutreachRepository(tmp_path / "other.sqlite3"))
 
 
 def test_sent_requires_send_attempted_even_after_approval(tmp_path) -> None:
