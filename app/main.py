@@ -106,7 +106,7 @@ def create_app(
             if owned_http_client is not None:
                 await owned_http_client.aclose()
 
-    api = FastAPI(title="Opportunity OS", version="0.1.0", lifespan=lifespan)
+    api = FastAPI(title="Opportunity OS", version="0.2.0a1", lifespan=lifespan)
 
     @api.get("/health")
     def health() -> dict[str, str]:
