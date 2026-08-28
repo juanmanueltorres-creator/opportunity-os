@@ -61,7 +61,7 @@ class OutreachPreparationService:
             ):
                 return _blocked("BLOCKED_STRETCH", "stretch_not_promoted")
 
-        packet_error = _packet_error(assessment, application_packet)
+        packet_error = application_packet_error(assessment, application_packet)
         if packet_error is not None:
             return _blocked("BLOCKED_INVALID_PACKET", packet_error)
 
@@ -147,7 +147,7 @@ def _valid_stretch_promotion(
     )
 
 
-def _packet_error(
+def application_packet_error(
     assessment: RadarAssessment,
     packet: ApplicationPacket,
 ) -> str | None:
