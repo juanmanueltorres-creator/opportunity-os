@@ -1,7 +1,7 @@
 # Opportunity OS — V0.2C Email-first + Approval Design
 
 Date: 2026-08-28
-Status: review
+Status: approved
 Base: `main` at `2f3b0676c64eb6f7cb9831c57ff85258d5e2ced0` (V0.2A1 + V0.2B merged)
 Parent roadmap: private Opportunity OS operational context in the knowledge vault
 
