@@ -24,6 +24,7 @@ def test_cv_privacy_rules_preserve_existing_gitignore_contract() -> None:
         for line in Path(".gitignore").read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     }
+    assert ".scrapy" in lines
     assert "activemq-data/" in lines
     assert "profile/master_facts.local.yaml" in lines
     assert "profile/evidence_catalog.local.yaml" in lines
