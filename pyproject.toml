@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opportunity-os"
+version = "0.1.0"
+description = "Open-source opportunity discovery, matching and application preparation with explainable scoring and human approval."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "httpx",
+  "pydantic>=2",
+  "PyYAML",
+  "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
