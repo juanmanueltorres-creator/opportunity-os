@@ -187,23 +187,28 @@ async def test_ineligible_high_scoring_track_cannot_win_over_eligible_track(tmp_
     service, opportunities, _ = _service(tmp_path, [])
     opportunity = _opportunity("greenhouse:track-eligibility")
     opportunity = opportunity.model_copy(
-        update={"description": "Must have Python. Must have SQL."}
+        update={
+            "description": (
+                "Must have Python. Must have SQL. Must have Excel. Must have CRM."
+            )
+        }
     )
     opportunities.upsert(opportunity)
 
     profile = CandidateProfile(
         name="Example Candidate",
         roles=["Support Analyst"],
-        skills=["Python", "SQL"],
+        skills=["Python", "SQL", "Excel", "CRM"],
         locations=["Argentina"],
         tracks=[
             CandidateTrack(
                 id="blocked-perfect",
-                label="Perfect skills but wrong work mode",
+                label="Perfect skills but explicit no-go",
                 intents=["INCOME_NOW"],
                 roles=["Support Analyst"],
-                skills=["Python", "SQL"],
-                accepted_work_modes=["onsite"],
+                skills=["Python", "SQL", "Excel", "CRM"],
+                accepted_work_modes=["remote"],
+                no_go_constraints=["remote"],
             ),
             CandidateTrack(
                 id="eligible-partial",
