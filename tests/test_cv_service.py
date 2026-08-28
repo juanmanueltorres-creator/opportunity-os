@@ -368,3 +368,23 @@ def test_prepare_rejects_naive_now_before_any_output(tmp_path: Path) -> None:
             now=datetime(2026, 8, 28, 12, 0),
         )
     assert list(tmp_path.rglob("*.pdf")) == []
+
+
+def test_service_validates_catalog_references_before_preparation(tmp_path: Path) -> None:
+    master, catalog, policy = _inputs()
+    broken_module = catalog.modules[0].model_copy(
+        update={"fact_ids": [*catalog.modules[0].fact_ids, "ghost-fact"]}
+    )
+    broken_catalog = catalog.model_copy(update={"modules": [broken_module]})
+
+    with pytest.raises(ValueError, match="missing fact"):
+        _service().prepare(
+            assessment=_assessment(),
+            master_facts=master,
+            evidence_catalog=broken_catalog,
+            policy=policy,
+            output_root=tmp_path,
+            now=NOW,
+        )
+
+    assert list(tmp_path.rglob("*.pdf")) == []
