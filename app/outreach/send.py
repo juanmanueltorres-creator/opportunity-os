@@ -70,7 +70,9 @@ class SendGate:
         if (
             contact_resolution.opportunity_id != draft_snapshot.opportunity_id
             or contact_resolution.email is None
-            or not draft_snapshot.to
+            or len(draft_snapshot.to) != 1
+            or bool(draft_snapshot.cc)
+            or bool(draft_snapshot.bcc)
             or draft_snapshot.to[0].casefold().strip()
             != contact_resolution.email.casefold().strip()
         ):
