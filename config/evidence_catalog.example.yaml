@@ -1,0 +1,35 @@
+schema_version: v1
+modules:
+  - id: module-tech
+    track_ids: [tech]
+    label: Technical project evidence
+    fact_ids: [skill-python, project-geospatial-api]
+    claims:
+      - id: approved-geospatial-api
+        section: projects
+        kind: bullet
+        text_by_language:
+          en: Built a verifiable geospatial API with Python.
+          es: Desarrolló una API geoespacial verificable con Python.
+        fact_ids: [skill-python, project-geospatial-api]
+        keywords: [python, geospatial, api]
+    keywords: [python, geospatial, api]
+    source_refs: [https://example.test/alex-example/geospatial-api]
+    verified: true
+
+  - id: module-hospitality
+    track_ids: [hospitality]
+    label: Hospitality operations evidence
+    fact_ids: [employment-bistro, skill-customer-service]
+    claims:
+      - id: approved-customer-service
+        section: experience
+        kind: bullet
+        text_by_language:
+          en: Provided customer service in a hospitality operation.
+          es: Brindó atención al cliente en una operación gastronómica.
+        fact_ids: [employment-bistro, skill-customer-service]
+        keywords: [customer service, hospitality]
+    keywords: [customer service, hospitality]
+    source_refs: [https://example.test/employment/example-bistro]
+    verified: true

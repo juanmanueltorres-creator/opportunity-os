@@ -1,0 +1,65 @@
+schema_version: v1
+facts:
+  - id: identity-name
+    kind: identity
+    value: Alex Example
+    display_values:
+      en: Alex Example
+      es: Alex Example
+    track_ids: [tech, hospitality]
+    verified: true
+    verification_method: manual_confirmation
+    verified_at: 2026-08-28T12:00:00+00:00
+
+  - id: contact-email
+    kind: contact
+    value: alex@example.test
+    display_values:
+      en: alex@example.test
+      es: alex@example.test
+    track_ids: [tech, hospitality]
+    verified: true
+    verification_method: manual_confirmation
+    verified_at: 2026-08-28T12:00:00+00:00
+
+  - id: skill-python
+    kind: skill
+    value: Python
+    track_ids: [tech]
+    verified: true
+    verification_method: repository_evidence
+    verified_at: 2026-08-28T12:00:00+00:00
+    source_ref: https://example.test/alex-example/geospatial-api
+
+  - id: project-geospatial-api
+    kind: project
+    value: Geospatial API
+    display_values:
+      en: Geospatial API
+      es: API geoespacial
+    track_ids: [tech]
+    verified: true
+    verification_method: repository_evidence
+    verified_at: 2026-08-28T12:00:00+00:00
+    source_ref: https://example.test/alex-example/geospatial-api
+
+  - id: employment-bistro
+    kind: employment
+    value: Example Bistro
+    track_ids: [hospitality]
+    verified: true
+    verification_method: employment_record
+    verified_at: 2026-08-28T12:00:00+00:00
+    source_ref: https://example.test/employment/example-bistro
+
+  - id: skill-customer-service
+    kind: skill
+    value: Customer service
+    display_values:
+      en: Customer service
+      es: Atención al cliente
+    track_ids: [hospitality]
+    verified: true
+    verification_method: employment_record
+    verified_at: 2026-08-28T12:00:00+00:00
+    source_ref: https://example.test/employment/example-bistro

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opportunity-os"
-version = "0.2.0a1"
+version = "0.2.0b1"
 description = "Open-source opportunity discovery, matching and application preparation with explainable scoring and human approval."
 requires-python = ">=3.12"
 dependencies = [
@@ -12,11 +12,12 @@ dependencies = [
   "httpx",
   "pydantic>=2",
   "PyYAML",
+  "reportlab>=4.2",
   "uvicorn",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pypdf>=5", "pytest", "pytest-asyncio"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

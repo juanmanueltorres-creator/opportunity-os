@@ -40,7 +40,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          forbidden="$(git ls-files -- '.env' 'profile.local.yaml' 'sources.local.yaml' '*.pdf' '*.docx')"
+          forbidden="$(git ls-files -- \
+            '.env' \
+            'profile.local.yaml' \
+            'sources.local.yaml' \
+            'profile/master_facts.local.yaml' \
+            'profile/evidence_catalog.local.yaml' \
+            'artifacts/applications/**' \
+            '*.pdf' \
+            '*.docx')"
           if [[ -n "$forbidden" ]]; then
             printf 'Forbidden private/generated files are tracked:\n%s\n' "$forbidden"
             exit 1
