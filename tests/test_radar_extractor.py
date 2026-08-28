@@ -97,6 +97,18 @@ def test_ambiguous_skill_sentence_is_not_promoted_to_mandatory() -> None:
     assert all(item.value.casefold() != "kubernetes" for item in enrichment.requirements)
 
 
+def test_must_have_does_not_include_helper_verb_in_skill_name() -> None:
+    enrichment = _extractor_module().RuleBasedRequirementExtractor().extract(
+        _opportunity(description="Must have Python.")
+    )
+
+    assert any(
+        item.value == "Python" and item.importance == "mandatory"
+        for item in enrichment.requirements
+    )
+    assert all(item.value != "have Python" for item in enrichment.requirements)
+
+
 def test_explicit_application_email_is_direct_email() -> None:
     enrichment = _extractor_module().RuleBasedRequirementExtractor().extract(
         _opportunity(description="Send your CV to jobs@example.com to apply.")
