@@ -32,7 +32,7 @@ published vacancy email
 
 5. Apollo is optional fallback infrastructure, not a core dependency. Search may identify recruiter/TA candidates, but any enrichment that consumes credits requires the user's explicit credit confirmation before the external action.
 
-6. Approval is bound to exact semantic content. A material change to recipient, subject, body, attachment identity/content, or thread/reply target invalidates approval.
+6. Approval is bound to exact semantic content. A material change to recipient, subject, body, reply/thread target, attachment filename/content, or selected CV invalidates approval.
 
 7. Sending is always an explicit external action. V0.2C never treats preparation, draft creation, or user interest as authorization to send.
 
@@ -42,7 +42,7 @@ published vacancy email
 2. **Official direct channels before cold recruiter outreach.**
 3. **No guessed email addresses.**
 4. **No unsupported candidate claims.**
-5. **The CV attachment is identified by content hash, not filename alone.**
+5. **The CV attachment is identified by filename plus content hash, never filename alone.**
 6. **Approval attaches to exact semantic content, never to an opportunity in the abstract.**
 7. **Every external action produces auditable state.**
 8. **Duplicate sends fail closed.**
@@ -257,6 +257,7 @@ OutreachBrief
 - tone_policy
 - call_to_action_policy
 - cv_pdf_path
+- cv_filename
 - cv_sha256
 - application_packet_sha256
 - brief_version
@@ -305,11 +306,20 @@ When the user asks ChatGPT to create a draft:
 
 1. Resolve or confirm `ContactResolution`.
 2. Load the exact `OutreachBrief` and `ApplicationPacket`.
-3. Verify local CV artifact bytes against `cv_sha256`.
+3. Verify local CV artifact bytes against `cv_sha256` and expected filename policy.
 4. Compose subject/body within the brief constraints.
 5. Create Gmail draft with the exact intended recipient and CV attachment.
 6. Record returned Gmail draft identity plus the semantic content supplied to Gmail.
 7. Produce `DraftSnapshot`.
+
+Suggested attachment descriptor:
+
+```text
+DraftAttachment
+- filename
+- sha256
+- role: CV | OTHER
+```
 
 Suggested `DraftSnapshot`:
 
@@ -326,14 +336,14 @@ Suggested `DraftSnapshot`:
 - bcc[]
 - subject
 - body_canonical
-- attachment_sha256s[]
+- attachments[]: DraftAttachment
 - cv_sha256
 - content_type
 - draft_sha256
 - created_at
 ```
 
-`draft_sha256` is computed from canonical semantic fields, not Gmail internal IDs/timestamps.
+`draft_sha256` is computed from canonical semantic fields, including attachment filenames and content hashes, but excluding Gmail internal IDs/timestamps.
 
 ## Draft mutation and revalidation
 
@@ -346,6 +356,7 @@ Material fields include:
 - body;
 - reply/thread target;
 - attachment set;
+- attachment filenames;
 - attachment content hashes;
 - selected CV hash.
 
@@ -391,7 +402,7 @@ Before ChatGPT calls Gmail `send_draft`, the workflow must establish all of:
 - user explicitly requested the send action;
 - draft is revalidated or otherwise exactly matches the approved semantic snapshot;
 - active `ApprovalRecord` exists for the current `draft_sha256`;
-- attachment/CV hash matches the approved snapshot;
+- attachment filenames/content hashes and selected CV hash match the approved snapshot;
 - no previous successful send exists for the same idempotency key;
 - recipient remains permitted by contact policy;
 - opportunity is not blocked/closed under current known state.
@@ -693,8 +704,8 @@ Required test areas:
 
 - identical semantic draft content produces identical hash;
 - Gmail draft ID/timestamps do not affect semantic hash;
-- recipient/body/subject/reply target/attachment hash changes alter hash;
-- attachment filename change alone does not alter semantic meaning when bytes/hash are unchanged, unless policy intentionally includes filename.
+- recipient/body/subject/reply target/attachment filename/hash changes alter hash;
+- identical filename plus identical bytes produces the same attachment descriptor/hash.
 
 ### Approval
 
