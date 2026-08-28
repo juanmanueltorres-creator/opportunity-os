@@ -13,14 +13,14 @@ ROOT = Path(__file__).parents[1]
 
 def _verified_skill_yaml(fact_id: str, value: str) -> str:
     return (
-        f"id: {fact_id}\n"
-        "kind: skill\n"
-        f"value: {value}\n"
-        "track_ids: [tech]\n"
-        "verified: true\n"
-        "verification_method: repository_evidence\n"
-        "verified_at: 2026-08-28T12:00:00+00:00\n"
-        f"source_ref: https://example.test/{fact_id}\n"
+        f"  - id: {fact_id}\n"
+        "    kind: skill\n"
+        f"    value: {value}\n"
+        "    track_ids: [tech]\n"
+        "    verified: true\n"
+        "    verification_method: repository_evidence\n"
+        "    verified_at: 2026-08-28T12:00:00+00:00\n"
+        f"    source_ref: https://example.test/{fact_id}\n"
     )
 
 
@@ -30,22 +30,13 @@ def test_master_facts_hash_is_independent_of_yaml_item_order(tmp_path: Path) -> 
     python = _verified_skill_yaml("skill-python", "Python")
     postgis = _verified_skill_yaml("skill-postgis", "PostGIS")
     a.write_text(
-        "schema_version: v1\nfacts:\n"
-        + "\n".join(f"  {line}" if line else line for line in python.splitlines())
-        + "\n"
-        + "\n".join(f"  {line}" if line else line for line in postgis.splitlines()),
+        "schema_version: v1\nfacts:\n" + python + postgis,
         encoding="utf-8",
     )
     b.write_text(
-        "schema_version: v1\nfacts:\n"
-        + "\n".join(f"  {line}" if line else line for line in postgis.splitlines())
-        + "\n"
-        + "\n".join(f"  {line}" if line else line for line in python.splitlines()),
+        "schema_version: v1\nfacts:\n" + postgis + python,
         encoding="utf-8",
     )
-    # Convert the first indented record line in each fact into a YAML list item.
-    a.write_text(a.read_text(encoding="utf-8").replace("  id:", "  - id:"), encoding="utf-8")
-    b.write_text(b.read_text(encoding="utf-8").replace("  id:", "  - id:"), encoding="utf-8")
 
     first = load_master_facts(a)
     second = load_master_facts(b)
