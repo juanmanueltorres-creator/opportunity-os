@@ -66,7 +66,7 @@ def _confidence(score: float) -> ConfidenceAssessment:
 def _assessment(
     item_id: str,
     *,
-    company: str = "Company",
+    company: str | None = None,
     title: str | None = None,
     tier: str = "HIGH",
     selected_intent: str | None = "INCOME_NOW",
@@ -82,7 +82,7 @@ def _assessment(
         source="manual",
         source_id=item_id,
         source_url=f"https://example.com/jobs/{item_id}",
-        company=company,
+        company=company or f"Company {item_id}",
         title=title or f"Role {item_id}",
         description="Role description",
         discovered_at=NOW - timedelta(hours=1),
