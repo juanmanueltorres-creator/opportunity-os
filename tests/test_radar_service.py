@@ -180,3 +180,46 @@ async def test_manual_import_persists_and_enters_same_radar_pipeline(tmp_path) -
     assert opportunities.get(stored.id) == stored
     assert batch.count == 1
     assert batch.items[0].opportunity.id == stored.id
+
+
+@pytest.mark.asyncio
+async def test_ineligible_high_scoring_track_cannot_win_over_eligible_track(tmp_path) -> None:
+    service, opportunities, _ = _service(tmp_path, [])
+    opportunity = _opportunity("greenhouse:track-eligibility")
+    opportunity = opportunity.model_copy(
+        update={"description": "Must have Python. Must have SQL."}
+    )
+    opportunities.upsert(opportunity)
+
+    profile = CandidateProfile(
+        name="Example Candidate",
+        roles=["Support Analyst"],
+        skills=["Python", "SQL"],
+        locations=["Argentina"],
+        tracks=[
+            CandidateTrack(
+                id="blocked-perfect",
+                label="Perfect skills but wrong work mode",
+                intents=["INCOME_NOW"],
+                roles=["Support Analyst"],
+                skills=["Python", "SQL"],
+                accepted_work_modes=["onsite"],
+            ),
+            CandidateTrack(
+                id="eligible-partial",
+                label="Compatible work mode",
+                intents=["INCOME_NOW"],
+                roles=["Support Analyst"],
+                skills=["Python"],
+                accepted_work_modes=["remote"],
+            ),
+        ],
+    )
+
+    batch = await service.run(profile, now=NOW)
+
+    assert batch.count == 1
+    assessment = batch.items[0]
+    assert assessment.eligibility.eligible is True
+    assert assessment.best_income_track == "eligible-partial"
+    assert assessment.best_income_track != "blocked-perfect"
