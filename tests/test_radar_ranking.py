@@ -94,6 +94,39 @@ def test_default_tier_thresholds_are_explicit() -> None:
     assert classify_fit(None, 100.0, policy) is None
 
 
+def test_income_thresholds_follow_normative_multi_intent_amendment() -> None:
+    high_income = rank_assessment(
+        _opportunity(),
+        _enrichment(),
+        EligibilityResult(eligible=True),
+        _career(76.0),
+        _income(76.0),
+        _confidence(75.0),
+        policy=_policy(),
+        scoring_version="v0.2a1",
+        alias_registry_version="1",
+    )
+    medium_income = rank_assessment(
+        _opportunity(),
+        _enrichment(),
+        EligibilityResult(eligible=True),
+        None,
+        _income(63.0),
+        _confidence(65.0),
+        policy=_policy(),
+        scoring_version="v0.2a1",
+        alias_registry_version="1",
+    )
+
+    assert high_income.intent_tiers["CAREER"] == "MEDIUM"
+    assert high_income.intent_tiers["INCOME_NOW"] == "HIGH"
+    assert medium_income.intent_tiers["INCOME_NOW"] == "MEDIUM"
+
+
+def test_default_selection_mode_is_income_first() -> None:
+    assert getattr(_policy(), "selection_mode", None) == "income_first"
+
+
 def test_low_career_score_does_not_suppress_high_income_lane() -> None:
     assessment = rank_assessment(
         _opportunity(),
