@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from app.matching.scorer import assess_opportunity
 from app.models.domain import CandidateProfile, CandidateTrack, EvidenceItem, Opportunity
 from app.radar.models import DerivedValue, OpportunityEnrichment, Requirement
 from app.radar.scoring import assess_career, assess_income, best_track_assessments
@@ -342,3 +343,85 @@ def test_best_tracks_return_none_when_intent_is_not_supported() -> None:
 
     assert best_career is not None
     assert best_income is None
+
+
+def test_career_without_usable_enrichment_reuses_v01_scoring_exactly() -> None:
+    evidence = EvidenceItem(
+        label="Python GIS project",
+        type="project",
+        skills=["Python"],
+        domains=["gis"],
+        verified=True,
+    )
+    track = _track(
+        "career",
+        intents=["CAREER"],
+        skills=["Python"],
+        domains=["gis"],
+        roles=["GIS Developer"],
+        evidence=[evidence],
+    )
+    profile = _profile(
+        tracks=[track],
+        skills=["Python"],
+        domains=["gis"],
+        evidence=[evidence],
+    )
+    opportunity = _opportunity(
+        title="GIS Developer",
+        description="Python GIS role",
+        required_skills=["Python"],
+        remote_policy="remote",
+        published_at=NOW - timedelta(days=10),
+    )
+    track_profile = profile.model_copy(
+        update={
+            "roles": list(track.roles),
+            "skills": list(track.skills),
+            "domains": list(track.domains),
+            "evidence": list(track.evidence),
+            "tracks": [],
+        }
+    )
+
+    expected = assess_opportunity(opportunity, track_profile, now=NOW)
+    actual = assess_career(
+        opportunity,
+        _enrichment([]),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+
+    assert actual.model_dump() == expected.model_dump()
+
+
+def test_unverified_experience_never_awards_income_capability() -> None:
+    unverified = EvidenceItem(
+        label="3 years kitchen operations",
+        type="experience",
+        skills=["kitchen operations"],
+        domains=["gastronomy"],
+        verified=False,
+    )
+    track = _track(
+        "income",
+        intents=["INCOME_NOW"],
+        skills=["kitchen operations"],
+        evidence=[unverified],
+    )
+    profile = _profile(tracks=[track])
+
+    assessment = assess_income(
+        _opportunity(),
+        _enrichment([_requirement("3 years kitchen operations", kind="experience")]),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+
+    assert assessment.capability_fit == 0.0
+    assert assessment.matched_capabilities == []
+    assert "3 years kitchen operations" in assessment.gaps
