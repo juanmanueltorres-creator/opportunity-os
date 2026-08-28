@@ -7,7 +7,6 @@ from pathlib import Path
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import pt
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
@@ -96,33 +95,33 @@ class ATSRenderer:
         body = ParagraphStyle(
             "CVBody",
             fontName="Helvetica",
-            fontSize=9.5 * pt,
-            leading=12 * pt,
+            fontSize=9.5,
+            leading=12,
             alignment=TA_LEFT,
-            spaceAfter=3 * pt,
+            spaceAfter=3,
         )
         headline = ParagraphStyle(
             "CVHeadline",
             fontName="Helvetica-Bold",
-            fontSize=11 * pt,
-            leading=13 * pt,
+            fontSize=11,
+            leading=13,
             alignment=TA_LEFT,
-            spaceAfter=3 * pt,
+            spaceAfter=3,
         )
         section = ParagraphStyle(
             "CVSection",
             fontName="Helvetica-Bold",
-            fontSize=10.5 * pt,
-            leading=12 * pt,
+            fontSize=10.5,
+            leading=12,
             alignment=TA_LEFT,
-            spaceBefore=7 * pt,
-            spaceAfter=3 * pt,
+            spaceBefore=7,
+            spaceAfter=3,
         )
         bullet = ParagraphStyle(
             "CVBullet",
             parent=body,
-            leftIndent=10 * pt,
-            firstLineIndent=-6 * pt,
+            leftIndent=10,
+            firstLineIndent=-6,
         )
 
         claims_by_section = {
@@ -150,6 +149,6 @@ class ATSRenderer:
                 story.append(Paragraph(prefix + escape(claim.text), style))
 
             if section_name == "headline":
-                story.append(Spacer(1, 4 * pt))
+                story.append(Spacer(1, 4))
 
         return story
