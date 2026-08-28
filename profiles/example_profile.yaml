@@ -1,0 +1,26 @@
+name: Example Candidate
+roles:
+  - GIS Developer
+  - Geospatial Data Analyst
+skills:
+  - python
+  - sql
+  - postgis
+  - fastapi
+domains:
+  - gis
+  - geospatial
+locations:
+  - Example Region
+remote_preferences:
+  - remote
+evidence:
+  - label: Example geospatial project
+    type: project
+    skills:
+      - python
+      - postgis
+    domains:
+      - gis
+    url: https://example.com/project
+    verified: true

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "4f03aa00-1111-2222-3333-abc123abc123",
+    "text": "Geospatial Backend Engineer",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Engineering",
+      "location": "Remote, Americas",
+      "team": "Platform",
+      "allLocations": [
+        "Remote, Americas"
+      ]
+    },
+    "description": "<p>Develop spatial APIs.</p>",
+    "descriptionPlain": "Develop spatial APIs.",
+    "hostedUrl": "https://jobs.lever.co/example/4f03aa00-1111-2222-3333-abc123abc123",
+    "applyUrl": "https://jobs.lever.co/example/4f03aa00-1111-2222-3333-abc123abc123/apply",
+    "workplaceType": "remote"
+  }
+]

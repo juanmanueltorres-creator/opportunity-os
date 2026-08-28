@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Opportunity OS local-only data
+profile.local.yaml
+*.db
+*.sqlite
+*.sqlite3
