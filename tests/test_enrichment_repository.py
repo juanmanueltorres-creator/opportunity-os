@@ -120,3 +120,29 @@ def test_repeated_save_of_same_version_is_idempotent(tmp_path) -> None:
         enrichment.opportunity_id,
         ("rules-v1", "1", taxonomy),
     ) == enrichment
+
+
+def test_taxonomy_version_identity_is_canonical_across_mapping_order(tmp_path) -> None:
+    _, enrichment_module = _modules()
+    repository = enrichment_module.SQLiteEnrichmentRepository(tmp_path / "opportunities.db")
+    repository.initialize()
+
+    saved_taxonomy = {"esco": "1.2.1", "onet": "31.0"}
+    lookup_taxonomy = {"onet": "31.0", "esco": "1.2.1"}
+    enrichment = _enrichment(
+        extractor_version="rules-v2",
+        title="Data Operations Role",
+        taxonomy=saved_taxonomy,
+    )
+
+    repository.save(
+        enrichment,
+        extractor_version="rules-v2",
+        alias_registry_version="2",
+        taxonomy_versions=saved_taxonomy,
+    )
+
+    assert repository.get_current(
+        enrichment.opportunity_id,
+        ("rules-v2", "2", lookup_taxonomy),
+    ) == enrichment
