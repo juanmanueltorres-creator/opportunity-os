@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import Protocol
+
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -8,6 +11,9 @@ from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
 from app.models.domain import CandidateProfile, Opportunity, OpportunityAssessment
+from app.radar.models import DailyRadarBatch
+from app.radar.service import RadarSourceError
+from app.radar.sources import ManualOpportunityInput
 from app.repositories.opportunities import SQLiteOpportunityRepository
 from app.services.ingestion import ingest
 
@@ -19,12 +25,29 @@ class IngestionResponse(BaseModel):
     existing: int
 
 
+class RadarServiceProtocol(Protocol):
+    async def run(
+        self,
+        profile: CandidateProfile,
+        *,
+        now: datetime,
+    ) -> DailyRadarBatch: ...
+
+    def import_manual(
+        self,
+        manual: ManualOpportunityInput,
+        *,
+        now: datetime,
+    ) -> Opportunity: ...
+
+
 def create_api_router(
     *,
     repository: SQLiteOpportunityRepository,
     profile: CandidateProfile | None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
+    radar_service: RadarServiceProtocol | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
@@ -38,6 +61,15 @@ def create_api_router(
         if opportunity is None:
             raise HTTPException(status_code=404, detail="Opportunity not found")
         return opportunity
+
+    @router.post("/opportunities/manual", response_model=Opportunity)
+    def import_manual_opportunity(manual: ManualOpportunityInput) -> Opportunity:
+        if radar_service is None:
+            raise HTTPException(status_code=503, detail="Radar service unavailable")
+        return radar_service.import_manual(
+            manual,
+            now=datetime.now(timezone.utc),
+        )
 
     @router.post("/ingest/remotive", response_model=IngestionResponse)
     async def ingest_remotive() -> IngestionResponse:
@@ -69,5 +101,22 @@ def create_api_router(
         if profile is None:
             raise HTTPException(status_code=503, detail="Candidate profile unavailable")
         return assess_opportunity(opportunity, profile)
+
+    @router.post("/radar/run", response_model=DailyRadarBatch)
+    async def run_radar() -> DailyRadarBatch:
+        if profile is None:
+            raise HTTPException(status_code=503, detail="Candidate profile unavailable")
+        if radar_service is None:
+            raise HTTPException(status_code=503, detail="Radar service unavailable")
+        try:
+            return await radar_service.run(
+                profile,
+                now=datetime.now(timezone.utc),
+            )
+        except RadarSourceError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Radar sources unavailable",
+            ) from exc
 
     return router
