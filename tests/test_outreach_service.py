@@ -279,3 +279,23 @@ def test_recreated_exact_draft_can_use_same_approval_hash(tmp_path) -> None:
         now=NOW + timedelta(minutes=5),
     )
     assert authorization.authorized is True
+
+
+def test_invalid_packet_is_not_recorded_as_accepted(tmp_path) -> None:
+    service = _service(tmp_path)
+    mismatched_packet = _packet(tmp_path).model_copy(
+        update={"opportunity_id": "opp-other"}
+    )
+
+    result = service.prepare_outreach(
+        assessment=_assessment(),
+        application_packet=mismatched_packet,
+        candidates=[],
+        contact_policy=ContactPolicy(),
+        outreach_policy=OutreachPolicy(),
+        now=NOW,
+    )
+
+    assert result.status == "BLOCKED_INVALID_PACKET"
+    assert result.errors == ["packet_opportunity_mismatch"]
+    assert service.repository.list_events("opp-1") == []
