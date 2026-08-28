@@ -137,6 +137,7 @@ def _selection_key(item: RadarAssessment, policy: RadarPolicy) -> tuple[object, 
     preferred_intent = _preferred_intent_for_tier(item, policy, best_tier)
     mode_rank = _mode_rank(preferred_intent, policy)
     fit = _fit_for_intent(item, preferred_intent)
+    lane_priority = _priority_for_intent(item, preferred_intent, policy)
     published = item.opportunity.published_at
     published_unknown = 1 if published is None else 0
     published_sort = -published.timestamp() if published is not None else 0.0
@@ -144,7 +145,7 @@ def _selection_key(item: RadarAssessment, policy: RadarPolicy) -> tuple[object, 
     return (
         _TIER_ORDER[best_tier],
         mode_rank,
-        -item.priority_score,
+        -lane_priority,
         -fit,
         -item.confidence_score,
         published_unknown,
@@ -196,6 +197,17 @@ def _fit_for_intent(item: RadarAssessment, intent: SearchIntent | None) -> float
         return item.career_match or 0.0
     available = [value for value in (item.career_match, item.income_viability) if value is not None]
     return max(available, default=0.0)
+
+
+def _priority_for_intent(
+    item: RadarAssessment,
+    intent: SearchIntent | None,
+    policy: RadarPolicy,
+) -> float:
+    fit = _fit_for_intent(item, intent)
+    penalty_total = sum(penalty.value for penalty in item.ranking_penalties)
+    raw = policy.fit_weight * fit + policy.confidence_weight * item.confidence_score
+    return round(max(0.0, raw - penalty_total), 1)
 
 
 def _is_inside_cooldown(
