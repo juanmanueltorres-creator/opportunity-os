@@ -1,7 +1,7 @@
 # Opportunity OS — V0.1 Design
 
 Date: 2026-08-28
-Status: proposed
+Status: implemented
 
 ## 1. Product goal
 
