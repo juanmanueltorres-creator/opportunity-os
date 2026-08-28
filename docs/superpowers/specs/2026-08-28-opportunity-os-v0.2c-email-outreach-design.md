@@ -7,15 +7,28 @@ Parent roadmap: private Opportunity OS operational context in the knowledge vaul
 
 ## Purpose
 
-V0.2C turns a prepared `ApplicationPacket` into a safe, reviewable outreach workflow that can be operated from ChatGPT using connected Gmail and, only when necessary, Apollo or other authorized contact sources.
+V0.2C turns a prepared V0.2B `ApplicationPacket` into a safe outreach workflow that can be operated from ChatGPT using connected Gmail and, only when necessary, Apollo or other authorized contact sources.
 
-The goal is practical: a strong `HIGH` or `MEDIUM` radar opportunity should be able to move from a verified CV packet to a personalized Gmail draft with the correct attachment, then to an explicitly approved send, without inventing claims, guessing email addresses, duplicating sends, or embedding Gmail/Apollo credentials inside Opportunity OS.
+The practical goal is:
 
-V0.2C is designed to be usable incrementally. The first operational slice should support real applications quickly, while preserving enough typed state and hashing to harden the workflow over time.
+```text
+HIGH/MEDIUM opportunity
+→ validated ApplicationPacket + CV
+→ best permitted contact
+→ deterministic OutreachBrief
+→ ChatGPT-created Gmail draft
+→ exact DraftSnapshot
+→ explicit ApprovalRecord
+→ separate explicit SendRequest
+→ Gmail send
+→ SendReceipt + OutreachLedger
+```
 
-## Product decisions already approved
+The first implementation should be usable quickly on real applications and then hardened from real usage. It must never invent claims, guess email addresses, consume Apollo credits silently, create Gmail drafts automatically, or treat an approval as a standing authorization to send.
 
-1. Contact priority is:
+## Approved product decisions
+
+### Contact priority
 
 ```text
 published vacancy email
@@ -24,73 +37,97 @@ published vacancy email
 → manual/form channel
 ```
 
-2. Opportunity OS may automatically prepare outreach artifacts for `HIGH` and `MEDIUM` selected opportunities. `STRETCH` opportunities require explicit manual promotion before outreach preparation.
+Official direct channels beat cold recruiter outreach.
 
-3. Opportunity OS does not create Gmail drafts automatically. ChatGPT creates a draft only when the user asks for that external action.
+### Radar scope
 
-4. Opportunity OS does not embed an LLM for email copy. It produces a structured `OutreachBrief`; ChatGPT writes the email from that brief plus the immutable application packet.
+- `HIGH` and `MEDIUM`: outreach artifacts may be prepared automatically.
+- `STRETCH`: diagnostic only unless manually promoted.
+- Hard-ineligible opportunities never enter outreach.
 
-5. Apollo is optional fallback infrastructure, not a core dependency. Search may identify recruiter/TA candidates, but any enrichment that consumes credits requires the user's explicit credit confirmation before the external action.
+### Gmail boundary
 
-6. Approval is bound to exact semantic content. A material change to recipient, subject, body, reply/thread target, attachment filename/content, or selected CV invalidates approval.
+Opportunity OS does not create Gmail drafts automatically. ChatGPT creates a draft only when the user asks.
 
-7. Sending is always an explicit external action. V0.2C never treats preparation, draft creation, or user interest as authorization to send.
+### Copy boundary
+
+Opportunity OS does not embed an LLM for email prose. It produces a structured `OutreachBrief`; ChatGPT writes the human-readable mail using only `OutreachBrief + ApplicationPacket` as factual authority.
+
+### Apollo boundary
+
+Apollo is an optional fallback. Identity search may happen without enrichment. Any operation that consumes Apollo credits requires the exact explicit confirmation required by the connected Apollo tool before execution.
+
+### Approval boundary
+
+Approval is bound to one exact semantic draft hash, or to one immutable manifest of exact draft hashes for a batch.
+
+Changing recipient, subject, body, reply/thread target, attachment filename, attachment bytes, or selected CV invalidates the approval.
+
+### Send boundary
+
+**Approval is not a send command.** Sending requires a second, explicit user action represented as a separate `SendRequest`.
 
 ## Core principles
 
-1. **Prepare automatically; act externally only on request.**
-2. **Official direct channels before cold recruiter outreach.**
-3. **No guessed email addresses.**
-4. **No unsupported candidate claims.**
-5. **The CV attachment is identified by filename plus content hash, never filename alone.**
-6. **Approval attaches to exact semantic content, never to an opportunity in the abstract.**
-7. **Every external action produces auditable state.**
-8. **Duplicate sends fail closed.**
-9. **Apollo credits are never consumed implicitly.**
-10. **Opportunity OS owns policy/state; ChatGPT owns connected-tool operation.**
+1. Truth before conversion.
+2. Prepare automatically; perform external actions only on request.
+3. Official application channels before recruiter outreach.
+4. Never guess an email address.
+5. No unsupported candidate claims.
+6. CV identity uses filename plus content SHA-256.
+7. Approval binds exact semantic content.
+8. A valid approval can never send by itself.
+9. Duplicate sends fail closed.
+10. Apollo credits are never consumed implicitly.
+11. Opportunity OS owns deterministic policy/state; ChatGPT owns connected-tool operation.
+12. Real personal/contact/mail state stays private and gitignored.
 
-## Architectural boundary
-
-Recommended architecture:
+## Architecture
 
 ```text
-DailyRadarBatch HIGH/MEDIUM
+DailyRadarBatch item
         ↓
 ApplicationPacket (V0.2B)
         ↓
-ContactResolver + ContactPolicy
+ContactResolutionService
         ↓
 ContactResolution
         ↓
+OutreachPreparationService
+        ↓
 OutreachBrief
         ↓
-[ChatGPT operator boundary]
+──────── ChatGPT operator boundary ────────
         ↓
-Gmail draft creation / authorized contact lookup
+Gmail draft / optional authorized contact lookup
         ↓
 DraftSnapshot
         ↓
+ApprovalService
+        ↓
 ApprovalRecord
         ↓
-Gmail send
+explicit SendRequest
+        ↓
+SendGate
+        ↓
+Gmail send_draft
         ↓
 SendReceipt
         ↓
 OutreachLedger
 ```
 
-Opportunity OS remains deterministic/offline for its core domain logic. Gmail, Apollo, web/contact lookup, and human approval happen outside the deterministic core through connected tools.
-
-The repository does not store OAuth tokens, Gmail credentials, Apollo API keys, recruiter private exports, or real sent-message bodies in public tracked source.
+The deterministic core does not call Gmail or Apollo directly.
 
 ## Relationship to V0.2A1 and V0.2B
 
-V0.2A1 answers whether an opportunity is worth attention and which candidate track wins.
+V0.2A1 decides whether an opportunity deserves attention and which candidate track wins.
 
-V0.2B produces a truthful `ApplicationPacket` with:
+V0.2B produces a validated `ApplicationPacket` containing, among other fields:
 
 - opportunity identity and snapshot hash;
-- selected intent and application track;
+- selected intent/track;
 - fit/confidence/version metadata;
 - selected fact/evidence IDs;
 - unresolved gaps;
@@ -99,13 +136,15 @@ V0.2B produces a truthful `ApplicationPacket` with:
 - `cv_sha256`;
 - semantic `packet_sha256`.
 
-V0.2C must consume the prepared packet rather than rebuilding CV logic or reselecting candidate evidence independently.
+V0.2C consumes that packet. It does not independently rewrite CV evidence or re-decide which track is allowed.
 
-## First-class application email extraction
+## First-class published email extraction
 
-V0.2A1 currently detects whether a posting contains an email and classifies `application_mode = DIRECT_EMAIL`. V0.2C closes the missing data-model gap: the actual published email address becomes typed data with provenance.
+V0.2A1 already detects the presence of an explicit email and can classify `application_mode = DIRECT_EMAIL`, but it does not expose the actual address as a typed first-class value.
 
-Suggested model:
+V0.2C closes that gap.
+
+Suggested contract:
 
 ```text
 ApplicationContactHint
@@ -119,48 +158,46 @@ ApplicationContactHint
 - discovered_at
 ```
 
-For a published email extracted directly from vacancy text, provenance must identify the source field/span or structured field that contained it.
+For a vacancy-published email, provenance must identify the structured field or supporting source span.
 
-The extractor may normalize case/whitespace but may not transform a guessed name/domain pattern into an email address.
+Normalization may casefold/trim the address. It may not infer an address from a person name or corporate domain pattern.
 
-## Contact policy
+## Contact resolution
 
-`ContactPolicy` defines ordered fallback behavior and the trust rules required before a contact can become actionable.
+### ContactPolicy
 
-Default priority:
+Default ranking:
 
 ```text
-1. PUBLISHED_VACANCY_EMAIL
-2. OFFICIAL_HR_EMAIL
-3. VERIFIED_RECRUITER
-4. MANUAL_FORM
+PUBLISHED_VACANCY_EMAIL
+> OFFICIAL_HR_EMAIL
+> VERIFIED_RECRUITER
+> MANUAL_FORM
 ```
 
 ### Published vacancy email
 
-Highest priority when explicitly present in the vacancy source or trusted normalized source data.
+Highest priority when explicitly present in trusted vacancy data. No recruiter lookup is needed unless the vacancy instructions make the channel unusable or ambiguous.
 
-No enrichment cost. No additional recruiter lookup required unless the published instructions are ambiguous or unusable.
+### Official HR / Careers email
 
-### Official Careers / HR email
+Permitted only when actually published by a direct official company/careers source. Addresses such as `jobs@company.com` or `rrhh@company.com` must never be generated from convention alone.
 
-May be used when supported by a direct official company/careers source. The source must be retained. Generic company email guesses such as `careers@domain`, `rrhh@domain`, or `jobs@domain` are not allowed unless the address is actually published by a trusted source.
+### Recruiter / TA
 
-### Verified recruiter / Talent Acquisition
+Used only when a stronger official email channel is unavailable.
 
-Used only when stronger official application email channels are unavailable.
+A recruiter identity can be discovered before knowing their email. Relevance should record employer, recruiting/TA role, geography/role affinity, or an explicit relationship to the requisition when available.
 
-Identity discovery may be performed without email enrichment. A recruiter candidate is not automatically treated as responsible for the requisition. The resolution must record why the person is relevant: current employer, recruiting/TA role, geography/role affinity, or explicit posting relationship when available.
+An identity match is not proof that the recruiter owns the vacancy.
 
-Apollo email enrichment is an external paid/credit-consuming action. Opportunity OS may emit `REQUIRES_ENRICHMENT` but cannot consume a credit or silently authorize the call.
+Paid Apollo enrichment is represented as a blocked/external requirement, not silently executed.
 
-### Manual/form channel
+### Manual form
 
-If no trustworthy email contact exists, V0.2C records the application mode and manual route. Form submission automation remains outside this slice.
+When no trustworthy email route exists, record the form/manual route. V0.2C does not automate browser submission.
 
-## Contact models
-
-Suggested strict contracts:
+## Contact contracts
 
 ```text
 ContactCandidate
@@ -179,7 +216,7 @@ ContactCandidate
 - discovered_at
 ```
 
-`verification_status` initial values:
+Initial verification values:
 
 ```text
 VERIFIED_DIRECT
@@ -190,9 +227,8 @@ MANUAL_ONLY
 UNVERIFIED
 ```
 
-`ContactResolution`:
-
 ```text
+ContactResolution
 - opportunity_id
 - selected_candidate_id optional
 - channel
@@ -209,30 +245,28 @@ UNVERIFIED
 - resolver_version
 ```
 
-A resolution with an email intended for draft creation must not have `UNVERIFIED` status.
+An email resolution intended for draft creation cannot be `UNVERIFIED`.
 
-If no permitted contact exists, return `BLOCKED_NO_CONTACT` or `MANUAL_ONLY`; never fabricate a fallback address.
+No permitted contact returns `BLOCKED_NO_CONTACT` or `MANUAL_ONLY`. It never fabricates an address.
 
 ## Automatic outreach eligibility
 
-Outreach preparation is automatic only for selected daily radar opportunities satisfying all of:
+Automatic preparation requires all of:
 
-- tier is `HIGH` or `MEDIUM` for the selected lane;
-- opportunity is eligible under radar hard gates;
-- an `ApplicationPacket` exists and validates structurally;
-- application packet opportunity identity matches the radar opportunity;
-- packet CV file is present when attachment preparation is requested;
-- packet `cv_sha256` matches the actual local artifact bytes;
-- opportunity is not already sent/applied under ledger policy;
-- no active cooldown or duplicate-contact rule blocks outreach.
+- selected tier is `HIGH` or `MEDIUM`;
+- radar hard eligibility passes;
+- a valid `ApplicationPacket` exists;
+- packet opportunity identity matches the opportunity;
+- CV artifact exists when attachment is required;
+- actual CV bytes match packet `cv_sha256`;
+- ledger has no existing successful application/send conflict;
+- cooldown/duplicate policies allow contact.
 
-`STRETCH` is diagnostic by default. A manually promoted stretch opportunity records explicit promotion provenance before entering the same preparation path.
+A `STRETCH` item must carry explicit manual-promotion provenance before it can use the same pipeline.
 
 ## OutreachBrief
 
-`OutreachBrief` is the deterministic bridge between Opportunity OS and ChatGPT. It is not the final email copy.
-
-Suggested fields:
+`OutreachBrief` is the deterministic bridge consumed by ChatGPT. It is not the final email body.
 
 ```text
 OutreachBrief
@@ -265,54 +299,47 @@ OutreachBrief
 - created_at
 ```
 
-### `why_fit`
+### Claim policy
 
-Rule-based explanation derived from already selected verified support. It is not a new source of factual authority.
+`why_fit` and `strongest_evidence` are explanations derived from already verified support; they are not new factual authority.
 
-### `allowed_claims`
+`allowed_claims` contains only claims supported by V0.2B facts/evidence/approved wording.
 
-Claims ChatGPT may use in the email because they are backed by V0.2B facts/evidence/approved claim wording.
+`forbidden_claims` explicitly protects against tempting overclaims: unsupported exact products, durations, certifications, seniority, metrics, language levels, employment status, education, or domain expertise.
 
-### `forbidden_claims`
-
-Known tempting overclaims or unsupported interpretations, such as an exact product, duration, certification, seniority, language level, metric, employment status, or domain expertise not supported by evidence.
-
-### `unresolved_gaps`
-
-Important requirements not supported by verified evidence. Their presence does not automatically block outreach unless a higher-level policy says the opportunity is ineligible, but the email must not silently convert them into positive claims.
+`unresolved_gaps` remains visible. A gap is never silently converted into a positive statement in the mail.
 
 ## Email copy policy
 
-ChatGPT may write natural language, but the semantic content is bounded by `OutreachBrief + ApplicationPacket`.
+ChatGPT may phrase the email naturally, but semantic claims are bounded by `OutreachBrief + ApplicationPacket`.
 
-Default style:
+Default mail style:
 
 - concise;
-- role/company specific;
+- specific to the role/company;
 - one clear reason for writing;
-- two or three strongest verified points at most;
+- two or three strongest verified points maximum;
 - simple call to action;
-- no repetition of the full CV;
-- no generic filler claiming passion/enthusiasm as evidence;
-- no unsupported years, tools, metrics, certifications, titles, employers, degrees, languages, or outcomes.
+- do not reproduce the CV;
+- no generic filler presented as evidence;
+- no unsupported tools, years, metrics, titles, companies, certifications, degrees, languages, or outcomes.
 
-The copy layer may rephrase approved evidence but may not upgrade support strength.
+The copy layer may rephrase support; it may not upgrade support strength.
 
-## Draft lifecycle
+## Draft creation
 
-Gmail drafts are external resources. Opportunity OS does not own Gmail OAuth and does not create drafts autonomously.
+When the user asks ChatGPT to create a Gmail draft:
 
-When the user asks ChatGPT to create a draft:
+1. resolve/confirm `ContactResolution`;
+2. load exact `OutreachBrief` and `ApplicationPacket`;
+3. verify CV artifact bytes against `cv_sha256`;
+4. verify the intended CV filename;
+5. compose subject/body within claim policy;
+6. create Gmail draft with exact recipient and attachment;
+7. record the provider draft identity and semantic payload supplied to Gmail;
+8. create `DraftSnapshot`.
 
-1. Resolve or confirm `ContactResolution`.
-2. Load the exact `OutreachBrief` and `ApplicationPacket`.
-3. Verify local CV artifact bytes against `cv_sha256` and expected filename policy.
-4. Compose subject/body within the brief constraints.
-5. Create Gmail draft with the exact intended recipient and CV attachment.
-6. Record returned Gmail draft identity plus the semantic content supplied to Gmail.
-7. Produce `DraftSnapshot`.
-
-Suggested attachment descriptor:
+Attachment descriptor:
 
 ```text
 DraftAttachment
@@ -321,9 +348,10 @@ DraftAttachment
 - role: CV | OTHER
 ```
 
-Suggested `DraftSnapshot`:
+Draft snapshot:
 
 ```text
+DraftSnapshot
 - draft_snapshot_id
 - opportunity_id
 - brief_sha256
@@ -343,13 +371,13 @@ Suggested `DraftSnapshot`:
 - created_at
 ```
 
-`draft_sha256` is computed from canonical semantic fields, including attachment filenames and content hashes, but excluding Gmail internal IDs/timestamps.
+`draft_sha256` hashes canonical semantic content including attachment filename and bytes hash. Gmail draft IDs/timestamps are excluded.
+
+Therefore, recreating an **exact semantic replica** may keep the same `draft_sha256` even if Gmail returns a new `provider_draft_id`. Approval is about what will be sent, not Gmail's internal resource identifier.
 
 ## Draft mutation and revalidation
 
-Approval is invalidated by any semantic draft change.
-
-Material fields include:
+Material changes include:
 
 - `to`, `cc`, `bcc`;
 - subject;
@@ -357,22 +385,29 @@ Material fields include:
 - reply/thread target;
 - attachment set;
 - attachment filenames;
-- attachment content hashes;
+- attachment hashes;
 - selected CV hash.
 
-ChatGPT-originated edits are easy to track: create a new `DraftSnapshot` and new `draft_sha256`.
+Any material change generates a new `DraftSnapshot` and invalidates approval for the old hash.
 
-Manual edits performed directly in Gmail require revalidation before automated send. The operator should re-read the underlying draft/message content when the connected Gmail capability exposes it and recompute the semantic snapshot.
+### ChatGPT edits
 
-If exact body/recipient/attachment revalidation is unavailable or ambiguous, automated send must fail closed with `BLOCKED_DRAFT_UNVERIFIABLE`. The safe fallback is to recreate a draft from the known approved canonical snapshot or let the user send manually from Gmail.
+Changes performed through ChatGPT are known inputs and can deterministically produce a new snapshot/hash.
 
-Because connected Gmail draft update operations may not support editing drafts that already contain attachments, the default automation policy is **immutable attached draft**: material edits produce a replacement draft/snapshot rather than silently mutating the approved attached draft.
+### Manual Gmail edits
+
+If the user edits the draft directly in Gmail, automated send must revalidate the actual stored draft before sending when connector capabilities allow exact readback.
+
+If body, recipient, thread target, filename, or attachment content cannot be revalidated exactly, return `BLOCKED_DRAFT_UNVERIFIABLE`.
+
+Safe fallbacks:
+
+1. recreate a new draft from the known canonical approved snapshot; if it is semantically identical, the same hash may remain valid after revalidation; or
+2. leave automated workflow and let the user send manually in Gmail.
+
+Connected Gmail tooling may not allow editing drafts containing attachments. Default automation policy is therefore **immutable attached draft**: a material change creates a replacement draft/snapshot instead of silently editing the attached draft.
 
 ## Approval model
-
-`ApprovalRecord` is a human authorization for one exact `draft_sha256`.
-
-Suggested fields:
 
 ```text
 ApprovalRecord
@@ -389,29 +424,65 @@ ApprovalRecord
 - status
 ```
 
-Single approval authorizes one exact draft hash.
+Single approval authorizes one exact `draft_sha256`.
 
-Batch approval may authorize a fixed immutable manifest of draft hashes. It is never a quota or wildcard authorization. Adding, removing, or changing one member creates a different manifest hash and requires new approval.
+Batch approval authorizes only an immutable manifest of exact draft hashes. Adding/removing/changing one member changes the manifest hash and requires new approval.
 
-Approval does not itself send email.
+**Approval does not create a send request and cannot cause external execution by itself.**
 
-## Send gate
+## Explicit SendRequest
 
-Before ChatGPT calls Gmail `send_draft`, the workflow must establish all of:
+A send requires a fresh user instruction such as “send it”, “mandalo”, or an equally explicit action tied to the draft(s) under discussion.
 
-- user explicitly requested the send action;
-- draft is revalidated or otherwise exactly matches the approved semantic snapshot;
-- active `ApprovalRecord` exists for the current `draft_sha256`;
-- attachment filenames/content hashes and selected CV hash match the approved snapshot;
-- no previous successful send exists for the same idempotency key;
+That intent is represented separately:
+
+```text
+SendRequest
+- request_id
+- opportunity_id
+- draft_sha256
+- requested_by
+- requested_at
+- approval_id
+- batch_manifest_sha256 optional
+```
+
+`SendRequest` is execution intent, not long-lived authorization. It must refer to the currently approved draft hash/approval.
+
+No `SendRequest` → no `SendAuthorization`, even when a valid `ApprovalRecord` exists.
+
+## SendGate
+
+Suggested service:
+
+```text
+SendGate.validate(
+    draft_snapshot,
+    approval_record,
+    send_request,
+    ledger,
+    policy,
+    now,
+) -> SendAuthorizationResult
+```
+
+Before ChatGPT calls Gmail `send_draft`, the gate must establish all of:
+
+- explicit `SendRequest` exists for this exact draft;
+- active approval exists for current `draft_sha256`;
+- request references that approval/draft;
+- draft has been revalidated or exactly reconstructed from the approved snapshot;
+- attachment filenames/hashes and selected CV hash match;
 - recipient remains permitted by contact policy;
-- opportunity is not blocked/closed under current known state.
+- no successful idempotency key already exists;
+- opportunity is not currently blocked/closed under known state;
+- cooldown/duplicate rules allow send.
 
-If any check fails, no send occurs.
+Any failure means no send.
 
-## Idempotency
+## Send idempotency
 
-Suggested send idempotency key:
+Initial semantic key:
 
 ```text
 sha256(
@@ -422,19 +493,20 @@ sha256(
 )
 ```
 
-A successful send consumes that key. Repeating the same execution request returns `BLOCKED_ALREADY_SENT` or the existing receipt rather than sending again.
+A successful send consumes the key. A repeated request returns the existing receipt or `BLOCKED_ALREADY_SENT`; it does not send twice.
 
-A materially different recipient/body/CV creates a new hash but is still subject to application/contact cooldown and duplicate-contact policy; hash changes are not a loophole for repeated outreach.
+Changing draft content produces a new hash but does not bypass requisition/company cooldown or duplicate rules.
 
 ## SendReceipt
 
-After successful Gmail send, record a minimal external receipt:
+`SENT` is recorded only after Gmail returns successful send evidence.
 
 ```text
 SendReceipt
 - receipt_id
 - opportunity_id
 - approval_id
+- send_request_id
 - draft_sha256
 - application_packet_sha256
 - idempotency_key
@@ -446,11 +518,11 @@ SendReceipt
 - status: SENT
 ```
 
-Do not infer success because an API call was attempted. `SENT` requires the provider to return successful send evidence.
+A provider attempt without a valid success receipt is not `SENT`.
 
 ## Outreach ledger
 
-The ledger tracks workflow state without becoming a second Gmail mailbox.
+The ledger is an audit/state layer, not a duplicate mailbox.
 
 Minimum event types:
 
@@ -462,6 +534,7 @@ DRAFT_CREATED
 DRAFT_REPLACED
 APPROVED
 APPROVAL_INVALIDATED
+SEND_REQUESTED
 SEND_ATTEMPTED
 SENT
 SEND_FAILED
@@ -469,7 +542,7 @@ MANUAL_ROUTE
 RESPONSE_OBSERVED
 ```
 
-Suggested state progression:
+Expected progression:
 
 ```text
 PREPARED
@@ -477,6 +550,7 @@ PREPARED
 → OUTREACH_READY
 → DRAFT_CREATED
 → APPROVED
+→ SEND_REQUESTED
 → SENT
 ```
 
@@ -489,75 +563,74 @@ BLOCKED_CV_CHANGED
 BLOCKED_DRAFT_CHANGED
 BLOCKED_DRAFT_UNVERIFIABLE
 BLOCKED_APPROVAL_MISSING
+BLOCKED_SEND_REQUEST_MISSING
 BLOCKED_ALREADY_SENT
 BLOCKED_POLICY
 MANUAL_ONLY
 ```
 
-State transitions are event-driven and validated; later state cannot exist without required prior evidence.
+Later states require evidence for all required prior transitions.
 
-## Contact frequency and anti-spam
+## Contact frequency / anti-spam
 
-Existing operational defaults remain normative:
+Defaults preserved from the Opportunity OS design:
 
-- maximum 20 applications/day is a ceiling, never a target;
+- maximum 20 applications/day is a ceiling, never a quota;
 - one initial contact per requisition;
-- maximum two recruiter contacts per company/day;
-- known duplicate requisitions do not generate duplicate outreach;
-- speculative candidature uses its own cooldown, default 30 days;
-- a different draft hash does not bypass company/requisition cooldowns.
+- maximum two recruiter contacts/company/day;
+- known duplicate requisitions do not create duplicate outreach;
+- speculative candidature cooldown defaults to 30 days;
+- altered hashes cannot bypass company/requisition cooldowns.
 
-V0.2C favors one strong official channel over multi-contact blasting.
+Prefer one strong official channel over multi-contact blasting.
 
 ## Gmail operator contract
 
-Gmail remains a connected ChatGPT capability rather than an embedded Opportunity OS dependency.
+Gmail is a connected ChatGPT capability, not an embedded Opportunity OS dependency.
 
-Expected external operations:
+Expected external actions:
 
 ```text
 read/search relevant thread when replying
 create draft with exact attachment
 review/revalidate draft
-send existing draft after explicit approval
+send existing draft after explicit SendRequest + valid approval
 read response/thread later
 ```
 
-No Gmail token, refresh token, password, mailbox export, or OAuth implementation belongs in the public repository.
+No Gmail OAuth implementation, tokens, passwords, or mailbox exports belong in public source.
 
 ## Apollo operator contract
 
-Apollo is used only when official free application channels are insufficient and recruiter contact discovery materially improves the application path.
+Apollo is used only when stronger free/official contact routes are unavailable and recruiter discovery materially helps.
 
-Rules:
+1. Search recruiter/TA identities without paid enrichment where possible.
+2. Narrow scope before enrichment.
+3. Follow connected Apollo's exact mandatory credit-confirmation wording before any paid enrichment.
+4. Never infer corporate emails.
+5. Store only minimal provenance needed for local outreach state.
+6. Do not use Apollo sequences/campaigns in V0.2C.
 
-1. Search recruiter/TA identities first without paid enrichment when possible.
-2. Narrow to relevant candidates; do not enrich broad lists “just in case”.
-3. Before any credit-consuming enrichment, show the exact scope/cost required by the connected Apollo tool and wait for explicit user confirmation.
-4. Never treat an inferred corporate email pattern as verified contact data.
-5. Persist only the minimal contact provenance required for the outreach ledger; do not export Apollo databases into the public repository.
+## Public/private boundary
 
-## Public/private data boundary
+Public source may contain:
 
-Public repo may contain:
-
-- strict schemas;
-- policy/resolver/brief/approval/ledger code;
-- fictional contacts/domains;
-- deterministic hashing/idempotency code;
+- schemas/contracts;
+- policy/resolver/brief/approval/send-gate code;
+- deterministic hashing/idempotency;
+- fictional contacts/domains/messages;
 - tests and documentation.
 
-Private/local-only data includes:
+Private/local-only:
 
-- real candidate master facts/evidence;
-- real application PDFs/packets;
-- real contact email addresses when persisted locally;
-- recruiter identity/enrichment results;
-- Gmail draft/message/thread IDs;
-- email bodies for real applications;
-- approval records tied to real applications;
-- send receipts;
-- OAuth/API secrets.
+- real candidate facts/evidence;
+- real PDFs/ApplicationPackets;
+- real contact addresses/recruiter results;
+- Gmail IDs;
+- real email bodies;
+- approvals/send requests/receipts for real applications;
+- OAuth/API secrets;
+- real outreach ledger database.
 
 Suggested private paths:
 
@@ -567,11 +640,9 @@ artifacts/applications/<application_id>/cv.pdf
 artifacts/applications/<application_id>/outreach/*.json
 ```
 
-These paths must be gitignored and covered by the tracked-private-file CI guard where applicable.
+They must be gitignored and CI-guarded where applicable.
 
-## Service boundaries
-
-Suggested deterministic local services:
+## Deterministic service boundaries
 
 ```text
 ContactResolutionService.resolve(
@@ -607,19 +678,18 @@ ApprovalService.approve(
 SendGate.validate(
     draft_snapshot,
     approval_record,
+    send_request,
     ledger,
     policy,
     now,
 ) -> SendAuthorizationResult
 ```
 
-These services do not call Gmail or Apollo directly.
-
-External tool responses are converted into typed local events/snapshots at the operator boundary.
+None calls Gmail/Apollo directly.
 
 ## Error model
 
-Errors are typed and privacy-safe. Initial codes include:
+Initial privacy-safe codes:
 
 ```text
 invalid_application_packet
@@ -637,140 +707,144 @@ draft_unverifiable
 approval_missing
 approval_invalid
 approval_expired
+send_request_missing
+send_request_invalid
 already_sent
 provider_send_failed
 provider_receipt_invalid
 ```
 
-No error should echo private email bodies, CV contents, secret tokens, or raw enrichment payloads by default.
+Errors do not echo real email bodies, CV contents, raw enrichment payloads, or tokens by default.
 
 ## Persistence
 
-V0.2C introduces a small local ledger/persistence layer independent of Gmail.
+Use local SQLite, consistent with current project patterns.
 
-Recommended storage: SQLite, following the existing repository's preference for local deterministic persistence.
+Minimum durable entities:
 
-Minimum tables/entities:
-
-- contact resolutions/candidates or immutable contact-resolution snapshots;
+- contact-resolution snapshots;
 - outreach briefs;
 - draft snapshots;
 - approvals;
+- send requests/events;
 - send receipts;
 - event ledger.
 
-Persistence should support idempotent upsert by semantic/version keys and preserve historical events rather than mutating successful sends away.
+Persist semantic/version keys idempotently and preserve successful historical events.
 
-The public repo includes schemas/migrations/tests only; the real local database is private/gitignored.
+Real database is private/gitignored.
 
-## No new autonomous daemon required
+## No autonomous daemon
 
-V0.2C does not need a background worker, message queue, cron service, LangChain/LangGraph agent, or autonomous email daemon.
+No background worker, queue, cron service, LangChain/LangGraph agent, or autonomous mail daemon is required.
 
-The user and ChatGPT already provide the orchestration loop:
+The operator loop is intentionally:
 
 ```text
-user asks → ChatGPT reads state → connected action → result → Opportunity OS ledger update
+user request
+→ ChatGPT reads exact Opportunity OS state
+→ connected external action
+→ typed result
+→ ledger update
 ```
-
-This is intentionally simpler than building duplicate infrastructure.
 
 ## Testing
 
-CI remains offline and uses fictional data/providers.
-
-Required test areas:
+CI remains offline with fictional providers/data.
 
 ### Contact extraction/resolution
 
-- published email extracted with exact provenance;
-- no guessed email patterns;
+- published email has exact provenance;
+- email guessing is impossible;
 - official HR beats recruiter;
-- recruiter beats manual form only when verified;
-- paid enrichment remains a typed requirement, not an automatic action;
-- no-contact fails closed.
+- verified recruiter beats manual form only when appropriate;
+- paid enrichment remains an external requirement;
+- no contact fails closed.
 
 ### Outreach preparation
 
 - only `HIGH`/`MEDIUM` automatic candidates;
-- `STRETCH` requires explicit promotion;
-- packet opportunity mismatch blocks;
-- missing CV blocks when attachment required;
-- CV byte hash mismatch blocks;
-- allowed/forbidden claims are traceable to packet evidence;
-- unsupported requirement remains gap.
+- stretch requires promotion;
+- packet mismatch blocks;
+- missing CV blocks attachment flow;
+- CV bytes/hash mismatch blocks;
+- allowed/forbidden claims trace to packet evidence;
+- unsupported requirement stays a gap.
 
 ### Draft hashing
 
-- identical semantic draft content produces identical hash;
-- Gmail draft ID/timestamps do not affect semantic hash;
-- recipient/body/subject/reply target/attachment filename/hash changes alter hash;
-- identical filename plus identical bytes produces the same attachment descriptor/hash.
+- same semantic content → same hash;
+- Gmail draft ID/timestamps do not change hash;
+- recipient/subject/body/reply target changes change hash;
+- attachment filename change changes hash;
+- attachment bytes/hash change changes hash;
+- recreated exact semantic draft can preserve hash despite a new provider draft ID.
 
 ### Approval
 
-- approval requires exact draft hash;
-- changed draft invalidates approval;
-- immutable batch manifest approval;
-- adding/removing a draft invalidates batch approval;
-- expired/revoked approval blocks.
+- exact draft hash required;
+- draft mutation invalidates approval;
+- batch manifest immutable;
+- expiry/revocation blocks.
 
-### Send gate/idempotency
+### SendRequest / SendGate
 
-- no approval → no authorization;
-- changed CV → no authorization;
-- already-sent key → no second send;
-- failed provider attempt does not become `SENT`;
-- valid provider receipt records one successful send;
-- different hash does not bypass requisition/company cooldown.
+- valid approval without `SendRequest` blocks;
+- `SendRequest` for different hash blocks;
+- changed CV blocks;
+- already-sent key blocks second send;
+- changed hash cannot bypass requisition/company cooldown;
+- failed provider attempt is not `SENT`;
+- valid provider receipt records exactly one successful send.
 
 ### Privacy/regression
 
-- all V0.1/V0.2A/V0.2B tests remain green;
-- real local ledger/outreach artifacts forbidden from tracked source;
-- fictional public fixtures only;
-- no network required in CI.
+- all V0.1/V0.2A/V0.2B tests stay green;
+- real local state/artifacts cannot be tracked;
+- public fixtures are fictional;
+- CI requires no network.
 
 ## Initial operational slice
 
-The first usable implementation should prioritize the smallest path that can be exercised on real opportunities:
+The first real-use path is intentionally smaller than the complete design:
 
 ```text
-ApplicationPacket
+valid ApplicationPacket
 → published/known verified email
 → OutreachBrief
-→ ChatGPT-created Gmail draft with CV
+→ ChatGPT Gmail draft + exact CV
 → DraftSnapshot
-→ explicit approval
+→ user approval
+→ separate user “send” action / SendRequest
 → SendGate
 → Gmail send
 → SendReceipt + ledger
 ```
 
-Recruiter discovery/enrichment can be layered onto the same contracts immediately after the direct-email path works. This avoids blocking real usage on Apollo integration complexity.
+Recruiter discovery/Apollo enrichment layers onto the same contracts after direct-email workflow works. It must not block the first usable version.
 
 ## Deliberate exclusions
 
 Not V0.2C:
 
-- autonomous bulk email blasting;
-- automatic Gmail draft creation without user request;
-- Gmail OAuth/token implementation inside Opportunity OS;
-- Apollo sequence/campaign automation;
+- autonomous bulk blasting;
+- automatic Gmail drafts without user request;
+- Gmail OAuth/token implementation inside repo;
+- Apollo campaign/sequence automation;
 - paid enrichment without explicit confirmation;
-- guessed recruiter emails;
-- automated browser/ATS form submission;
-- legal/sensitive declaration completion;
+- guessed emails;
+- browser/ATS form submission automation;
 - CAPTCHA bypass;
+- legal/sensitive declarations;
 - automatic acceptance of terms;
-- LLM-generated facts or authority over evidence;
-- rewriting CV facts outside V0.2B validation;
-- target-account scoring implementation (V0.2A2 remains separate/deferred);
-- full outcome analytics/calibration (V0.2D);
-- full compact cross-tool Context Bridge snapshot (V0.2E).
+- LLM-created factual authority;
+- rewriting V0.2B evidence rules;
+- V0.2A2 target-account scoring;
+- full V0.2D learning/calibration;
+- full V0.2E Context Bridge implementation.
 
 ## Success criteria
 
-V0.2C is complete when fictional integration tests can take a valid V0.2B `ApplicationPacket`, resolve the highest-priority permitted contact without guessing, prepare a deterministic evidence-bounded `OutreachBrief`, produce a semantic `DraftSnapshot`, require exact hash-bound human approval, block altered/unverifiable drafts, enforce send idempotency/cooldowns, accept a successful fictional Gmail send receipt, and record an auditable ledger event chain — while no deterministic core service directly calls Gmail/Apollo and all prior radar/CV/privacy tests remain green.
+V0.2C is complete when fictional integration tests can take a valid V0.2B `ApplicationPacket`, resolve the best permitted contact without guessing, prepare a deterministic evidence-bounded `OutreachBrief`, hash an exact `DraftSnapshot`, require exact human approval, separately require a fresh explicit `SendRequest`, block changed/unverifiable drafts, enforce idempotency and cooldown policy, accept only a successful fictional Gmail receipt as `SENT`, and record an auditable ledger chain — while no deterministic core service directly calls Gmail/Apollo and every previous radar/CV/privacy test remains green.
 
-Operationally, the first real-world milestone is reached when ChatGPT can use those contracts to prepare a real application draft with the exact validated CV, let the user review it, send only on explicit approval, and register the result safely.
+The first real-world milestone is reached when ChatGPT can use those contracts to prepare a real Gmail draft with the exact validated CV, let the user review it, send only after explicit approval plus a separate explicit send command, and register the result safely.
