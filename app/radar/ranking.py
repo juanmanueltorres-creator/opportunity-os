@@ -34,6 +34,10 @@ class RadarPolicy:
     fit_weight: float = 0.80
     confidence_weight: float = 0.20
     selection_mode: SelectionMode = "income_first"
+    max_items: int = 20
+    max_per_company: int = 2
+    candidate_lookback_days: int = 30
+    company_role_cooldown_days: int = 0
 
     def __post_init__(self) -> None:
         if not (
@@ -61,6 +65,14 @@ class RadarPolicy:
             raise ValueError("ranking weights must sum to 1")
         if self.selection_mode not in {"career_first", "income_first", "balanced"}:
             raise ValueError("unsupported selection mode")
+        if self.max_items < 1:
+            raise ValueError("max_items must be positive")
+        if self.max_per_company < 1:
+            raise ValueError("max_per_company must be positive")
+        if self.candidate_lookback_days < 1:
+            raise ValueError("candidate_lookback_days must be positive")
+        if self.company_role_cooldown_days < 0:
+            raise ValueError("company_role_cooldown_days cannot be negative")
 
 
 def classify_fit(
