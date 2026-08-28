@@ -9,6 +9,7 @@ from app.radar.models import DerivedValue, OpportunityEnrichment, Requirement
 
 MANDATORY_CUES = (
     "required",
+    "must have",
     "must",
     "mandatory",
     "minimum",
