@@ -101,6 +101,15 @@ class SendGate:
         if ledger.get_send_receipt_by_idempotency_key(key) is not None:
             return _blocked("already_sent")
 
+        key_events = [
+            event
+            for event in ledger.list_events(draft_snapshot.opportunity_id)
+            if event.entity_key == key
+            and event.event_type in {"SEND_ATTEMPTED", "SENT", "SEND_FAILED"}
+        ]
+        if key_events and key_events[-1].event_type == "SEND_ATTEMPTED":
+            return _blocked("send_attempt_unresolved")
+
         return SendAuthorizationResult(
             status="AUTHORIZED",
             authorized=True,
