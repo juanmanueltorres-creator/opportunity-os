@@ -301,26 +301,51 @@ def _requirement_kind(term: str) -> str:
     return "skill"
 
 
+def _supporting_sentence(text: str, start: int, end: int) -> str:
+    left_boundary = max(
+        text.rfind(".", 0, start),
+        text.rfind("!", 0, start),
+        text.rfind("?", 0, start),
+        text.rfind("\n", 0, start),
+    )
+    right_candidates = [
+        index
+        for index in (
+            text.find(".", end),
+            text.find("!", end),
+            text.find("?", end),
+            text.find("\n", end),
+        )
+        if index != -1
+    ]
+    sentence_end = min(right_candidates) + 1 if right_candidates else len(text)
+    return text[left_boundary + 1 : sentence_end].strip()
+
+
 def _extract_published_email_hints(
     opportunity: Opportunity,
 ) -> list[ApplicationContactHint]:
     by_email: dict[str, ApplicationContactHint] = {}
-    for sentence in _sentences(opportunity.description):
-        for match in _EMAIL_RE.finditer(sentence):
-            email = match.group(0).strip().casefold()
-            by_email.setdefault(
-                email,
-                ApplicationContactHint(
-                    kind="PUBLISHED_EMAIL",
-                    value=email,
-                    source_url=opportunity.source_url,
-                    source_field="description",
-                    source_text=sentence,
-                    extraction_method="explicit_rule",
-                    confidence=1.0,
-                    discovered_at=opportunity.discovered_at,
+    description = opportunity.description
+    for match in _EMAIL_RE.finditer(description):
+        email = match.group(0).strip().casefold()
+        by_email.setdefault(
+            email,
+            ApplicationContactHint(
+                kind="PUBLISHED_EMAIL",
+                value=email,
+                source_url=opportunity.source_url,
+                source_field="description",
+                source_text=_supporting_sentence(
+                    description,
+                    match.start(),
+                    match.end(),
                 ),
-            )
+                extraction_method="explicit_rule",
+                confidence=1.0,
+                discovered_at=opportunity.discovered_at,
+            ),
+        )
     return list(by_email.values())
 
 
