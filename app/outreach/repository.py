@@ -262,7 +262,7 @@ class SQLiteOutreachRepository:
                 SELECT payload_json
                 FROM outreach_events
                 WHERE opportunity_id = ?
-                ORDER BY occurred_at ASC, event_id ASC
+                ORDER BY occurred_at ASC, rowid ASC
                 """,
                 (opportunity_id,),
             ).fetchall()
