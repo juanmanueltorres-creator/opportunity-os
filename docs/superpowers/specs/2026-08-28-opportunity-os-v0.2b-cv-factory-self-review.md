@@ -1,24 +1,16 @@
 # Opportunity OS — V0.2B CV Factory Self-Review Clarifications
 
-Date: 2026-08-28  
-Status: normative-review  
+Date: 2026-08-28
+Status: approved-normative
 Applies to: `2026-08-28-opportunity-os-v0.2b-cv-factory-design.md`
 
 This clarification is normative for V0.2B planning and implementation. Where wording in the base design is ambiguous, this file wins.
 
-## 1. What `verified` means
+## 1. Verified means reviewed provenance, not a boolean alone
 
-A boolean alone is not sufficient provenance.
+`MasterFact` must record `verification_method`, timezone-aware `verified_at`, and optional `source_ref`.
 
-`MasterFact` must record:
-
-```text
-verification_method
-verified_at
-source_ref optional
-```
-
-Initial `verification_method` values:
+Initial methods:
 
 ```text
 manual_confirmation
@@ -32,127 +24,85 @@ other_reviewed_source
 
 Rules:
 
-- `verified=true` requires a non-empty `verification_method` and timezone-aware `verified_at`.
-- `source_ref` is mandatory for evidence-backed methods such as repository/document/employment/education/public-profile evidence.
-- `manual_confirmation` is permitted for facts that are legitimately self-attested, such as preferred display name, phone, email, city, or an explicitly reviewed summary wording.
-- `manual_confirmation` does not permit inventing employment, education, certifications, metrics, tools, dates, or external outcomes.
-- Verification records are private candidate data and must not be committed with real values.
+- `verified=true` requires non-empty method and aware timestamp.
+- Evidence-backed methods require `source_ref`.
+- `manual_confirmation` is valid for self-attested identity/contact/location and explicitly reviewed wording.
+- `manual_confirmation` must not establish employment, education, certifications, metrics, tools, dates, or external outcomes.
 
-## 2. Blocked preparation versus prepared packet
+## 2. Blocked preparation is not an ApplicationPacket
 
-A failed preparation must not pretend a PDF exists.
-
-Use:
-
-```text
-PreparationResult
-- status
-- packet optional
-- errors[]
-- warnings[]
-```
-
-`ApplicationPacket` exists only when the CV has passed claim validation and the rendered artifact has been hashed successfully.
-
-Therefore:
+Use `PreparationResult` with status, optional packet, errors, and warnings.
 
 ```text
 PREPARED
-→ packet is present
-→ cv_pdf_path present
-→ cv_sha256 present
-→ packet_sha256 present
+→ packet present
+→ PDF path/hash present
+→ packet hash present
 
-BLOCKED_VALIDATION / BLOCKED_MISSING_FACTS
-→ packet is absent
-→ structured errors/gaps are returned
-→ no fake/null-filled prepared artifact is persisted
+BLOCKED_VALIDATION
+BLOCKED_MISSING_FACTS
+BLOCKED_TRACK_UNAVAILABLE
+BLOCKED_RENDER
+→ packet absent
+→ structured errors/warnings only
 ```
 
-This supersedes any interpretation of the base design that makes `ApplicationPacket.status` carry blocked states.
+No null-filled fake packet is persisted.
 
-## 3. Reproducible hashing
+## 3. Packet hashing is semantic
 
-`packet_sha256` is a content hash, not an execution-instance hash.
-
-Canonical packet-hash input MUST exclude:
+`packet_sha256` excludes execution noise:
 
 ```text
 application_id
 created_at
 cv_pdf_path
 filesystem-specific values
+load timestamps
 ```
 
-It MUST include the semantic preparation inputs/outputs needed to detect a meaningful change, including:
+It includes semantic inputs/outputs:
 
 ```text
-opportunity_snapshot_hash
-selected_intent
-application_track_id
-radar/scoring versions
-master_facts_version
-evidence_catalog_version
-composer_version
-cv_document_version
-renderer_version
-selected_fact_ids[]
-selected_evidence_ids[]
-unresolved_gaps[]
+opportunity snapshot hash
+selected intent and track
+radar/scoring/extractor/alias/taxonomy versions
+master-facts fingerprint
+evidence-catalog fingerprint
+composer/document/renderer versions
+selected fact/evidence IDs
+unresolved gaps
 canonical CVDocumentModel content
 cv_sha256
 ```
 
-Lists whose order is semantically irrelevant must be canonicalized before hashing. Lists whose order is visible in the CV retain order.
+Semantically unordered lists are canonicalized. Visible CV ordering remains significant.
 
-`application_id` is an opaque execution/application identifier and is not an approval token.
+## 4. Deterministic PDF bytes are a tested contract
 
-## 4. Deterministic PDF bytes
+The renderer must not inject current timestamps, random document IDs, machine-specific paths, or unstable metadata. Identical validated document + renderer version + policy should produce stable PDF bytes and `cv_sha256` in CI fixtures.
 
-If V0.2B claims reproducible `cv_sha256`, the renderer must control nondeterministic PDF metadata.
+If a future renderer cannot guarantee stable bytes, the contract must be explicitly revised before implementation; it cannot silently claim determinism.
 
-The renderer must not inject current timestamps, random document IDs, machine-specific paths, or unstable metadata into the PDF bytes.
+## 5. Fixed template labels versus candidate claims
 
-For identical validated `CVDocumentModel` + renderer version + renderer policy, `cv_sha256` should be stable in CI fixtures.
-
-If the chosen PDF library cannot guarantee this, the implementation plan must either configure deterministic metadata explicitly or downgrade the guarantee and separately hash canonical rendered content. It may not silently claim deterministic PDF hashing when the bytes are nondeterministic.
-
-## 5. Renderer-visible text and provenance
-
-The base rule “renderer-visible content must be represented by a validated claim” applies to candidate/application content, not fixed presentation labels.
-
-Allowed unprovenanced fixed template labels include language-specific section headings such as:
+Unprovenanced fixed section labels are allowed:
 
 ```text
 Experience / Experiencia
 Projects / Proyectos
 Education / Educación
 Skills / Habilidades
+Languages / Idiomas
 ```
 
-The following still require provenance-backed structured values:
+Candidate-specific visible content always requires provenance: name, contact, location, headline, summary, employer, title, dates, bullets, project names/descriptions, education, skills, languages/levels, and links.
 
-- candidate name;
-- phone/email/location;
-- headline;
-- summary text;
-- employer/organization names;
-- role titles;
-- dates;
-- bullets;
-- project names/descriptions;
-- education claims;
-- skills;
-- languages/levels;
-- links.
+## 6. Snapshot version identity is a content fingerprint
 
-The renderer may format these values but cannot alter their semantic content.
+`master_facts_version` and `evidence_catalog_version` are canonical content SHA-256 fingerprints, not manually maintained labels alone.
 
-## 6. MasterFacts and EvidenceCatalog version identity
-
-`master_facts_version` and `evidence_catalog_version` are canonical content fingerprints, not manually maintained labels alone.
-
-Recommended representation:
+Recommended wrappers:
 
 ```text
 MasterFactsSnapshot
@@ -166,18 +116,28 @@ EvidenceCatalogSnapshot
 - modules[]
 ```
 
-The content hash excludes filesystem path and load time. Canonical ordering is by stable ID unless visible ordering is explicitly part of the data model.
+Hash excludes filesystem path and load time. Stable-ID ordering is canonical unless visible order is explicitly semantic.
 
-## 7. Minimum evidence rule
+## 7. Minimum truthful-evidence rule
 
-An opportunity can be an excellent radar match and still be impossible to prepare truthfully.
+A strong radar match can still be impossible to prepare truthfully.
 
-Preparation blocks with `insufficient_verified_evidence` only when required CV identity/structure cannot be built truthfully, for example:
+Block with `insufficient_verified_evidence` when required CV identity/structure cannot be built, for example:
 
-- no verified candidate identity/contact facts required by policy;
-- selected application track has no verified experience/project/evidence modules at all;
-- a required section configured by policy has no truthful content.
+- policy-required verified identity/contact facts are missing;
+- selected track has no verified experience/project/evidence module at all;
+- a policy-required section has no truthful content.
 
-An unsupported job requirement by itself is **not** a preparation hard fail. It remains an `unresolved_gap` unless CV policy explicitly declares that requirement a preparation prerequisite.
+A missing posting requirement alone is not a preparation hard fail. It remains an unresolved gap unless policy explicitly declares it a preparation prerequisite.
 
-This prevents the CV factory from inventing facts while also avoiding needless blocking whenever the candidate simply does not satisfy every posting requirement.
+## 8. Track isolation is absolute
+
+Facts/modules are eligible only when the selected application track is explicitly in their `track_ids`. Shared facts must explicitly list every allowed track. No cross-track fallback is permitted to make a CV look fuller.
+
+## 9. Renderer cannot rewrite semantics
+
+Renderer may wrap, paginate, style, and add fixed headings. It cannot paraphrase, translate, shorten, expand, or otherwise change claim meaning. Wording adaptation belongs in composition and must remain approved/provenance-backed.
+
+## 10. V0.2C boundary
+
+`ApplicationPacket` is preparation output only. It is not approval. It does not authorize Gmail drafts, email sending, ATS submission, browser automation, or recruiter contact. Those remain separate reviewed actions in V0.2C.
