@@ -215,6 +215,28 @@ def test_send_gate_blocks_extra_unresolved_recipients(tmp_path, to, cc, bcc) -> 
     assert result.error_code == "outreach_policy_blocked"
 
 
+def test_unresolved_send_attempt_blocks_reauthorization(tmp_path) -> None:
+    repo = _repo(tmp_path)
+    draft = _draft()
+    approval = _approval(draft)
+    _seed_to_approved(repo, approval)
+    request = _request(draft, approval)
+    _register_request(repo, request)
+    authorization = _gate(repo, draft, approval, request)
+    assert authorization.authorized is True
+    mark_send_attempted(
+        authorization=authorization,
+        send_request=request,
+        ledger=repo,
+        now=NOW + timedelta(seconds=30),
+        id_factory=lambda: "attempt-uncertain",
+    )
+
+    second = _gate(repo, draft, approval, request)
+    assert second.authorized is False
+    assert second.error_code == "send_attempt_unresolved"
+
+
 def test_already_sent_idempotency_key_blocks_second_send(tmp_path) -> None:
     repo = _repo(tmp_path)
     draft = _draft()
