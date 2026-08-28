@@ -1,0 +1,19 @@
+{
+  "0-legal-notice": "Fixture modeled on Remotive public API response shape.",
+  "job-count": 1,
+  "jobs": [
+    {
+      "id": 123456,
+      "url": "https://remotive.com/remote-jobs/software-dev/example-geospatial-developer-123456",
+      "title": "Geospatial Developer",
+      "company_name": "Example Mapping Co",
+      "company_logo": "https://example.com/logo.png",
+      "category": "Software Development",
+      "job_type": "full_time",
+      "publication_date": "2026-08-27T12:30:00",
+      "candidate_required_location": "Worldwide",
+      "salary": "$80,000 - $100,000",
+      "description": "<p>Build geospatial tools with Python and web APIs.</p>"
+    }
+  ]
+}
