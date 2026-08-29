@@ -86,7 +86,7 @@ Do **not** add a provider-specific adapter in V0.2E.
 
 Do **not** add a separate operator SQLite database in this slice.
 
-The canonical audit record of an accepted observation is the existing append-only `RelationshipEvent` ledger. Deterministic event IDs and source provenance are sufficient to provide idempotency and auditability without introducing a second event store.
+The canonical audit record of an accepted observation is the existing append-only `RelationshipEvent` ledger. Deterministic event IDs and source provenance provide idempotency and auditability without introducing a second event store.
 
 ### 3.2 Existing domain ownership stays intact
 
@@ -104,6 +104,8 @@ RelationshipService.record(event)
 ```
 
 `preview(event)` performs the same domain validation/projection as `record(event)` but writes nothing.
+
+Repository-level event-order validation must also be reusable in dry-run mode. Preview must not bypass the V0.2D chronological guard merely because no insert occurs.
 
 This prevents preview/import drift.
 
@@ -189,7 +191,7 @@ OperatorObservation
 - account_id: non-empty
 - contact_id: optional
 - observed_at: timezone-aware UTC-normalized datetime
-- reason: optional short normalized fact/reason
+- reason: optional concise normalized fact/reason
 - process_label: optional
 ```
 
@@ -332,9 +334,20 @@ class RelationshipService:
 
 The exact internal return type may remain private to the relationship package, but there must be only one transition implementation.
 
+The relationship repository must expose a read-only chronological validation primitive used by both preview and append. Existing identical event IDs are checked before chronology so an idempotent replay is not misclassified as an out-of-order event.
+
 ### 7.2 Preview validates current state
 
 Preview must validate against the current relationship account/contact projection.
+
+Evaluation order:
+
+1. derive deterministic normalized event;
+2. look up an existing event with the same deterministic `event_id`;
+3. if existing and identical, return `ALREADY_IMPORTED` without running a new transition;
+4. if existing and different, return identity conflict;
+5. otherwise validate event chronology read-only;
+6. run the shared pure relationship projector.
 
 Examples that must be blocked during preview:
 
@@ -507,13 +520,21 @@ source_name
 source_ref
 confirmed_by
 confirmed_at
-imported_at
+processed_at
 status = IMPORTED | ALREADY_IMPORTED
 ```
 
-The receipt is returned to the operator. V0.2E does not introduce a second receipt database: the persisted canonical audit fact is the append-only relationship event.
+`processed_at` means when the current import request was processed. It does **not** claim to be the timestamp of the first historical import.
 
-`receipt_id` is deterministic from the imported event identity plus preview hash so repeated identical imports return a stable receipt identity.
+The persisted canonical audit fact is the append-only relationship event; V0.2E does not add a second receipt database.
+
+`receipt_id` is deterministic from `relationship_event_id` only:
+
+```text
+receipt_id = "opreceipt-" + sha256(relationship_event_id)
+```
+
+Therefore repeated identical imports return the same receipt identity even though `processed_at`, `confirmed_by`, `confirmed_at`, and the current preview hash may differ across operator attempts.
 
 `ObservationImportResult` contains:
 
@@ -545,17 +566,17 @@ These endpoints mutate only local Opportunity OS state after confirmation; they 
 
 ### 12.1 Disabled by default
 
-Operator mutation endpoints must be disabled by default.
+Operator mutation endpoints are disabled by default.
 
-Recommended configuration:
+Configuration:
 
 ```text
 OPPORTUNITY_OPERATOR_IMPORT_ENABLED=false
 ```
 
-When disabled, the operator routes are not exposed or return a stable unavailable response; implementation must choose one behavior and test it consistently.
+When disabled, `/api/v1/operator/...` routes are **not registered** and therefore do not appear in OpenAPI or accept requests.
 
-Enabling the bridge does not automatically enable Gmail, Apollo, web research or any provider adapter.
+When enabled, the two routes are registered. Enabling the bridge does not enable Gmail, Apollo, web research or any provider adapter.
 
 ### 12.2 Relationship storage prerequisite
 
@@ -563,7 +584,7 @@ The bridge requires a writable Relationship Memory repository/service.
 
 A preview or import must not silently create relationship accounts or contacts.
 
-If writable relationship storage is unavailable, return a sanitized `503`-class API error.
+When operator routes are enabled but writable relationship storage is unavailable, the routes return a sanitized HTTP `503` with a stable `relationship_storage_unavailable` detail.
 
 The existing guarantee remains true: read-only relationship queries do not create the SQLite file merely by reading.
 
@@ -574,7 +595,6 @@ Internal details and provider payloads must not leak through API errors.
 Stable error concepts:
 
 ```text
-operator_bridge_disabled
 relationship_storage_unavailable
 unknown_relationship_account
 unknown_or_invalid_contact
@@ -585,7 +605,9 @@ stale_preview
 already_imported
 ```
 
-Map internal `ValueError`/repository details to these public-safe concepts.
+`operator_bridge_disabled` is not an API response because disabled routes are not registered.
+
+Map internal `ValueError`/repository details to public-safe concepts.
 
 No raw SQLite error, email content or external provider response may be returned.
 
@@ -603,7 +625,7 @@ V0.2E must preserve all existing release boundaries and add these invariants:
 8. Raw message bodies/provider payloads are not part of observation contracts.
 9. Source provenance is mandatory.
 10. Re-import is idempotent and conflicting identities fail closed.
-11. Existing relationship chronology guards remain authoritative.
+11. Existing relationship chronology guards remain authoritative in preview and import.
 12. Real provider credentials remain outside the core repository.
 
 ## 15. Testing strategy
@@ -634,7 +656,7 @@ Verify:
 
 ### 15.3 Relationship preview parity
 
-Test that `RelationshipService.preview(event)` and `record(event)` use identical transition rules.
+Test that `RelationshipService.preview(event)` and `record(event)` use identical transition rules and the same chronological validator.
 
 Representative cases:
 
@@ -643,6 +665,7 @@ Representative cases:
 - process close precondition;
 - out-of-order event rejection;
 - contact verification update;
+- identical existing event is recognized before chronology rejection;
 - preview writes nothing.
 
 ### 15.4 Preview hash
@@ -665,18 +688,19 @@ Test:
 - stale preview after relationship state changes => `BLOCKED_STALE_PREVIEW`;
 - invalid transition => `BLOCKED_DOMAIN`;
 - failed import leaves no partial relationship event/state;
-- receipt only exists after successful/already-imported resolution.
+- receipt only exists after successful/already-imported resolution;
+- receipt identity remains stable across identical re-import attempts.
 
 ### 15.6 API
 
 Test:
 
-- operator routes disabled by default;
+- operator routes absent by default and absent from OpenAPI;
 - enabled preview returns redacted result;
 - preview performs no mutation;
 - enabled import requires exact hash;
 - relationship API remains read-only;
-- missing writable relationship storage is sanitized;
+- enabled bridge + missing writable relationship storage returns sanitized `503`;
 - no provider side effects.
 
 ### 15.7 Release/privacy contract
@@ -735,7 +759,7 @@ Once real observations can enter safely, monitoring can detect meaningful change
 V0.2E is complete only if all are true:
 
 1. A provider-neutral `OperatorObservation` can be normalized deterministically.
-2. Preview validates against current relationship state using the same projector as import.
+2. Preview validates against current relationship state using the same projector and chronology guard as import.
 3. Preview produces no writes.
 4. Preview hash changes when either the observation or relevant relationship state changes.
 5. Import requires explicit confirmation of that exact hash.
@@ -746,8 +770,9 @@ V0.2E is complete only if all are true:
 10. Operator bridge has no provider/network dependency.
 11. No full message bodies/raw provider payloads are stored by the bridge.
 12. Existing relationship read API remains read-only.
-13. Operator mutation routes are disabled by default.
-14. Full test suite, compile, diff whitespace and privacy guards pass.
+13. Operator mutation routes are absent by default.
+14. Missing writable relationship storage fails safely when the operator bridge is enabled.
+15. Full test suite, compile, diff whitespace and privacy guards pass.
 
 ## 19. Explicit non-goals
 
