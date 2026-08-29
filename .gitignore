@@ -28,7 +28,7 @@ MANIFEST
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
+#   before PyInstaller builds a package, as to inject version information into it.
 *.manifest
 *.spec
 
@@ -68,7 +68,7 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
+# Sphinx stuff:
 docs/_build/
 
 # PyBuilder
@@ -224,6 +224,9 @@ profile/evidence_catalog.local.yaml
 artifacts/applications/
 state/outreach.local.sqlite3
 artifacts/applications/*/outreach/
+state/relationships.local.sqlite3
+state/relationships.local.sqlite3-*
+artifacts/relationships/*.local.*
 *.db
 *.sqlite
 *.sqlite3
