@@ -93,6 +93,20 @@ class SQLiteRelationshipRepository:
         with self._connect() as conn:
             return self._get_account_conn(conn, account_id)
 
+    def list_accounts(self) -> list[RelationshipAccount]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload_json
+                FROM relationship_accounts
+                ORDER BY account_id ASC
+                """
+            ).fetchall()
+        return [
+            RelationshipAccount.model_validate_json(row["payload_json"])
+            for row in rows
+        ]
+
     def _get_contact_conn(
         self, conn: sqlite3.Connection, contact_id: str
     ) -> CareerContact | None:
