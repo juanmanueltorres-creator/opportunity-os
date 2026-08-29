@@ -14,9 +14,15 @@ from app.models.domain import CandidateProfile, Opportunity, OpportunityAssessme
 from app.radar.models import DailyRadarBatch
 from app.radar.service import RadarSourceError
 from app.radar.sources import ManualOpportunityInput
+from app.relationships.context import (
+    EmptyRelationshipMemory,
+    RelationshipMemory,
+    build_context_snapshot,
+)
+from app.relationships.models import RelationshipContext, RelationshipContextSnapshot
 from app.repositories.opportunities import SQLiteOpportunityRepository
 from app.services.ingestion import ingest
-from app.targets.models import TargetAccountBatch
+from app.targets.models import TargetAccountBatch, TargetRadarRunRequest
 
 
 class IngestionResponse(BaseModel):
@@ -48,6 +54,7 @@ class TargetRadarServiceProtocol(Protocol):
         profile: CandidateProfile,
         *,
         now: datetime,
+        current_reasons: dict[str, str] | None = None,
     ) -> TargetAccountBatch: ...
 
 
@@ -59,8 +66,10 @@ def create_api_router(
     timeout_seconds: float,
     radar_service: RadarServiceProtocol | None = None,
     target_service: TargetRadarServiceProtocol | None = None,
+    relationship_memory: RelationshipMemory | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
+    resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
 
     @router.get("/opportunities", response_model=list[Opportunity])
     def list_opportunities() -> list[Opportunity]:
@@ -131,7 +140,9 @@ def create_api_router(
             ) from exc
 
     @router.post("/targets/radar/run", response_model=TargetAccountBatch)
-    def run_target_radar() -> TargetAccountBatch:
+    def run_target_radar(
+        request: TargetRadarRunRequest | None = None,
+    ) -> TargetAccountBatch:
         if profile is None:
             raise HTTPException(status_code=503, detail="Candidate profile unavailable")
         if target_service is None:
@@ -139,9 +150,42 @@ def create_api_router(
                 status_code=503,
                 detail="Target account registry unavailable",
             )
+        now = datetime.now(timezone.utc)
+        if request is None or not request.current_reasons:
+            return target_service.run(profile, now=now)
         return target_service.run(
             profile,
+            now=now,
+            current_reasons=request.current_reasons,
+        )
+
+    @router.get(
+        "/relationships/context",
+        response_model=RelationshipContextSnapshot,
+    )
+    def list_relationship_context() -> RelationshipContextSnapshot:
+        now = datetime.now(timezone.utc)
+        return build_context_snapshot(
+            resolved_relationship_memory,
+            resolved_relationship_memory.account_ids(),
+            now=now,
+        )
+
+    @router.get(
+        "/relationships/{account_id}/context",
+        response_model=RelationshipContext,
+    )
+    def get_relationship_context(
+        account_id: str,
+        current_reason: str | None = None,
+    ) -> RelationshipContext:
+        normalized_reason = current_reason.strip() if current_reason is not None else None
+        if normalized_reason == "":
+            normalized_reason = None
+        return resolved_relationship_memory.context_for(
+            account_id,
             now=datetime.now(timezone.utc),
+            current_reason=normalized_reason,
         )
 
     return router

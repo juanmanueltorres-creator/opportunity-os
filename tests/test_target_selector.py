@@ -1,20 +1,38 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
+from app.relationships.models import RelationshipContext
 from app.targets.models import TargetAccountAssessment, TargetAccountPolicy
 from app.targets.selector import select_target_batch
 
 NOW = datetime(2026, 8, 29, 12, tzinfo=timezone.utc)
 
 
-class FakeHistory:
-    def __init__(self, values: dict[str, datetime] | None = None) -> None:
-        self.values = values or {}
+def relationship(
+    account_id: str = "example",
+    *,
+    action: str = "PREPARE_SPECULATIVE",
+    cooldown: bool = False,
+) -> RelationshipContext:
+    return RelationshipContext(
+        account_id=account_id,
+        relationship_state="CONTACTED" if cooldown else "UNTOUCHED",
+        cooldown_active=cooldown,
+        open_process=False,
+        usable_contact_count=1,
+        held_contact_count=0,
+        recommended_relationship_action=action,
+        reason="test relationship context",
+        generated_at=NOW,
+    )
 
-    def last_contacted_at(self, account_id: str) -> datetime | None:
-        return self.values.get(account_id)
 
-
-def assessment(account_id: str = "example", *, affinity: float = 80, confidence: float = 90, contact: float = 85) -> TargetAccountAssessment:
+def assessment(
+    account_id: str = "example",
+    *,
+    affinity: float = 80,
+    confidence: float = 90,
+    contact: float = 85,
+) -> TargetAccountAssessment:
     return TargetAccountAssessment(
         account_id=account_id,
         account_name=account_id.title(),
@@ -36,7 +54,7 @@ def test_recent_spontaneous_contact_suppresses_action() -> None:
     batch = select_target_batch(
         [assessment()],
         TargetAccountPolicy(),
-        FakeHistory({"example": NOW - timedelta(days=10)}),
+        {"example": relationship(action="WATCH", cooldown=True)},
         now=NOW,
         profile_fingerprint="profile",
     )
@@ -48,7 +66,7 @@ def test_no_contact_history_can_recommend_prepare_outreach() -> None:
     batch = select_target_batch(
         [assessment()],
         TargetAccountPolicy(),
-        FakeHistory(),
+        {"example": relationship()},
         now=NOW,
         profile_fingerprint="profile",
     )
@@ -59,7 +77,7 @@ def test_weak_contactability_recommends_research_contact() -> None:
     batch = select_target_batch(
         [assessment(contact=20)],
         TargetAccountPolicy(),
-        FakeHistory(),
+        {"example": relationship()},
         now=NOW,
         profile_fingerprint="profile",
     )
@@ -70,7 +88,7 @@ def test_below_threshold_is_watch() -> None:
     batch = select_target_batch(
         [assessment(affinity=50)],
         TargetAccountPolicy(),
-        FakeHistory(),
+        {"example": relationship()},
         now=NOW,
         profile_fingerprint="profile",
     )
@@ -79,9 +97,16 @@ def test_below_threshold_is_watch() -> None:
 
 def test_selector_orders_actionable_first_and_deduplicates() -> None:
     batch = select_target_batch(
-        [assessment("watch", affinity=50), assessment("prepare", affinity=90), assessment("prepare", affinity=70)],
+        [
+            assessment("watch", affinity=50),
+            assessment("prepare", affinity=90),
+            assessment("prepare", affinity=70),
+        ],
         TargetAccountPolicy(max_items=20),
-        FakeHistory(),
+        {
+            "watch": relationship("watch"),
+            "prepare": relationship("prepare"),
+        },
         now=NOW,
         profile_fingerprint="profile",
     )

@@ -47,6 +47,8 @@ jobs:
             'profile/master_facts.local.yaml' \
             'profile/evidence_catalog.local.yaml' \
             'state/outreach.local.sqlite3' \
+            'state/relationships.local.sqlite3*' \
+            'artifacts/relationships/**' \
             'artifacts/applications/**' \
             'artifacts/applications/**/outreach/**' \
             '*.pdf' \

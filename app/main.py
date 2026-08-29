@@ -14,6 +14,12 @@ from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
 from app.radar.sources import SourceRegistry, build_connectors, load_source_config
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
+from app.relationships.context import (
+    EmptyRelationshipMemory,
+    RelationshipMemory,
+    SQLiteRelationshipMemory,
+)
+from app.relationships.repository import SQLiteRelationshipRepository
 from app.repositories.enrichments import SQLiteEnrichmentRepository
 from app.repositories.opportunities import SQLiteOpportunityRepository
 from app.targets.registry import load_target_registry
@@ -45,11 +51,30 @@ def _load_source_registry() -> SourceRegistry:
     return load_source_config(path)
 
 
-def _load_default_target_service() -> TargetRadarService | None:
+def _load_default_relationship_memory() -> RelationshipMemory:
+    path = Path(
+        os.getenv(
+            "OPPORTUNITY_RELATIONSHIPS_PATH",
+            "state/relationships.local.sqlite3",
+        )
+    )
+    if not path.exists():
+        return EmptyRelationshipMemory()
+    repository = SQLiteRelationshipRepository(path)
+    repository.initialize()
+    return SQLiteRelationshipMemory(repository)
+
+
+def _load_default_target_service(
+    relationship_memory: RelationshipMemory,
+) -> TargetRadarService | None:
     path = Path(os.getenv("OPPORTUNITY_TARGETS_PATH", "targets.local.yaml"))
     if not path.exists():
         return None
-    return TargetRadarService(targets=load_target_registry(path))
+    return TargetRadarService(
+        targets=load_target_registry(path),
+        relationship_memory=relationship_memory,
+    )
 
 
 def _taxonomy_path() -> Path | None:
@@ -74,12 +99,21 @@ def create_app(
     enable_default_radar: bool = True,
     target_service: TargetRadarServiceProtocol | None = None,
     enable_default_targets: bool = True,
+    relationship_memory: RelationshipMemory | None = None,
+    enable_default_relationships: bool = True,
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
     )
     resolved_profile = profile if profile is not None else _load_default_profile()
     timeout_seconds = _http_timeout_seconds()
+
+    if relationship_memory is not None:
+        resolved_relationship_memory = relationship_memory
+    elif enable_default_relationships:
+        resolved_relationship_memory = _load_default_relationship_memory()
+    else:
+        resolved_relationship_memory = EmptyRelationshipMemory()
 
     owned_http_client: httpx.AsyncClient | None = None
     resolved_radar_service = radar_service
@@ -108,7 +142,9 @@ def create_app(
 
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
-        resolved_target_service = _load_default_target_service()
+        resolved_target_service = _load_default_target_service(
+            resolved_relationship_memory
+        )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -135,6 +171,7 @@ def create_app(
             timeout_seconds=timeout_seconds,
             radar_service=resolved_radar_service,
             target_service=resolved_target_service,
+            relationship_memory=resolved_relationship_memory,
         )
     )
     return api

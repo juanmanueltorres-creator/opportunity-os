@@ -2,11 +2,11 @@
 
 **Buscar trabajo no debería ser abrir veinte pestañas, mandar el mismo CV a todo y esperar.**
 
-Opportunity OS organiza ese problema como un sistema: encuentra oportunidades, separa lo que sirve para carrera de lo que sirve para ingresos, detecta empresas que vale la pena tener en radar aunque hoy no publiquen una vacante, arma CVs sólo con evidencia verificable y mantiene los contactos bajo reglas explícitas.
+Opportunity OS organiza la búsqueda laboral como un sistema: encuentra oportunidades, separa lo que sirve para carrera de lo que sirve para ingreso inmediato, detecta empresas interesantes aunque hoy no tengan una vacante exacta, arma CVs sólo con evidencia verificable y recuerda qué relaciones ya están abiertas para no empezar de cero cada vez.
 
-Open source, auditable y deliberadamente humano en los pasos que importan.
+Open source, auditable y deliberadamente humano en los pasos que cambian algo afuera del sistema.
 
-> **Estado actual:** prerelease V0.2C (`0.2.0c1`) + Target Accounts V0.2A2. El radar de vacantes, el radar de empresas, la CV Factory y el core de outreach existen. Relationship Memory / Context Bridge es el próximo bloque del roadmap.
+> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C y Relationship Memory / Context Bridge V0.2D.
 
 ## En 30 segundos
 
@@ -21,13 +21,15 @@ normalizar + deduplicar
  ↓                   ↓
 job match       target-account affinity
         ↘           ↙
-¿sirve para carrera, ingreso ahora o seguimiento?
+¿qué sabemos de esta empresa y de la relación previa?
+        ↓
+WATCH / FOLLOW_UP / RESEARCH_CONTACT / PREPARE_SPECULATIVE
         ↓
 usar sólo evidencia real
         ↓
-preparar CV / investigar contacto
+preparar CV / investigar contacto / revisar contexto
         ↓
-revisión humana
+decisión humana
         ↓
 acción explícita + historial auditable
 ```
@@ -36,7 +38,7 @@ No intenta decidir la carrera de una persona con un score mágico. La idea es sa
 
 ## El problema
 
-Una búsqueda laboral real es más complicada que una lista de avisos:
+Una búsqueda laboral real es bastante más complicada que una lista de avisos:
 
 - la misma oferta aparece varias veces;
 - una buena empresa puede no tener una vacante exacta hoy;
@@ -45,9 +47,9 @@ Una búsqueda laboral real es más complicada que una lista de avisos:
 - una IA puede rellenar huecos con experiencia que nunca existió;
 - encontrar un recruiter no significa que haya que escribirle;
 - aprobar un borrador no significa autorizar un envío;
-- si el sistema olvida contactos anteriores, termina repitiendo mensajes y quemando relaciones.
+- si el sistema olvida a quién ya contactaste, vuelve a mandar mensajes, contradice procesos abiertos y quema relaciones útiles.
 
-Opportunity OS trata esas cosas como problemas distintos.
+Opportunity OS trata esos problemas por separado y los conecta con contratos explícitos.
 
 ## Qué hace hoy
 
@@ -57,11 +59,12 @@ Opportunity OS trata esas cosas como problemas distintos.
 | **V0.2A2 — Target Accounts** | ✅ | detecta organizaciones de alta afinidad aunque no exista una vacante activa |
 | **V0.2B — CV Factory** | ✅ | genera CVs ATS usando sólo hechos y evidencia verificados |
 | **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
-| **Relationship Memory / Context Bridge** | 🧭 NEXT | recordar procesos, contactos, cooldowns y razones para retomar una relación |
+| **V0.2D — Relationship Memory / Context Bridge** | ✅ | recuerda contactos, procesos, cooldowns y contexto sin exponer el CRM privado |
+| **Operator Integration** | 🧭 NEXT | traducir observaciones autorizadas de herramientas externas a los contratos del core |
 
 Ver [`ROADMAP.md`](ROADMAP.md).
 
-## Vacante, empresa y contacto no son lo mismo
+## Vacante, empresa y relación no son lo mismo
 
 ```text
 ACTIVE_POSTING
@@ -69,6 +72,9 @@ ACTIVE_POSTING
 
 TARGET_ACCOUNT
 = una organización que vale la pena seguir o investigar
+
+RELATIONSHIP_CONTEXT
+= qué pasó antes con esa empresa, sin convertir el CRM en datos públicos
 
 SPECULATIVE_OUTREACH
 = una recomendación para preparar un contacto espontáneo honesto
@@ -93,9 +99,10 @@ Cada empresa se evalúa con un score distinto al job match:
 
 Las señales numéricas requieren **provenance y fecha de observación**. La falta de una vacante activa baja sólo la señal de contratación; no elimina automáticamente una empresa útil.
 
-El selector puede recomendar únicamente:
+Con V0.2D, el selector puede devolver:
 
 ```text
+FOLLOW_UP
 PREPARE_SPECULATIVE
 RESEARCH_CONTACT
 WATCH
@@ -103,19 +110,81 @@ WATCH
 
 Nunca devuelve `SEND`.
 
-### Cooldown y anti-spam
+## Relationship Memory V0.2D
 
-- cooldown por organización: 30 días por defecto;
-- un contacto reciente fuerza `WATCH`;
-- sin canal usable, prioriza `RESEARCH_CONTACT`;
-- afinidad/confianza insuficientes terminan en `WATCH`;
-- no adivina emails;
-- no diseña ráfagas a varios recruiters;
-- una recomendación no autoriza una acción externa.
+La memoria responde una pregunta muy simple que cambia mucho el comportamiento:
 
-Los targets reales viven en `targets.local.yaml`, que está gitignored. El repo público trae sólo `targets/example_targets.yaml` con fixtures ficticios.
+> **¿qué sabemos ya de nuestra relación con esta empresa antes de recomendar otro contacto?**
 
-## Tres preguntas, no un solo score
+El runtime privado usa SQLite con dos ideas juntas:
+
+```text
+estado actual
++
+eventos append-only
+```
+
+El estado actual permite responder rápido. Los eventos permiten reconstruir qué pasó sin reescribir la historia.
+
+El sistema distingue, entre otras cosas:
+
+- empresa nunca contactada;
+- contacto reciente con cooldown activo;
+- respuesta recibida;
+- proceso de selección abierto;
+- proceso cerrado;
+- contacto verificado y disponible;
+- contacto conocido pero `HELD`, es decir, guardado deliberadamente para no usarlo ahora;
+- relación histórica que hoy aparece como `DORMANT`;
+- razón nueva que justifica considerar un `FOLLOW_UP`.
+
+### `DORMANT` no es una escritura escondida
+
+`DORMANT` es un estado **derivado por el Context Bridge**. No se guarda mágicamente en SQLite porque pasaron algunos días y una lectura nunca modifica el CRM.
+
+Eso importa porque consultar el estado no debería cambiarlo.
+
+### `FOLLOW_UP` no significa “mandar otro mail”
+
+Para recomendar `FOLLOW_UP` hacen falta tres cosas:
+
+1. historial previo real;
+2. timing mínimo cumplido;
+3. una razón nueva y explícita.
+
+Que haya pasado tiempo, por sí solo, no alcanza.
+
+### Context Bridge: útil sin volcar el CRM
+
+El Context Bridge expone una proyección chica y redactada:
+
+```text
+account_id
+relationship_state
+last_contacted_at
+last_reply_at
+cooldown_until
+cooldown_active
+open_process
+usable_contact_count
+held_contact_count
+preferred_contact_type
+last_reason
+recommended_relationship_action
+reason
+```
+
+Por defecto no expone nombres de contactos, emails, cuerpos de mensajes, IDs de proveedor, notas privadas ni payloads crudos.
+
+La base real queda fuera del repo:
+
+```text
+state/relationships.local.sqlite3
+```
+
+Y esta slice **no importa automáticamente Gmail, Apollo ni el CRM**. Tampoco busca contactos, consume créditos o sincroniza proveedores. Ese puente pertenece a Operator Integration.
+
+## La evidencia manda
 
 El radar de vacantes mantiene separadas:
 
@@ -123,21 +192,9 @@ El radar de vacantes mantiene separadas:
 - **INCOME_NOW** — qué tan viable es como ingreso cercano;
 - **CONFIDENCE** — qué tan confiables son los datos usados.
 
-```text
-CAREER       31 / 100
-INCOME_NOW   84 / 100
-CONFIDENCE   90 / 100
-
-Interpretación:
-no es un gran destino de carrera,
-pero puede ser una buena oportunidad de ingreso ahora.
-```
-
 Confidence no es fit. La falta de información baja confianza; no se transforma silenciosamente en un dato negativo sobre la persona.
 
-## La evidencia manda
-
-La **CV Factory** no debería poder escribir algo que el candidato no pueda defender después.
+La **CV Factory** tampoco debería poder escribir algo que el candidato no pueda defender después.
 
 ```text
 Radar-selected opportunity
@@ -194,6 +251,8 @@ Estas garantías forman parte del release contract testeado:
 - **Opportunity OS does not create Gmail drafts automatically.**
 - **Approval is not a send command.**
 
+Relationship Memory tampoco agrega una excepción: recordar que existe un contacto o recomendar `FOLLOW_UP` no autoriza un draft ni un envío.
+
 Un proveedor debe confirmar éxito antes de registrar `SENT`.
 
 ## Probado con uso real, sin vender humo
@@ -212,6 +271,8 @@ oportunidad
 ```
 
 Eso no significa que todo el recorrido esté automatizado end-to-end. El core determinista y las herramientas del operador siguen siendo capas separadas.
+
+V0.2D mejora justamente esa separación: el core ya puede **recordar contexto** sin fingir que sabe sincronizar por sí solo Gmail, Apollo, un vault o cualquier otro proveedor.
 
 ## Arquitectura
 
@@ -234,10 +295,16 @@ PRIVATE / SOURCED TARGET REGISTRY
                 ↓
 account affinity + confidence
                 ↓
-WATCH / RESEARCH_CONTACT / PREPARE_SPECULATIVE
-```
+       RELATIONSHIP CONTEXT
+                ↓
+WATCH / FOLLOW_UP / RESEARCH_CONTACT / PREPARE_SPECULATIVE
 
-La memoria de relaciones será el puente entre ambos recorridos: recordar qué empresa/persona ya fue contactada, cuándo, por qué y con qué resultado.
+PRIVATE RELATIONSHIP SQLITE
+current state + append-only events
+                ↓
+         CONTEXT BRIDGE
+      (redacted projection)
+```
 
 ## Fuentes de vacantes soportadas
 
@@ -280,7 +347,10 @@ OPPORTUNITY_TAXONOMY_PATH=
 OPPORTUNITY_ALIAS_REGISTRY_PATH=data/skill_aliases.yaml
 OPPORTUNITY_SOURCES_PATH=sources.local.yaml
 OPPORTUNITY_TARGETS_PATH=targets.local.yaml
+OPPORTUNITY_RELATIONSHIPS_PATH=state/relationships.local.sqlite3
 ```
+
+Si el archivo de Relationship Memory no existe, Opportunity OS usa una memoria vacía y **no crea la base sólo por arrancar o consultar el API**.
 
 ## HTTP API
 
@@ -293,9 +363,13 @@ POST /api/v1/ingest/remotive
 POST /api/v1/assessments/{opportunity_id}
 POST /api/v1/radar/run
 POST /api/v1/targets/radar/run
+GET  /api/v1/relationships/context
+GET  /api/v1/relationships/{account_id}/context
 ```
 
-V0.2B y V0.2C no agregan endpoints públicos para CV/outreach: esas boundaries siguen locales. V0.2A2 sí expone un endpoint **read-only de recomendación** para Target Accounts; no crea CV, draft, contacto ni envío.
+Las rutas de Relationship Memory son **read-only y redactadas**. V0.2D no expone `POST`, `PUT`, `PATCH` ni `DELETE` para el CRM.
+
+V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundaries siguen locales.
 
 ## Privacy by default
 
@@ -304,11 +378,15 @@ V0.2B y V0.2C no agregan endpoints públicos para CV/outreach: esas boundaries s
 - no CV real tracked por defecto;
 - facts/evidence privados gitignored;
 - targets reales gitignored;
+- Relationship Memory real en storage local/gitignored;
 - datos reales de recruiters/contactos fuera del core público;
+- Context Bridge redactado por defecto;
 - outreach state local;
 - errores externos sanitizados;
 - unknown facts permanecen unknown;
 - claims numéricos/títulos/fechas requieren soporte verificable.
+
+Los ejemplos y tests públicos usan identidades ficticias. El repo publica contratos y comportamiento; no el CRM real de una persona.
 
 ## Diseño y planes
 
@@ -319,9 +397,18 @@ docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-multi-intent-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge-design.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-dormant-state-amendment.md
 
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
+docs/superpowers/plans/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge.md
 ```
+
+## Próximo bloque
+
+**Operator Integration**: adapters autorizados que traduzcan observaciones externas a los contratos existentes, sin meter credenciales ni SDKs de proveedores dentro del core determinista.
+
+No es una licencia para automatizar todo. La misma regla sigue vigente: **observar y preparar puede automatizarse; una acción externa irreversible necesita intención humana inequívoca.**
 
 ## License
 

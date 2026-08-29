@@ -3,19 +3,20 @@ import json
 from datetime import datetime
 
 from app.models.domain import CandidateProfile
+from app.relationships.context import EmptyRelationshipMemory, RelationshipMemory
 from app.targets.models import TargetAccount, TargetAccountBatch, TargetAccountPolicy
 from app.targets.scoring import assess_target_account
-from app.targets.selector import OutreachHistory, select_target_batch
-
-
-class EmptyOutreachHistory:
-    def last_contacted_at(self, account_id: str) -> datetime | None:
-        return None
+from app.targets.selector import select_target_batch
 
 
 def profile_fingerprint(profile: CandidateProfile) -> str:
     payload = profile.model_dump(mode="json", exclude_none=True)
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -24,22 +25,37 @@ class TargetRadarService:
         self,
         *,
         targets: list[TargetAccount],
-        history: OutreachHistory | None = None,
+        relationship_memory: RelationshipMemory | None = None,
         policy: TargetAccountPolicy | None = None,
     ) -> None:
         self._targets = list(targets)
-        self._history = history or EmptyOutreachHistory()
+        self._relationship_memory = relationship_memory or EmptyRelationshipMemory()
         self._policy = policy or TargetAccountPolicy()
 
-    def run(self, profile: CandidateProfile, *, now: datetime) -> TargetAccountBatch:
+    def run(
+        self,
+        profile: CandidateProfile,
+        *,
+        now: datetime,
+        current_reasons: dict[str, str] | None = None,
+    ) -> TargetAccountBatch:
         assessments = [
             assess_target_account(account, profile, now=now)
             for account in self._targets
         ]
+        reasons = current_reasons or {}
+        relationship_contexts = {
+            item.account_id: self._relationship_memory.context_for(
+                item.account_id,
+                now=now,
+                current_reason=reasons.get(item.account_id),
+            )
+            for item in assessments
+        }
         return select_target_batch(
             assessments,
             self._policy,
-            self._history,
+            relationship_contexts,
             now=now,
             profile_fingerprint=profile_fingerprint(profile),
         )
