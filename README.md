@@ -6,7 +6,7 @@ Opportunity OS organiza la búsqueda laboral como un sistema: encuentra oportuni
 
 Open source, auditable y deliberadamente humano en los pasos que cambian algo afuera del sistema.
 
-> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D y Operator Observation Bridge V0.2E.
+> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D, Operator Observation Bridge V0.2E y Gmail Read Adapter V0.2E1.
 
 ## En 30 segundos
 
@@ -62,7 +62,7 @@ Opportunity OS trata esos problemas por separado y los conecta con contratos exp
 | **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
 | **V0.2D — Relationship Memory / Context Bridge** | ✅ | recuerda contactos, procesos, cooldowns y contexto sin exponer el CRM privado |
 | **V0.2E — Operator Observation Bridge** | ✅ | permite previsualizar, confirmar e importar hechos externos normalizados al estado local |
-| **V0.2E1 — Gmail read adapter** | 🧭 NEXT | traducir hechos seleccionados de Gmail a `OperatorObservation` sin importarlos automáticamente |
+| **V0.2E1 — Gmail Read Adapter** | ✅ | traduce evidencia seleccionada de Gmail a `OperatorObservation` sin importarla automáticamente |
 
 Ver [`ROADMAP.md`](ROADMAP.md).
 
@@ -231,7 +231,42 @@ PROCESS_CLOSED
 
 **An imported observation is evidence about what happened; it is not authority to make something happen.**
 
-V0.2E no lee Gmail por sí mismo, no llama Apollo, no hace HTTP desde `app/operator_bridge`, no crea drafts y no manda mensajes. Los provider adapters siguen siendo slices posteriores.
+V0.2E no lee proveedores por sí mismo, no llama Apollo, no hace HTTP desde `app/operator_bridge`, no crea drafts y no manda mensajes. Los adapters permanecen separados del bridge.
+
+## Gmail Read Adapter V0.2E1
+
+V0.2E1 agrega una primera integración real de proveedor sin darle autoridad de escritura.
+
+```text
+selected Gmail message/thread
+        ↓
+Gmail Read Adapter
+        ↓
+OperatorObservation
+        ↓
+STOP
+```
+
+Después, si el operador quiere incorporar ese hecho a la memoria, usa el flujo V0.2E por separado:
+
+```text
+preview → human confirm → import local fact
+```
+
+El adapter sólo consulta un `message_id` o `thread_id` explícitamente seleccionado y conserva metadata mínima: IDs de Gmail, fecha, labels y headers allowlisted. No persiste bodies, raw MIME, attachments ni payloads crudos.
+
+En esta primera versión sólo produce observaciones cuando la evidencia de transporte es fuerte:
+
+- `MESSAGE_SENT`: mensaje confirmado en `SENT`, enviado desde una dirección propia a un destinatario externo;
+- `REPLY_RECEIVED`: thread con un mensaje saliente previo y una respuesta entrante estrictamente posterior.
+
+Los casos ambiguos fallan cerrados. Un asunto `Re:` no alcanza para inventar una respuesta ni un estado de proceso.
+
+**Gmail Read Adapter does not create drafts.**
+**Gmail Read Adapter does not send.**
+**Gmail Read Adapter does not import Relationship Memory.**
+
+La ruta local `POST /api/v1/adapters/gmail/observe` está ausente por defecto y sólo aparece con `OPPORTUNITY_GMAIL_READ_ENABLED=true`. Habilitarla no configura OAuth ni crea un cliente real por arte de magia: el runtime debe inyectar explícitamente un servicio autorizado.
 
 ## La evidencia manda
 
@@ -304,6 +339,8 @@ Relationship Memory tampoco agrega una excepción: recordar que existe un contac
 
 Operator Observation Bridge tampoco agrega una excepción: confirmar un import local no es una aprobación de outreach ni un permiso de envío.
 
+Gmail Read Adapter tampoco agrega una excepción: leer un mensaje o producir un `OperatorObservation` no autoriza una mutación ni un envío.
+
 Un proveedor debe confirmar éxito antes de registrar `SENT`.
 
 ## Probado con uso real, sin vender humo
@@ -323,7 +360,7 @@ oportunidad
 
 Eso no significa que todo el recorrido esté automatizado end-to-end. El core determinista y las herramientas del operador siguen siendo capas separadas.
 
-V0.2D permite recordar contexto. V0.2E agrega un contrato seguro para importar observaciones normalizadas, pero **todavía no sincroniza Gmail, Apollo, un vault ni otro proveedor por sí solo**.
+V0.2D permite recordar contexto. V0.2E agrega un contrato seguro para importar observaciones normalizadas. V0.2E1 puede leer evidencia seleccionada de Gmail, pero **no sincroniza todo el mailbox, no importa automáticamente y no agrega autoridad de envío**.
 
 ## Arquitectura
 
@@ -358,7 +395,9 @@ current state + append-only events
        OPERATOR OBSERVATION BRIDGE
    preview → exact confirm → local import
                 ↑
-   future authorized provider adapters
+        OperatorObservation
+                ↑
+   selected Gmail read-only evidence
 ```
 
 ## Fuentes de vacantes soportadas
@@ -404,11 +443,14 @@ OPPORTUNITY_SOURCES_PATH=sources.local.yaml
 OPPORTUNITY_TARGETS_PATH=targets.local.yaml
 OPPORTUNITY_RELATIONSHIPS_PATH=state/relationships.local.sqlite3
 OPPORTUNITY_OPERATOR_IMPORT_ENABLED=false
+OPPORTUNITY_GMAIL_READ_ENABLED=false
 ```
 
 Si el archivo de Relationship Memory no existe, Opportunity OS usa una memoria vacía y **no crea la base sólo por arrancar o consultar el API**.
 
 Las rutas de Operator Observation Bridge están ausentes por defecto. Activar `OPPORTUNITY_OPERATOR_IMPORT_ENABLED=true` sólo registra el bridge local. No habilita Gmail, Apollo, web research ni ningún proveedor. Si se habilita el bridge pero la base de Relationship Memory no existe, los endpoints operator devuelven `503 relationship_storage_unavailable` sin crearla silenciosamente.
+
+La ruta Gmail Read también está ausente por defecto. `OPPORTUNITY_GMAIL_READ_ENABLED=true` registra únicamente la frontera local read-only; sin un `GmailReadService` autorizado e inyectado responde `503 gmail_read_unavailable`.
 
 ## HTTP API
 
@@ -434,6 +476,12 @@ POST /api/v1/operator/observations/preview
 POST /api/v1/operator/observations/import
 ```
 
+Con `OPPORTUNITY_GMAIL_READ_ENABLED=true`:
+
+```text
+POST /api/v1/adapters/gmail/observe
+```
+
 Las rutas de Relationship Memory siguen siendo **read-only y redactadas**. V0.2E no agrega `POST`, `PUT`, `PATCH` ni `DELETE` bajo `/api/v1/relationships/...`.
 
 V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundaries siguen locales.
@@ -449,6 +497,7 @@ V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundar
 - datos reales de recruiters/contactos fuera del core público;
 - Context Bridge redactado por defecto;
 - `OperatorObservation` no admite body, raw payload ni metadata libre;
+- Gmail Read conserva sólo metadata allowlisted y no persiste bodies/raw MIME/tokens;
 - el bridge no persiste mailbox dumps;
 - outreach state local;
 - errores externos sanitizados;
@@ -470,21 +519,19 @@ docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-relationship-memory-conte
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-dormant-state-amendment.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge-approval-amendment.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter-design.md
 
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge.md
+docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter.md
 ```
 
 ## Próximo bloque
 
-**V0.2E1 — Gmail read adapter**: lectura autorizada y selectiva que traduzca hechos de mensajes/threads elegidos a `OperatorObservation`.
+La siguiente expansión validada es diseñar un **conversation-provider adapter** para CRM personal/profesional. WhatsApp es un **candidato** prioritario, pero todavía no está implementado y debe respetar la misma frontera: observar primero, importar sólo mediante V0.2E y no ganar autoridad de envío por defecto.
 
-No será sincronización automática ni permiso de import. El flujo seguirá siendo:
-
-```text
-Gmail read adapter → OperatorObservation → preview → confirm → import local fact
-```
+También queda pendiente un classifier separado para emails de proceso (`PROCESS_OPENED`, `PROCESS_UPDATED`, `PROCESS_CLOSED`) con política explícita de evidencia/confianza.
 
 La misma regla sigue vigente: **observar y preparar puede automatizarse; una acción externa irreversible necesita intención humana inequívoca.**
 
