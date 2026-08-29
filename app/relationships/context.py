@@ -158,6 +158,7 @@ class SQLiteRelationshipMemory:
         derived_state = account.relationship_state
         if (
             historical
+            and follow_up_age_ok
             and not account.open_process
             and not cooldown_active
             and not (has_follow_up_reason and follow_up_age_ok)
