@@ -7,13 +7,13 @@ from app.targets.service import TargetRadarService
 NOW = datetime(2026, 8, 29, 12, tzinfo=timezone.utc)
 
 
-class EmptyHistory:
-    def last_contacted_at(self, account_id: str):
-        return None
-
-
 def signal(label: str, value: float) -> TargetSignal:
-    return TargetSignal(label=label, value=value, source_note="public fixture", observed_at=NOW)
+    return TargetSignal(
+        label=label,
+        value=value,
+        source_note="public fixture",
+        observed_at=NOW,
+    )
 
 
 def target(target_id: str, capability: str, innovation: float) -> TargetAccount:
@@ -33,8 +33,10 @@ def target(target_id: str, capability: str, innovation: float) -> TargetAccount:
 
 def test_service_scores_registry_and_returns_deterministic_batch() -> None:
     service = TargetRadarService(
-        targets=[target("python-co", "python", 90), target("java-co", "java", 60)],
-        history=EmptyHistory(),
+        targets=[
+            target("python-co", "python", 90),
+            target("java-co", "java", 60),
+        ],
         policy=TargetAccountPolicy(),
     )
     profile = CandidateProfile(
