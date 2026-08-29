@@ -254,13 +254,29 @@ ApplicationPacket
 -> ApprovalRecord
 -> explicit SendRequest
 -> SendGate
--> provider receipt
+-> provider SendReceipt
 -> append-only ledger
 ```
 
 `DraftSnapshot` usa identidad semántica: destinatario, asunto, cuerpo, reply target, attachment y hashes relevantes. IDs de Gmail y timestamps no definen el contenido del draft.
 
 Una modificación material invalida la aprobación anterior.
+
+### Hard release boundaries
+
+Estas frases en inglés son parte del release contract testeado y se mantienen explícitas aunque el resto del README use lenguaje más humano:
+
+- **CV Factory does not send email and does not submit applications.**
+- **Opportunity OS does not create Gmail drafts automatically.** El operador puede crear uno sólo después de una instrucción humana.
+- **Approval is not a send command.**
+
+Los datos privados del CV permanecen fuera del repo público:
+
+```text
+profile/master_facts.local.yaml
+profile/evidence_catalog.local.yaml
+artifacts/applications/<application_id>/cv.pdf
+```
 
 ## Daily selector
 
