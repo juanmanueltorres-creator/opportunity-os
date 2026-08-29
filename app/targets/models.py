@@ -20,7 +20,12 @@ Contactability = Literal[
     "NONE",
     "UNKNOWN",
 ]
-TargetAction = Literal["PREPARE_SPECULATIVE", "RESEARCH_CONTACT", "WATCH"]
+TargetAction = Literal[
+    "FOLLOW_UP",
+    "PREPARE_SPECULATIVE",
+    "RESEARCH_CONTACT",
+    "WATCH",
+]
 
 
 class StrictTargetModel(BaseModel):
