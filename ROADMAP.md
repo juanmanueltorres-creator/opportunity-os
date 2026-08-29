@@ -101,12 +101,12 @@ Relationship Memory no importa automáticamente Gmail, Apollo, el vault ni un CR
 
 ### ✅ V0.2E — Operator Observation Bridge
 
-V0.2E implementa el primer bridge provider-neutral para traer hechos externos autorizados al estado local sin darles autoridad de acción.
+V0.2E implementa el bridge provider-neutral para traer hechos externos autorizados al estado local sin darles autoridad de acción.
 
 Flujo:
 
 ```text
-operator / future adapter
+operator / provider adapter
         ↓
 OperatorObservation
         ↓
@@ -155,22 +155,20 @@ La frontera queda explícita:
 
 > An imported observation is evidence about what happened; it is not authority to make something happen.
 
-Los provider adapters remain future work: V0.2E implementa el enchufe seguro, no Gmail/Apollo sync.
+Los provider-specific adapters permanecen separados de V0.2E: el bridge sigue provider-neutral y continúa siendo la única frontera de preview/confirm/import.
 
----
+### ✅ V0.2E1 — Gmail Read Adapter
 
-## NEXT — V0.2E1 — Gmail read adapter
-
-El siguiente slice debe conectar Gmail en **lectura autorizada y selectiva** sin cambiar el contrato central.
-
-Objetivo:
+V0.2E1 conecta Gmail en **lectura autorizada, selectiva y fail-closed** sin cambiar el contrato central.
 
 ```text
 selected Gmail message/thread
         ↓
-read-only adapter
+Gmail read-only adapter
         ↓
-normalized OperatorObservation
+OperatorObservation
+        ↓
+STOP
         ↓
 V0.2E preview
         ↓
@@ -179,32 +177,74 @@ human confirm
 local import
 ```
 
-Requisitos:
+Implementado:
 
-- leer sólo mensajes/threads explícitamente seleccionados o consultados;
-- no importar automáticamente;
-- no crear drafts;
-- no enviar;
-- no transformar una respuesta ambigua en estado definitivo sin evidencia suficiente;
-- conservar message/thread provenance sin copiar cuerpos completos al core;
-- provider failure no debe alterar Relationship Memory;
-- mantener V0.2E como única frontera de import.
+- exactamente un `message_id` o `thread_id` por selección;
+- `account_id` provisto por el caller; Gmail no adivina la identidad de la empresa;
+- cliente REST con `httpx` y `format=metadata`;
+- allowlist de headers `From`, `To`, `Cc`, `Subject`, `In-Reply-To`, `References`;
+- normalización inmediata que descarta body, snippet, raw MIME, attachments y payloads no permitidos;
+- direcciones de email normalizadas para determinar dirección del mensaje;
+- `MESSAGE_SENT` sólo con evidencia `SENT` + sender propio + destinatario externo;
+- `REPLY_RECEIVED` sólo con outbound previo e inbound estrictamente posterior en el mismo thread;
+- IDs y provenance deterministas de Gmail;
+- errores 401/403/404/429/timeout/payload inválido convertidos en códigos acotados;
+- `external_actions=[]` como invariante;
+- ruta `POST /api/v1/adapters/gmail/observe` ausente por defecto;
+- flag `OPPORTUNITY_GMAIL_READ_ENABLED=false`;
+- sin creación automática de cliente OAuth/credenciales desde `main`;
+- provider failure no altera Relationship Memory;
+- no llama `OperatorBridgeService.import_observation()`;
+- no crea drafts, no envía, no responde y no muta labels/archive/delete;
+- V0.2E permanece como única puerta para importar una observación a memoria.
 
-El adapter debe poder producir hechos como:
+V0.2E1 tampoco clasifica automáticamente mails de proceso como `PROCESS_OPENED`, `PROCESS_UPDATED` o `PROCESS_CLOSED`: esa semántica requiere otra política de evidencia.
 
-- `MESSAGE_SENT` cuando existe evidencia autorizada suficiente;
-- `REPLY_RECEIVED` cuando se observa una respuesta concreta;
-- eventualmente una observación de proceso sólo cuando la clasificación pueda defenderse y siga pasando por preview/confirm.
+---
+
+## NEXT — V0.2E2 — Conversation-provider adapter design
+
+El próximo problema validado es ampliar la memoria de relaciones con conversaciones que hoy viven fuera de Gmail.
+
+**WhatsApp es un provider candidate prioritario**, especialmente para detectar conversaciones profesionales pendientes de respuesta, pero todavía no está implementado.
+
+La próxima fase debe diseñar primero la frontera antes de escribir integración:
+
+- usar una vía oficial/autorizada de WhatsApp cuando exista para la cuenta objetivo;
+- no depender de scraping frágil de WhatsApp Web ni automatización de sesión personal;
+- distinguir mensaje inbound/outbound con provenance suficiente;
+- modelar `NEEDS_REPLY` preferentemente como estado derivado de la cronología, no como permiso de acción;
+- mantener bodies privados y minimizar persistencia de contenido;
+- reutilizar `OperatorObservation` y V0.2E para cualquier import a Relationship Memory;
+- no agregar auto-send por defecto;
+- separar importación histórica explícita de cualquier integración viva futura.
+
+El diseño debe decidir qué puede observarse de WhatsApp personal vs WhatsApp Business Platform sin inventar capacidades ni violar los límites del proveedor.
+
+---
+
+## AFTER — Process-email classifier
+
+Con Gmail read ya separado del bridge, puede evaluarse una clasificación semántica específica para mensajes de proceso:
+
+- candidatura recibida;
+- entrevista propuesta;
+- avance de etapa;
+- rechazo/cierre;
+- actualización explícita de un proceso existente.
+
+La clasificación deberá tener una política visible de evidencia/confidence. Un subject o keyword aislado no alcanza para modificar Relationship Memory.
 
 ---
 
 ## AFTER — Contact/public research adapters
 
-Después del Gmail read adapter pueden evaluarse adapters de:
+Pueden evaluarse adapters de:
 
 - fuentes públicas;
 - páginas oficiales de careers;
 - contact discovery autorizado;
+- Apollo con control explícito de costo/contactos acumulados;
 - private workspace.
 
 Cualquier fuente paga debe tener control explícito de costo. Ningún adapter puede inventar emails, contactos o estados.
@@ -238,7 +278,8 @@ Con Target Accounts, Relationship Memory y observaciones reales entrando de form
 - terminó un cooldown;
 - un proceso abierto lleva demasiado tiempo sin cambio;
 - una fuente cambió o desapareció;
-- una empresa target empezó a contratar una familia de roles relevante.
+- una empresa target empezó a contratar una familia de roles relevante;
+- existe una conversación profesional con respuesta pendiente cuando el provider lo permite de forma defendible.
 
 El principio sigue siendo el mismo: **notificar cuando cambió algo útil**, no generar actividad por generar actividad.
 

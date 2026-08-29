@@ -68,11 +68,11 @@ def test_readme_documents_observe_preview_confirm_boundary() -> None:
     assert "Approval is not a send command" in text
 
 
-def test_roadmap_marks_v02e_done_and_gmail_read_adapter_next() -> None:
+def test_roadmap_keeps_v02e_done_after_gmail_read_release() -> None:
     text = Path("ROADMAP.md").read_text(encoding="utf-8")
     assert "### ✅ V0.2E — Operator Observation Bridge" in text
-    assert "## NEXT — V0.2E1 — Gmail read adapter" in text
-    assert "provider adapters remain future work" in text
+    assert "### ✅ V0.2E1 — Gmail Read Adapter" in text
+    assert "bridge sigue provider-neutral" in text
 
 
 def test_v02e_spec_is_marked_approved() -> None:

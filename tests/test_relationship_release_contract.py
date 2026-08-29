@@ -56,12 +56,12 @@ def test_readme_documents_relationship_memory_without_provider_sync_claims() -> 
     assert "Approval is not a send command" in text
 
 
-def test_roadmap_keeps_v02d_done_after_operator_bridge_release() -> None:
+def test_roadmap_keeps_v02d_done_after_provider_adapter_release() -> None:
     text = Path("ROADMAP.md").read_text(encoding="utf-8")
 
     assert "### ✅ V0.2D — Relationship Memory / Context Bridge" in text
     assert "### ✅ V0.2E — Operator Observation Bridge" in text
-    assert "## NEXT — V0.2E1 — Gmail read adapter" in text
+    assert "### ✅ V0.2E1 — Gmail Read Adapter" in text
     assert "Relationship Memory" in text
     assert "FOLLOW_UP" in text
 
