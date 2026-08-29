@@ -6,7 +6,7 @@ from typing import AsyncIterator
 import httpx
 from fastapi import FastAPI
 
-from app.api.routes import RadarServiceProtocol, create_api_router
+from app.api.routes import RadarServiceProtocol, TargetRadarServiceProtocol, create_api_router
 from app.connectors.base import JobConnector
 from app.models.domain import CandidateProfile
 from app.profiles import load_profile
@@ -16,6 +16,8 @@ from app.radar.sources import SourceRegistry, build_connectors, load_source_conf
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
 from app.repositories.enrichments import SQLiteEnrichmentRepository
 from app.repositories.opportunities import SQLiteOpportunityRepository
+from app.targets.registry import load_target_registry
+from app.targets.service import TargetRadarService
 
 
 def _load_default_profile() -> CandidateProfile | None:
@@ -43,6 +45,13 @@ def _load_source_registry() -> SourceRegistry:
     return load_source_config(path)
 
 
+def _load_default_target_service() -> TargetRadarService | None:
+    path = Path(os.getenv("OPPORTUNITY_TARGETS_PATH", "targets.local.yaml"))
+    if not path.exists():
+        return None
+    return TargetRadarService(targets=load_target_registry(path))
+
+
 def _taxonomy_path() -> Path | None:
     raw = os.getenv("OPPORTUNITY_TAXONOMY_PATH", "").strip()
     return Path(raw) if raw else None
@@ -63,6 +72,8 @@ def create_app(
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
     enable_default_radar: bool = True,
+    target_service: TargetRadarServiceProtocol | None = None,
+    enable_default_targets: bool = True,
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
@@ -95,6 +106,10 @@ def create_app(
     else:
         enrichment_repository = None
 
+    resolved_target_service = target_service
+    if resolved_target_service is None and enable_default_targets:
+        resolved_target_service = _load_default_target_service()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         resolved_repository.initialize()
@@ -119,6 +134,7 @@ def create_app(
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
             radar_service=resolved_radar_service,
+            target_service=resolved_target_service,
         )
     )
     return api
