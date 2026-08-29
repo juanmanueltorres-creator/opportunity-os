@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from pypdf import PdfReader
+from reportlab.lib.pagesizes import A4
 
 from app.cv.models import (
     CVClaim,
@@ -65,6 +66,18 @@ def _invalid_validation() -> ValidationResult:
     )
 
 
+def test_renderer_v2_contract() -> None:
+    renderer = ATSRenderer()
+
+    assert renderer.renderer_version == "ats-pdf-v2"
+    assert renderer.page_size == A4
+    assert renderer.body_font_name == "Helvetica"
+    assert renderer.bold_font_name == "Helvetica-Bold"
+    assert renderer.body_font_size >= 9.0
+    assert renderer.name_font_size >= renderer.body_font_size + 6.0
+    assert renderer.max_pages == 2
+
+
 def test_renderer_rejects_invalid_validation(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="validated"):
         ATSRenderer().render(
@@ -90,7 +103,7 @@ def test_pdf_contains_selectable_candidate_text(tmp_path: Path) -> None:
     assert "PostGIS" in text
     assert artifact.path == str(tmp_path / "cv.pdf")
     assert len(artifact.sha256) == 64
-    assert artifact.renderer_version == "ats-pdf-v1"
+    assert artifact.renderer_version == "ats-pdf-v2"
 
 
 def test_identical_document_produces_identical_pdf_bytes(tmp_path: Path) -> None:
