@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -87,3 +87,45 @@ def test_apply_event_transaction_rolls_back_event_when_projector_fails(tmp_path:
 
     assert repo.get_event("event-rollback") is None
     assert repo.get_account("account-1") is None
+
+
+def test_validate_event_identical_replay_precedes_chronology(tmp_path: Path) -> None:
+    repo = SQLiteRelationshipRepository(tmp_path / "relationships.sqlite3")
+    repo.initialize()
+    event = RelationshipEvent(
+        event_id="event-1",
+        account_id="account-1",
+        kind="CONTACTED",
+        occurred_at=NOW,
+        metadata={"official_channel": "manual"},
+    )
+    repo.append_event(event)
+
+    assert repo.validate_event(event) == "IDENTICAL"
+    assert repo.list_events("account-1") == [event]
+
+
+def test_validate_event_rejects_new_out_of_order_event_without_write(tmp_path: Path) -> None:
+    repo = SQLiteRelationshipRepository(tmp_path / "relationships.sqlite3")
+    repo.initialize()
+    newer = RelationshipEvent(
+        event_id="event-new",
+        account_id="account-1",
+        kind="CONTACTED",
+        occurred_at=NOW,
+        metadata={"official_channel": "manual"},
+    )
+    older = RelationshipEvent(
+        event_id="event-old",
+        account_id="account-1",
+        kind="CONTACTED",
+        occurred_at=NOW - timedelta(days=1),
+        metadata={"official_channel": "manual"},
+    )
+    repo.append_event(newer)
+
+    with pytest.raises(ValueError, match="out-of-order relationship event"):
+        repo.validate_event(older)
+
+    assert repo.get_event("event-old") is None
+    assert repo.list_events("account-1") == [newer]

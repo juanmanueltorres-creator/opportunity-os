@@ -9,6 +9,8 @@ from fastapi import FastAPI
 from app.api.routes import RadarServiceProtocol, TargetRadarServiceProtocol, create_api_router
 from app.connectors.base import JobConnector
 from app.models.domain import CandidateProfile
+from app.operator_bridge.api import create_operator_router
+from app.operator_bridge.service import OperatorBridgeService
 from app.profiles import load_profile
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
@@ -20,6 +22,7 @@ from app.relationships.context import (
     SQLiteRelationshipMemory,
 )
 from app.relationships.repository import SQLiteRelationshipRepository
+from app.relationships.service import RelationshipService
 from app.repositories.enrichments import SQLiteEnrichmentRepository
 from app.repositories.opportunities import SQLiteOpportunityRepository
 from app.targets.registry import load_target_registry
@@ -44,6 +47,15 @@ def _http_timeout_seconds() -> float:
     return timeout
 
 
+def _operator_import_enabled() -> bool:
+    raw = os.getenv("OPPORTUNITY_OPERATOR_IMPORT_ENABLED", "false").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError("OPPORTUNITY_OPERATOR_IMPORT_ENABLED must be boolean")
+
+
 def _load_source_registry() -> SourceRegistry:
     path = Path(os.getenv("OPPORTUNITY_SOURCES_PATH", "sources.local.yaml"))
     if not path.exists():
@@ -51,18 +63,32 @@ def _load_source_registry() -> SourceRegistry:
     return load_source_config(path)
 
 
-def _load_default_relationship_memory() -> RelationshipMemory:
-    path = Path(
+def _relationship_path() -> Path:
+    return Path(
         os.getenv(
             "OPPORTUNITY_RELATIONSHIPS_PATH",
             "state/relationships.local.sqlite3",
         )
     )
+
+
+def _load_default_relationship_memory() -> RelationshipMemory:
+    path = _relationship_path()
     if not path.exists():
         return EmptyRelationshipMemory()
     repository = SQLiteRelationshipRepository(path)
     repository.initialize()
     return SQLiteRelationshipMemory(repository)
+
+
+def _load_operator_bridge_service() -> OperatorBridgeService | None:
+    path = _relationship_path()
+    if not path.exists():
+        return None
+    repository = SQLiteRelationshipRepository(path)
+    repository.initialize()
+    relationships = RelationshipService(repository)
+    return OperatorBridgeService(repository, relationships)
 
 
 def _load_default_target_service(
@@ -101,6 +127,8 @@ def create_app(
     enable_default_targets: bool = True,
     relationship_memory: RelationshipMemory | None = None,
     enable_default_relationships: bool = True,
+    operator_bridge_service: OperatorBridgeService | None = None,
+    enable_operator_import: bool | None = None,
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
@@ -114,6 +142,15 @@ def create_app(
         resolved_relationship_memory = _load_default_relationship_memory()
     else:
         resolved_relationship_memory = EmptyRelationshipMemory()
+
+    operator_enabled = (
+        enable_operator_import
+        if enable_operator_import is not None
+        else _operator_import_enabled()
+    )
+    resolved_operator_bridge_service = operator_bridge_service
+    if operator_enabled and resolved_operator_bridge_service is None:
+        resolved_operator_bridge_service = _load_operator_bridge_service()
 
     owned_http_client: httpx.AsyncClient | None = None
     resolved_radar_service = radar_service
@@ -174,6 +211,8 @@ def create_app(
             relationship_memory=resolved_relationship_memory,
         )
     )
+    if operator_enabled:
+        api.include_router(create_operator_router(resolved_operator_bridge_service))
     return api
 
 
