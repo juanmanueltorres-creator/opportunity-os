@@ -127,3 +127,54 @@ def test_invalid_projection_rolls_back_event_and_state(tmp_path: Path) -> None:
 
     assert repo.get_event("bad-open") is None
     assert repo.get_account("account-1").relationship_state == "UNTOUCHED"
+
+
+def test_preview_projects_same_account_as_record_without_writing(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    service = RelationshipService(repo)
+    original = RelationshipAccount(
+        account_id="account-1",
+        company="Example Co",
+        updated_at=NOW - timedelta(days=1),
+    )
+    service.register_account(original)
+    event = RelationshipEvent(
+        event_id="event-1",
+        account_id="account-1",
+        kind="CONTACTED",
+        occurred_at=NOW,
+        reason="authorized observation",
+        metadata={"official_channel": "manual"},
+    )
+
+    projection = service.preview(event)
+
+    assert projection.account.relationship_state == "CONTACTED"
+    assert repo.get_event("event-1") is None
+    assert repo.get_account("account-1") == original
+
+    recorded = service.record(event)
+    assert recorded == projection.account
+
+
+def test_preview_rejects_process_close_without_open_process(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    service = RelationshipService(repo)
+    service.register_account(
+        RelationshipAccount(
+            account_id="account-1",
+            company="Example Co",
+            updated_at=NOW - timedelta(days=1),
+        )
+    )
+    event = RelationshipEvent(
+        event_id="event-close",
+        account_id="account-1",
+        kind="PROCESS_CLOSED",
+        occurred_at=NOW,
+    )
+
+    with pytest.raises(ValueError, match="PROCESS_CLOSED requires open process"):
+        service.preview(event)
+
+    assert repo.get_event("event-close") is None
