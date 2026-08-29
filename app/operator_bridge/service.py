@@ -21,6 +21,10 @@ from app.relationships.repository import SQLiteRelationshipRepository
 from app.relationships.service import RelationshipProjection, RelationshipService
 
 
+class _StalePreviewError(ValueError):
+    pass
+
+
 def _aware_utc(value: datetime, *, field: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError(f"{field} must be timezone-aware")
@@ -103,6 +107,23 @@ class OperatorBridgeService:
             return None
         return contact
 
+    @staticmethod
+    def _contact_from_projection_state(
+        observation: OperatorObservation,
+        contacts: list[CareerContact],
+    ) -> CareerContact | None:
+        if observation.contact_id is None:
+            return None
+        return next(
+            (
+                contact
+                for contact in contacts
+                if contact.contact_id == observation.contact_id
+                and contact.account_id == observation.account_id
+            ),
+            None,
+        )
+
     def _preview_result(
         self,
         *,
@@ -129,13 +150,17 @@ class OperatorBridgeService:
             state_after=(
                 projection.account.relationship_state
                 if projection is not None
-                else account.relationship_state if status == "ALREADY_IMPORTED" and account is not None else None
+                else account.relationship_state
+                if status == "ALREADY_IMPORTED" and account is not None
+                else None
             ),
             open_process_before=account.open_process if account is not None else None,
             open_process_after=(
                 projection.account.open_process
                 if projection is not None
-                else account.open_process if status == "ALREADY_IMPORTED" and account is not None else None
+                else account.open_process
+                if status == "ALREADY_IMPORTED" and account is not None
+                else None
             ),
             source_type=observation.source_type,
             source_name=observation.source_name,
@@ -290,8 +315,32 @@ class OperatorBridgeService:
                 errors=list(preview.errors),
             )
 
+        def require_same_preview_state(
+            account: RelationshipAccount | None,
+            contacts: list[CareerContact],
+        ) -> None:
+            contact = self._contact_from_projection_state(
+                request.observation,
+                contacts,
+            )
+            current_hash = _preview_sha256(
+                request.observation,
+                event,
+                _state_sha256(account, contact),
+            )
+            if current_hash != request.preview_sha256:
+                raise _StalePreviewError("stale_preview")
+
         try:
-            self.relationships.record(event)
+            self.relationships.record(
+                event,
+                precondition=require_same_preview_state,
+            )
+        except _StalePreviewError:
+            return ObservationImportResult(
+                status="BLOCKED_STALE_PREVIEW",
+                errors=["stale_preview"],
+            )
         except ValueError as exc:
             return ObservationImportResult(
                 status="BLOCKED_DOMAIN",
