@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +13,10 @@ from app.relationships.models import (
 from app.relationships.repository import SQLiteRelationshipRepository
 
 _USABLE_VERIFICATION = {"VERIFIED", "PUBLIC_SOURCE"}
+RelationshipPrecondition = Callable[
+    [RelationshipAccount | None, list[CareerContact]],
+    None,
+]
 
 
 @dataclass(frozen=True)
@@ -235,11 +240,18 @@ class RelationshipService:
             contacts=tuple(next_contacts),
         )
 
-    def record(self, event: RelationshipEvent) -> RelationshipAccount:
+    def record(
+        self,
+        event: RelationshipEvent,
+        *,
+        precondition: RelationshipPrecondition | None = None,
+    ) -> RelationshipAccount:
         def projector(
             account: RelationshipAccount | None,
             contacts: list[CareerContact],
         ) -> tuple[RelationshipAccount, list[CareerContact]]:
+            if precondition is not None:
+                precondition(account, contacts)
             return self._project(event, account, contacts)
 
         _, account = self.repository.apply_event_transaction(event, projector)
