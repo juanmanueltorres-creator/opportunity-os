@@ -1,7 +1,7 @@
 # Opportunity OS V0.2E1 — Gmail Read Adapter
 
 Date: 2026-08-29
-Status: design approved in chat; written spec awaiting review
+Status: approved
 Base: `main` after V0.2E Operator Observation Bridge
 
 ## 1. Purpose
