@@ -247,6 +247,26 @@ class SQLiteRelationshipRepository:
             ).fetchall()
         return [RelationshipEvent.model_validate_json(row["payload_json"]) for row in rows]
 
+    def _latest_event_order_conn(
+        self,
+        conn: sqlite3.Connection,
+        account_id: str,
+    ) -> tuple[object, str] | None:
+        row = conn.execute(
+            """
+            SELECT payload_json
+            FROM relationship_events
+            WHERE account_id = ?
+            ORDER BY occurred_at DESC, event_id DESC
+            LIMIT 1
+            """,
+            (account_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        latest = RelationshipEvent.model_validate_json(row["payload_json"])
+        return latest.occurred_at, latest.event_id
+
     def _append_event_conn(
         self, conn: sqlite3.Connection, event: RelationshipEvent
     ) -> tuple[RelationshipEvent, bool]:
@@ -255,6 +275,11 @@ class SQLiteRelationshipRepository:
             if existing != event:
                 raise ValueError("relationship event_id conflict")
             return existing, False
+
+        latest_order = self._latest_event_order_conn(conn, event.account_id)
+        if latest_order is not None and (event.occurred_at, event.event_id) <= latest_order:
+            raise ValueError("out-of-order relationship event")
+
         conn.execute(
             """
             INSERT INTO relationship_events (
