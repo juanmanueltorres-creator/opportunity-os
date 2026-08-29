@@ -1,18 +1,18 @@
 # Opportunity OS V0.2D — Relationship Memory + Context Bridge Design
 
 Date: 2026-08-29
-Status: review
+Status: approved
 Applies to: V0.2A2 Target Accounts + V0.2C Email Outreach Core
 
 ## 1. Decision
 
-Opportunity OS will add a private relationship-memory subsystem that remembers account-level and contact-level career interactions across runs without giving that memory authority to send email, submit applications, consume enrichment credits, or contact anyone automatically.
+Opportunity OS adds a private relationship-memory subsystem that remembers account-level and contact-level career interactions across runs without giving that memory authority to send email, submit applications, consume enrichment credits, or mutate any external provider.
 
 The subsystem uses a hybrid SQLite design:
 
-1. private current-state records for fast operational reads;
-2. append-only relationship events for auditability and history;
-3. a redacted Context Bridge projection for safe downstream reasoning.
+1. current-state records for fast operational reads;
+2. append-only relationship events for history and auditability;
+3. a redacted Context Bridge projection for Target Accounts and operator-facing reasoning.
 
 The real database lives outside the public repository:
 
@@ -20,62 +20,73 @@ The real database lives outside the public repository:
 state/relationships.local.sqlite3
 ```
 
-The public repository contains only contracts, repository/service code, schema initialization, redacted renderers and fictional fixtures.
+The public repository contains contracts, implementation code, tests, schema initialization and documentation. Real names, contact channels and relationship history remain local/private.
 
 ## 2. Why this exists
 
-Target Accounts can already decide that a company is worth watching or approaching, but V0.2A2 only knows one historical fact:
+Target Accounts can tell us that a company is interesting. That is not enough to decide what to do next.
 
-```text
-last_contacted_at(account_id)
-```
-
-That is not enough for real outreach decisions. The operating system must distinguish situations such as:
+The system must distinguish situations such as:
 
 - the company has never been contacted;
-- a recruiter was contacted recently and the cooldown is active;
-- the recruiter replied and there is an open process;
+- a recruiter was contacted recently and a cooldown is active;
+- the recruiter replied;
+- an active selection process exists;
 - a second technical contact is known but intentionally held back;
-- the prior process closed and a new concrete reason now exists to reconnect;
-- the company is worth watching but no trustworthy contact path exists yet.
+- a previous process closed;
+- a materially new reason exists to prepare a follow-up;
+- no trustworthy contact path is known.
 
-Without this memory, each run can start from zero, duplicate outreach, contradict prior context, or treat a valuable long-term contact as a disposable lead.
+Without this memory, each run can start from zero and repeat outreach that should have been suppressed.
 
 ## 3. Design principles
 
 ### 3.1 Memory informs; it does not authorize
 
-Relationship Memory may recommend or suppress an action. It must never create a Gmail draft, send email, apply to a role, enrich a contact, or mutate an external system.
+Relationship Memory may recommend or suppress an action. It must never:
 
-No relationship action named `SEND` exists in this slice.
+- create a Gmail draft;
+- send email;
+- submit an application;
+- consume Apollo/enrichment credits;
+- search the web;
+- mutate an external provider.
 
-### 3.2 Company state and person state are different
+No relationship action named `SEND` exists in V0.2D.
 
-A company can have an open relationship while one particular contact is held, inactive, stale, or no longer verified.
+### 3.2 Account, contact and event are different things
 
-The system therefore models account relationship, contact directory, and interaction/event history as separate concerns.
+A company can have an open process while one specific contact is held, stale or inactive.
+
+The system therefore separates:
+
+```text
+RelationshipAccount
+CareerContact
+RelationshipEvent
+```
 
 ### 3.3 Real contact data is private
 
-Names, emails, provider message IDs, mailbox bodies, free-form private notes, recruiter histories and private source records must never be committed to the public repository.
+Names, emails, provider IDs, message bodies, source payloads and private notes never appear in the default Context Bridge projection and must not be committed to the public repository.
 
-The Context Bridge is redacted by default and exposes operational facts, not contact PII.
+### 3.4 Events are the audit trail
 
-### 3.4 Append-only history is the audit trail
+Relationship events are append-only. Corrections are represented by later events rather than rewriting earlier history.
 
-Relationship events are immutable once recorded. Corrections are represented by later events, not by editing old history.
+Current-state account/contact rows are mutable projections optimized for reads.
 
-Current-state tables may change because they are projections used for fast reads.
+### 3.5 Idempotency is mandatory
 
-### 3.5 Idempotency is required
+A repeated `event_id` with identical payload returns the stored event unchanged.
 
-Replaying the same external observation or operator action must not create duplicate relationship history when the same `event_id` is supplied.
+A repeated `event_id` with conflicting payload is an integrity error.
 
-## 4. Public domain contracts
+## 4. Domain contracts
 
-The public core defines strict Pydantic contracts with `extra="forbid"` and timezone-aware datetimes.
+All public contracts are strict Pydantic models with `extra="forbid"`. Stored datetimes must be timezone-aware and normalize to UTC.
 
-### 4.1 Contact types
+### 4.1 Contact type
 
 ```text
 RECRUITER
@@ -84,7 +95,7 @@ TECHNICAL
 OTHER
 ```
 
-### 4.2 Contact verification status
+### 4.2 Verification status
 
 ```text
 VERIFIED
@@ -93,7 +104,15 @@ STALE
 UNVERIFIED
 ```
 
-`UNVERIFIED` may be stored for research context but must never be treated as a usable outbound channel. `STALE` is also non-usable until revalidated.
+A usable contact requires:
+
+```text
+active == true
+and disposition == AVAILABLE
+and verification_status in {VERIFIED, PUBLIC_SOURCE}
+```
+
+`STALE` and `UNVERIFIED` are never considered usable outbound channels.
 
 ### 4.3 Contact disposition
 
@@ -103,11 +122,11 @@ HELD
 INACTIVE
 ```
 
-`HELD` means the contact is intentionally known but should not be recommended now. This is different from `INACTIVE`.
+`HELD` means: known and intentionally preserved, but not recommended now.
 
-Example: a company already has an active recruiting conversation, while a senior technical manager is valuable to retain for a future concrete reason. The technical manager is `HELD`, not deleted and not recommended.
+This supports the real operating case where one recruiter channel is active while a valuable technical contact should remain in memory without creating parallel outreach.
 
-### 4.4 Relationship states
+### 4.4 Persisted relationship states
 
 ```text
 UNTOUCHED
@@ -115,23 +134,25 @@ CONTACTED
 REPLIED
 PROCESS_OPEN
 PROCESS_CLOSED
-DORMANT
 ```
 
 Semantics:
 
-- `UNTOUCHED`: no recorded outbound contact;
-- `CONTACTED`: outbound contact recorded, no reply yet;
-- `REPLIED`: reply received but no structured open process recorded;
+- `UNTOUCHED`: no recorded outbound relationship history;
+- `CONTACTED`: outbound contact recorded, no reply/process state supersedes it;
+- `REPLIED`: reply recorded but no structured process is open;
 - `PROCESS_OPEN`: an active recruiting/hiring process exists;
-- `PROCESS_CLOSED`: a known process finished, was rejected, withdrawn or otherwise closed;
-- `DORMANT`: historical relationship exists but no current process and no active expectation of immediate contact.
+- `PROCESS_CLOSED`: a known process finished, was rejected, withdrawn or otherwise closed.
 
-These states describe operational history, not relationship quality.
+### 4.5 Derived context state
 
-### 4.5 Relationship event kinds
+`DORMANT` is **not persisted**.
 
-V0.2D minimum event vocabulary:
+It is produced only by the Context Bridge when historical relationship state exists but there is no active process, no active cooldown and no currently qualifying follow-up reason.
+
+A read operation must never write `DORMANT` or mutate relationship state merely because time passed.
+
+### 4.6 Event kinds
 
 ```text
 CONTACT_VERIFIED
@@ -147,198 +168,165 @@ COOLDOWN_CLEARED
 NOTE_RECORDED
 ```
 
-`NOTE_RECORDED` is allowed only for private storage and must not be copied into the redacted Context Bridge payload.
+`NOTE_RECORDED` remains private and has no direct redacted-state effect.
 
 ## 5. Core models
 
-### 5.1 CareerContact
+### CareerContact
 
 ```text
-CareerContact
-- contact_id
-- account_id
-- person
-- role
-- contact_type
-- verification_status
-- verification_source optional
-- observed_at
-- disposition: AVAILABLE | HELD | INACTIVE
-- channel_kind optional
-- channel_value optional
-- active
+contact_id
+account_id
+person
+role
+contact_type
+verification_status
+verification_source optional
+observed_at
+disposition
+channel_kind optional
+channel_value optional
+active
 ```
 
-`channel_value` can contain an email or other private contact detail. It is excluded from the default Context Bridge projection.
+`person`, `channel_value` and private source details never enter the redacted Context Bridge.
 
-A contact is usable only when:
+### RelationshipAccount
 
 ```text
-active == true
-and disposition == AVAILABLE
-and verification_status in {VERIFIED, PUBLIC_SOURCE}
+account_id
+company
+relationship_state
+last_contacted_at optional
+last_reply_at optional
+cooldown_until optional
+open_process
+process_label optional
+last_reason optional
+preferred_next_contact_id optional
+updated_at
 ```
 
-### 5.2 RelationshipAccount
+`preferred_next_contact_id` may point only to an active, available contact belonging to the same account.
+
+### RelationshipEvent
 
 ```text
-RelationshipAccount
-- account_id
-- company
-- relationship_state
-- last_contacted_at optional
-- last_reply_at optional
-- cooldown_until optional
-- open_process
-- process_label optional
-- last_reason optional
-- preferred_next_contact_id optional
-- updated_at
+event_id
+account_id
+contact_id optional
+kind
+occurred_at
+reason optional
+source_ref optional
+metadata map<string,string>
 ```
 
-`preferred_next_contact_id` may point only to a usable contact belonging to the same account.
-
-### 5.3 RelationshipEvent
+### RelationshipContext
 
 ```text
-RelationshipEvent
-- event_id
-- account_id
-- contact_id optional
-- kind
-- occurred_at
-- reason optional
-- source_ref optional
-- metadata map<string,string>
+account_id
+relationship_state
+last_contacted_at optional
+last_reply_at optional
+cooldown_until optional
+cooldown_active
+open_process
+usable_contact_count
+held_contact_count
+preferred_contact_type optional
+last_reason optional
+recommended_relationship_action
+reason
+generated_at
 ```
 
-Events are append-only and idempotent by `event_id`.
+This model is the public/redacted boundary.
 
-### 5.4 RelationshipContext
-
-This is the redacted account-level projection consumed by Target Accounts and operator-facing context summaries.
+### RelationshipContextSnapshot
 
 ```text
-RelationshipContext
-- account_id
-- relationship_state
-- last_contacted_at optional
-- last_reply_at optional
-- cooldown_until optional
-- cooldown_active
-- open_process
-- usable_contact_count
-- held_contact_count
-- preferred_contact_type optional
-- last_reason optional
-- recommended_relationship_action
-- reason
-- generated_at
+generated_at
+accounts[]
 ```
-
-It must not contain contact names, email addresses, provider message IDs, mailbox bodies, private free-form notes or raw source payloads.
 
 ## 6. Storage architecture
 
-V0.2D uses SQLite via stdlib `sqlite3`; no new runtime dependency is required.
+V0.2D uses stdlib `sqlite3`; no new database dependency is required.
 
-Default private path:
+Default path:
 
 ```text
 OPPORTUNITY_RELATIONSHIPS_PATH=state/relationships.local.sqlite3
 ```
 
-The repository creates three logical stores.
+Tables:
 
-### 6.1 `relationship_accounts`
+### `relationship_accounts`
 
-Current account-level operational state. Primary key: `account_id`.
+Current account projection keyed by `account_id`.
 
-It stores the strict serialized `RelationshipAccount` plus indexed fields needed for common reads such as `relationship_state`, `last_contacted_at`, `cooldown_until` and `open_process`.
+### `relationship_contacts`
 
-### 6.2 `relationship_contacts`
+Current private contact directory keyed by `contact_id`, indexed by account/disposition.
 
-Current private contact directory. Primary key: `contact_id`.
+### `relationship_events`
 
-Index by `account_id` and disposition.
+Append-only event history keyed by `event_id`, indexed by account/time and contact/time.
 
-### 6.3 `relationship_events`
+## 7. Transaction model
 
-Append-only history. Primary key: `event_id`.
+Relationship writes go through `RelationshipService`.
 
-Indexes:
-
-```text
-(account_id, occurred_at, event_id)
-(contact_id, occurred_at, event_id)
-```
-
-A repeated `event_id` with identical payload returns the stored event unchanged. A repeated `event_id` with conflicting payload is an integrity error.
-
-## 7. Update model and consistency
-
-Relationship writes go through a `RelationshipService`; callers do not directly coordinate account/contact/event mutations.
-
-For every accepted relationship event, the service performs one logical SQLite transaction:
+For an accepted event:
 
 ```text
 validate event
 → append event idempotently
-→ update contact state if needed
+→ update contact projection if needed
 → update account projection
 → commit
 ```
 
-If any step fails, the transaction rolls back.
+If any projection step fails, the transaction rolls back, including the newly inserted event.
 
-The append-only event is the audit record; current state is the operational projection.
+## 8. Transition semantics
 
-### 7.1 State transition precedence
+### PROCESS_OPEN protection
 
-`PROCESS_OPEN` is protected while `open_process=true`: ordinary `CONTACTED` or `REPLIED` events update timestamps/history but cannot downgrade the account out of `PROCESS_OPEN`.
+While `open_process=true`, later `CONTACTED` and `REPLIED` events may update timestamps/history but cannot downgrade the account out of `PROCESS_OPEN`.
 
-Once `PROCESS_CLOSED` is recorded, a later `CONTACTED` event may begin a new outreach cycle and move the account to `CONTACTED`. A later `PROCESS_OPENED` begins a new process and moves it to `PROCESS_OPEN`.
+### CONTACT_VERIFIED
 
-`DORMANT` is a derived/explicit resting state for historical relationships and is never created merely because a timer elapsed inside a read operation; a service transition or explicit maintenance action records it.
+Requires an existing account/contact relationship and updates verification metadata without changing account relationship state.
 
-### 7.2 Required event effects
+### CONTACT_HELD
 
-- `CONTACT_VERIFIED`
-  - requires `contact_id`;
-  - inserts or updates that contact with current verification metadata;
-  - does not change account relationship state by itself.
-- `CONTACT_HELD`
-  - requires an existing contact belonging to the account;
-  - sets disposition to `HELD`;
-  - clears `preferred_next_contact_id` when it points to that contact.
-- `CONTACT_RELEASED`
-  - requires an active held contact belonging to the account;
-  - moves it back to `AVAILABLE` only if its verification state is usable.
-- `CONTACTED`
-  - requires a usable contact or an explicitly documented official account-level channel;
-  - updates `last_contacted_at`;
-  - sets `CONTACTED` unless an open process is already active;
-  - may set/refresh cooldown through policy.
-- `REPLIED`
-  - updates `last_reply_at`;
-  - sets `REPLIED` unless an open process is already active.
-- `PROCESS_OPENED`
-  - sets `relationship_state=PROCESS_OPEN` and `open_process=true`.
-- `PROCESS_UPDATED`
-  - requires `open_process=true` and preserves `PROCESS_OPEN`.
-- `PROCESS_CLOSED`
-  - requires `open_process=true`;
-  - sets `relationship_state=PROCESS_CLOSED` and `open_process=false`.
-- `COOLDOWN_SET`
-  - sets a timezone-aware `cooldown_until >= occurred_at`.
-- `COOLDOWN_CLEARED`
-  - clears the account cooldown.
-- `NOTE_RECORDED`
-  - changes no public/redacted state by itself.
+Requires a contact belonging to the account, sets it to `HELD`, and clears `preferred_next_contact_id` if necessary.
 
-Invalid transitions fail closed with sanitized errors.
+### CONTACT_RELEASED
 
-## 8. Relationship policy
+Requires an active held contact with usable verification and returns it to `AVAILABLE`.
+
+### CONTACTED
+
+Requires a usable contact or an explicitly documented official account-level channel. Updates `last_contacted_at` and applies the relationship cooldown policy.
+
+### REPLIED
+
+Updates `last_reply_at`; preserves `PROCESS_OPEN` when a process is active.
+
+### PROCESS_OPENED / PROCESS_UPDATED / PROCESS_CLOSED
+
+- `PROCESS_OPENED` sets `PROCESS_OPEN` and `open_process=true`;
+- `PROCESS_UPDATED` requires an open process and preserves it;
+- `PROCESS_CLOSED` requires an open process and sets `PROCESS_CLOSED`, `open_process=false`.
+
+### COOLDOWN_SET / COOLDOWN_CLEARED
+
+A set cooldown must be timezone-aware and not earlier than the event timestamp. Explicit stored cooldowns are authoritative until replaced or cleared.
+
+## 9. Relationship policy
 
 Defaults:
 
@@ -348,29 +336,11 @@ follow_up_min_days = 5
 stale_contact_days = 180
 ```
 
-These values guide recommendations only. They are not automated send schedules.
+These values guide recommendations only. They are not automated schedules.
 
-An explicitly stored `cooldown_until` is authoritative over a newly calculated default until cleared or replaced by a later `COOLDOWN_SET` event.
+## 10. Context Bridge recommendation precedence
 
-## 9. Target Accounts integration
-
-V0.2A2 currently depends on:
-
-```python
-OutreachHistory.last_contacted_at(account_id) -> datetime | None
-```
-
-V0.2D replaces this narrow dependency with:
-
-```python
-RelationshipMemory.context_for(account_id, *, now) -> RelationshipContext
-```
-
-Target selection remains deterministic and side-effect free.
-
-### 9.1 Recommended action precedence
-
-Relationship state is applied before ordinary target-account affinity/action rules:
+The Context Bridge computes relationship-level action before Target Accounts applies ordinary affinity thresholds.
 
 ```text
 open process
@@ -379,147 +349,170 @@ open process
 cooldown active
     -> WATCH
 
-PROCESS_CLOSED or DORMANT + explicit new reason + follow-up age satisfied
+historical relationship + explicit new reason + follow-up timing satisfied
     -> FOLLOW_UP
 
-usable_contact_count == 0
+no usable contact + one or more HELD contacts
+    -> WATCH
+
+no usable contact
     -> RESEARCH_CONTACT
 
-usable contacts exist but relevant candidates are intentionally HELD
-    -> WATCH
-
-high affinity + confidence + no blocking history
+usable contact + no relationship blocker
     -> PREPARE_SPECULATIVE
-
-otherwise
-    -> WATCH
 ```
 
-`FOLLOW_UP` means “history exists and there is a defensible reason to prepare a follow-up.” It does not create or send one.
+`FOLLOW_UP` means “there is enough context to prepare a follow-up.” It does not create or send one.
 
-The selector must never return `SEND`.
+## 11. New-reason rule
 
-## 10. New-reason rule
+Time alone never creates a follow-up recommendation.
 
-A prior relationship does not become eligible for `FOLLOW_UP` simply because time passed.
-
-A follow-up candidate requires at least one explicit current reason, for example:
+A `FOLLOW_UP` candidate needs historical context, the minimum timing gate and a concrete current reason, such as:
 
 - a newly published relevant role;
-- a meaningful new company hiring signal;
-- a recruiter reply requesting future contact;
-- cooldown expiry plus a materially new capability/evidence point;
-- a previously open process changing state in a way that invites follow-up.
+- a meaningful hiring signal change;
+- a prior reply explicitly inviting future contact;
+- a materially new capability/evidence point;
+- a process-state change that creates a legitimate next step.
 
-The reason is a short structured/operator-provided string stored as `last_reason` and/or event reason with provenance when available.
+A generated justification is not evidence by itself.
 
-No LLM-generated justification is treated as evidence by itself.
+## 12. Target Accounts integration
 
-## 11. Context Bridge
+V0.2D replaces the narrow historical interface:
 
-The bridge produces a compact, deterministic summary for operator/ChatGPT use without loading the full private database into context.
-
-### 11.1 Snapshot contract
-
-```text
-RelationshipContextSnapshot
-- generated_at
-- accounts[]
+```python
+last_contacted_at(account_id)
 ```
 
-Each account item contains only redacted `RelationshipContext` fields.
+with:
 
-### 11.2 Human-readable rendering
-
-A renderer may produce:
-
-```text
-TARGET RELATIONSHIPS
-- example-co: PROCESS_OPEN | last contact 2026-08-20 | cooldown active | WATCH
-- sample-labs: DORMANT | verified contact available | new reason: backend role | FOLLOW_UP
-- demo-industrial: UNTOUCHED | no verified contact | RESEARCH_CONTACT
+```python
+RelationshipMemory.context_for(account_id, *, now, current_reason=None)
 ```
 
-The renderer must not include private contact names or addresses by default.
+Target Accounts then combines relationship action with account affinity/confidence.
 
-Company display names may be joined from the target registry; the relationship context itself remains keyed by stable `account_id`.
-
-## 12. API boundary
-
-V0.2D may expose read-only local API endpoints:
+Allowed final actions:
 
 ```text
-GET /api/v1/relationships/{account_id}/context
+WATCH
+FOLLOW_UP
+RESEARCH_CONTACT
+PREPARE_SPECULATIVE
+```
+
+The selector never returns `SEND`.
+
+When Relationship Memory is not configured, `EmptyRelationshipMemory` is neutral and preserves the pre-V0.2D Target Accounts behavior.
+
+## 13. API boundary
+
+Read-only local endpoints:
+
+```text
 GET /api/v1/relationships/context
+GET /api/v1/relationships/{account_id}/context
 ```
 
-Responses use redacted context models only.
+They expose only redacted `RelationshipContext` data.
 
-The API does not expose contact channels, emails, notes or event metadata containing private payloads.
+V0.2D exposes no relationship `POST`, `PUT`, `PATCH` or `DELETE` endpoint.
 
-Relationship mutations remain internal/local service calls in this slice. External connector ingestion belongs to Operator Integration.
+## 14. Missing-storage behavior
 
-## 13. Import boundary
+If `OPPORTUNITY_RELATIONSHIPS_PATH` does not exist:
 
-V0.2D does not automatically import the existing private Markdown CRM, Gmail, Apollo, or GitHub vault data.
+- health and ordinary radar routes continue working;
+- the app uses `EmptyRelationshipMemory`;
+- the missing DB is not created merely by startup or read-only API access.
 
-The current CRM is a product-research source used to validate the domain model.
+If an existing relationship database is configured, the SQLite repository may initialize its schema before use.
 
-A later operator/import adapter may translate authorized external observations into `RelationshipEvent` and `CareerContact` writes.
+## 15. Context Bridge privacy
 
-## 14. Privacy and public/private separation
+The redacted projection must not contain:
 
-Public repo:
+- contact names;
+- email addresses/contact channel values;
+- provider message/thread IDs;
+- mailbox bodies;
+- private notes;
+- raw external payloads.
 
-- strict models;
+Human-readable rendering is likewise redacted.
+
+## 16. Import boundary
+
+V0.2D does **not** automatically import:
+
+- the existing private Markdown CRM;
+- Gmail;
+- Apollo;
+- GitHub vault data;
+- web research.
+
+Those systems are product-research inputs and future operator sources, not runtime dependencies of Relationship Memory.
+
+A later authorized adapter may translate external observations into `CareerContact`/`RelationshipEvent` writes.
+
+## 17. Public/private separation
+
+Public repository:
+
+- strict contracts;
 - SQLite repository/service implementation;
-- fictional fixtures;
-- tests;
-- redacted context rendering;
-- API contracts.
+- Context Bridge implementation;
+- tests and fictitious examples;
+- read-only API contracts;
+- design/plan documents.
 
 Private runtime:
 
-- `state/relationships.local.sqlite3`;
-- real contact names and channels;
-- source references that reveal personal data;
-- private notes;
+- `state/relationships.local.sqlite3` and sidecars;
+- real contact names/channels;
+- private source references;
 - provider IDs;
-- imported CRM/Gmail history.
+- mailbox-derived history;
+- private notes.
 
-`.gitignore` and CI privacy guards must cover the relationship database and any generated private snapshot artifact.
+`.gitignore` and CI guards must cover the relationship database and generated relationship artifacts.
 
-## 15. Failure behavior
+## 18. Failure behavior
 
-- missing relationship DB/config: Target Accounts continues with an empty-memory implementation rather than breaking health or ordinary radar routes;
-- malformed private data: fail closed for the affected relationship read/write and return sanitized local/API errors;
-- naive datetimes: reject;
-- contact belonging to another account: reject;
-- preferred contact not usable: reject;
-- duplicate event ID with identical stored event: return stored event idempotently;
-- duplicate event ID with conflicting payload: reject as integrity conflict;
-- context generation must never expose raw private payloads during errors.
+Fail closed for:
 
-## 16. Testing strategy
+- naive datetimes;
+- cross-account contact references;
+- unusable preferred contacts;
+- invalid process transitions;
+- past cooldown timestamps;
+- duplicate event IDs with conflicting payload;
+- malformed existing private relationship state.
 
-All implementation tasks follow TDD.
+Errors must not expose raw private payloads.
 
-Required test groups:
+## 19. Testing strategy
 
-1. strict model validation and timezone rules;
-2. SQLite initialization and private path behavior;
-3. contact/account CRUD with cross-account guards;
-4. append-only event idempotency and conflicting-ID rejection;
-5. transition semantics for verification/contact/reply/process/cooldown/held states;
-6. protection against accidental `PROCESS_OPEN` downgrade;
-7. transaction rollback on invalid projection update;
-8. redacted Context Bridge output;
-9. Target Accounts integration and action precedence;
-10. `FOLLOW_UP` requiring explicit new reason plus minimum age;
-11. API privacy tests proving no email/contact name/private note fields leak;
-12. full regression suite, compile, whitespace check and private-file guard.
+Required coverage:
 
-## 17. Explicit non-goals
+1. strict models and timezone rules;
+2. SQLite initialization and persistence;
+3. contact/account guards;
+4. append-only idempotency/conflicting event IDs;
+5. transaction rollback;
+6. verification/contact/reply/process/cooldown/held transitions;
+7. `PROCESS_OPEN` downgrade protection;
+8. `DORMANT` derivation without mutation;
+9. Context Bridge redaction;
+10. `FOLLOW_UP` history + reason + timing gate;
+11. Target Accounts relationship precedence;
+12. read-only API and missing-DB fallback;
+13. release/privacy/docs contracts;
+14. full regression suite, compile, whitespace and private-file guards.
+
+## 20. Explicit non-goals
 
 V0.2D does not:
 
@@ -530,53 +523,55 @@ V0.2D does not:
 - consume Apollo credits;
 - discover contacts automatically;
 - scrape mailbox history;
-- import the private Markdown CRM automatically;
+- auto-import a private CRM;
 - schedule follow-ups;
 - notify users in the background;
 - rank humans by relationship value;
-- publish real contacts in the repository.
+- publish real contacts.
 
-## 18. Success criteria
+## 21. Success criteria
 
 The slice is complete when:
 
-1. Opportunity OS can persist and retrieve a private company/contact relationship without publishing PII;
-2. every relationship change can be represented by an append-only auditable event;
-3. the system can represent “known but held” contacts explicitly;
-4. Target Accounts can distinguish untouched, cooldown, replied/open-process, held-contact, dormant and closed-process situations;
-5. `FOLLOW_UP` is recommended only when historical context, minimum timing and a concrete new reason all allow it;
-6. redacted context can be consumed without loading full CRM history;
-7. no relationship-memory path can draft, send, apply, enrich, or mutate an external provider;
-8. the full existing suite remains green.
+1. private account/contact relationship state persists locally;
+2. every accepted relationship change has append-only event history;
+3. known-but-held contacts are represented explicitly;
+4. open processes cannot be accidentally downgraded;
+5. `DORMANT` is derived without writes;
+6. `FOLLOW_UP` requires history, timing and a concrete reason;
+7. Target Accounts uses Relationship Context without gaining external side effects;
+8. the read-only Context Bridge exposes no contact PII;
+9. missing memory degrades safely;
+10. the full existing suite stays green.
 
-## 19. Dependency direction
+## 22. Dependency direction
 
 ```text
 Target Accounts
       ↓ reads
-Relationship Context protocol
+RelationshipMemory / RelationshipContext
       ↑
-Relationship Service
+RelationshipService
       ↑
-SQLite Relationship Repository
+SQLiteRelationshipRepository
 
 Operator Integration (later)
       ↓ writes authorized observations
-Relationship Service
+RelationshipService
 ```
 
-Relationship Memory must not import Gmail/Apollo connector SDKs or depend on operator tooling.
+`app/relationships/` must not import Gmail/Apollo SDKs or depend on operator tooling.
 
-## 20. Roadmap after V0.2D
+## 23. Roadmap after V0.2D
 
-After Relationship Memory + Context Bridge is implemented, the next architectural block remains Operator Integration:
+The next architectural block is **Operator Integration**:
 
 ```text
 core deterministic state
 ↕
 authorized operator adapters
 ↕
-Gmail / contact discovery / public research
+Gmail / contact discovery / public research / private workspaces
 ```
 
-Only that later slice should automate translating external provider observations into the relationship-memory contracts defined here.
+Only that later slice should translate authorized external provider observations into the contracts defined here. External action authorization remains separate.
