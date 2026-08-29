@@ -6,6 +6,8 @@ from typing import AsyncIterator
 import httpx
 from fastapi import FastAPI
 
+from app.adapters.gmail_read.api import create_gmail_read_router
+from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import RadarServiceProtocol, TargetRadarServiceProtocol, create_api_router
 from app.connectors.base import JobConnector
 from app.models.domain import CandidateProfile
@@ -54,6 +56,15 @@ def _operator_import_enabled() -> bool:
     if raw in {"0", "false", "no", "off", ""}:
         return False
     raise ValueError("OPPORTUNITY_OPERATOR_IMPORT_ENABLED must be boolean")
+
+
+def _gmail_read_enabled() -> bool:
+    raw = os.getenv("OPPORTUNITY_GMAIL_READ_ENABLED", "false").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError("OPPORTUNITY_GMAIL_READ_ENABLED must be boolean")
 
 
 def _load_source_registry() -> SourceRegistry:
@@ -129,6 +140,8 @@ def create_app(
     enable_default_relationships: bool = True,
     operator_bridge_service: OperatorBridgeService | None = None,
     enable_operator_import: bool | None = None,
+    gmail_read_service: GmailReadService | None = None,
+    enable_gmail_read: bool | None = None,
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
@@ -151,6 +164,12 @@ def create_app(
     resolved_operator_bridge_service = operator_bridge_service
     if operator_enabled and resolved_operator_bridge_service is None:
         resolved_operator_bridge_service = _load_operator_bridge_service()
+
+    gmail_read_enabled = (
+        enable_gmail_read
+        if enable_gmail_read is not None
+        else _gmail_read_enabled()
+    )
 
     owned_http_client: httpx.AsyncClient | None = None
     resolved_radar_service = radar_service
@@ -213,6 +232,8 @@ def create_app(
     )
     if operator_enabled:
         api.include_router(create_operator_router(resolved_operator_bridge_service))
+    if gmail_read_enabled:
+        api.include_router(create_gmail_read_router(gmail_read_service))
     return api
 
 
