@@ -16,6 +16,7 @@ from app.radar.service import RadarSourceError
 from app.radar.sources import ManualOpportunityInput
 from app.repositories.opportunities import SQLiteOpportunityRepository
 from app.services.ingestion import ingest
+from app.targets.models import TargetAccountBatch
 
 
 class IngestionResponse(BaseModel):
@@ -41,6 +42,15 @@ class RadarServiceProtocol(Protocol):
     ) -> Opportunity: ...
 
 
+class TargetRadarServiceProtocol(Protocol):
+    def run(
+        self,
+        profile: CandidateProfile,
+        *,
+        now: datetime,
+    ) -> TargetAccountBatch: ...
+
+
 def create_api_router(
     *,
     repository: SQLiteOpportunityRepository,
@@ -48,6 +58,7 @@ def create_api_router(
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
     radar_service: RadarServiceProtocol | None = None,
+    target_service: TargetRadarServiceProtocol | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
@@ -118,5 +129,19 @@ def create_api_router(
                 status_code=502,
                 detail="Radar sources unavailable",
             ) from exc
+
+    @router.post("/targets/radar/run", response_model=TargetAccountBatch)
+    def run_target_radar() -> TargetAccountBatch:
+        if profile is None:
+            raise HTTPException(status_code=503, detail="Candidate profile unavailable")
+        if target_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Target account registry unavailable",
+            )
+        return target_service.run(
+            profile,
+            now=datetime.now(timezone.utc),
+        )
 
     return router

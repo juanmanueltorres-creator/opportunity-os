@@ -1,0 +1,25 @@
+targets:
+  - id: example-industrial
+    name: Example Industrial Co
+    website: https://example.com
+    sectors: [manufacturing]
+    role_families: [operations, data]
+    capability_tags: [operations, analytics]
+    proximity_bucket: CITY_WIDE
+    scale_stability_signal:
+      label: large established organization
+      value: 90
+      source_url: https://example.com/about
+      observed_at: 2026-08-28T15:00:00Z
+    innovation_signal:
+      label: public digital transformation program
+      value: 80
+      source_url: https://example.com/innovation
+      observed_at: 2026-08-28T15:00:00Z
+    contactability: GENERAL_CV
+    application_channel: https://example.com/careers
+    hiring_signal:
+      label: careers portal available
+      value: 50
+      source_url: https://example.com/careers
+      observed_at: 2026-08-28T15:00:00Z

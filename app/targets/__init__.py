@@ -1,0 +1,1 @@
+"""Target-account radar domain."""
