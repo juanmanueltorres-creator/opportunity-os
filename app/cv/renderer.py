@@ -4,11 +4,12 @@ import hashlib
 from html import escape
 from pathlib import Path
 
+from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
 
 from app.cv.models import CVDocumentModel, RenderedCVArtifact, ValidationResult
 
@@ -52,7 +53,17 @@ class DeterministicCanvas(canvas.Canvas):
 
 
 class ATSRenderer:
-    renderer_version = "ats-pdf-v1"
+    renderer_version = "ats-pdf-v2"
+    page_size = A4
+    body_font_name = "Helvetica"
+    bold_font_name = "Helvetica-Bold"
+    body_font_size = 9.8
+    name_font_size = 18.0
+    role_font_size = 11.5
+    section_font_size = 11.0
+    metadata_font_size = 9.0
+    max_pages = 2
+    accent_hex = "#173B57"
 
     def render(
         self,
@@ -72,10 +83,10 @@ class ATSRenderer:
         story = self._build_story(document)
         doc = SimpleDocTemplate(
             str(temp),
-            pagesize=A4,
+            pagesize=self.page_size,
             leftMargin=42,
             rightMargin=42,
-            topMargin=36,
+            topMargin=34,
             bottomMargin=36,
             title="CV",
             author="",
@@ -92,41 +103,66 @@ class ATSRenderer:
         )
 
     def _build_story(self, document: CVDocumentModel) -> list[object]:
+        accent = HexColor(self.accent_hex)
         body = ParagraphStyle(
-            "CVBody",
-            fontName="Helvetica",
-            fontSize=9.5,
-            leading=12,
+            "CVBodyV2",
+            fontName=self.body_font_name,
+            fontSize=self.body_font_size,
+            leading=12.8,
+            textColor=HexColor("#222222"),
+            alignment=TA_LEFT,
+            spaceAfter=4,
+        )
+        name = ParagraphStyle(
+            "CVNameV2",
+            fontName=self.bold_font_name,
+            fontSize=self.name_font_size,
+            leading=20,
+            textColor=accent,
+            alignment=TA_LEFT,
+            spaceAfter=2,
+        )
+        role = ParagraphStyle(
+            "CVRoleV2",
+            fontName=self.bold_font_name,
+            fontSize=self.role_font_size,
+            leading=14,
+            textColor=accent,
             alignment=TA_LEFT,
             spaceAfter=3,
         )
-        headline = ParagraphStyle(
-            "CVHeadline",
-            fontName="Helvetica-Bold",
-            fontSize=11,
-            leading=13,
+        metadata = ParagraphStyle(
+            "CVMetadataV2",
+            fontName=self.body_font_name,
+            fontSize=self.metadata_font_size,
+            leading=11.5,
+            textColor=HexColor("#444444"),
             alignment=TA_LEFT,
-            spaceAfter=3,
+            spaceAfter=2,
         )
         section = ParagraphStyle(
-            "CVSection",
-            fontName="Helvetica-Bold",
-            fontSize=10.5,
-            leading=12,
+            "CVSectionV2",
+            fontName=self.bold_font_name,
+            fontSize=self.section_font_size,
+            leading=13,
+            textColor=accent,
             alignment=TA_LEFT,
-            spaceBefore=7,
-            spaceAfter=3,
+            spaceBefore=9,
+            spaceAfter=4,
         )
         bullet = ParagraphStyle(
-            "CVBullet",
+            "CVBulletV2",
             parent=body,
-            leftIndent=10,
-            firstLineIndent=-6,
+            leftIndent=11,
+            firstLineIndent=-7,
+            spaceAfter=3.5,
         )
 
         claims_by_section = {
-            name: [claim for claim in document.claims if claim.section == name]
-            for name in SECTION_ORDER
+            section_name: [
+                claim for claim in document.claims if claim.section == section_name
+            ]
+            for section_name in SECTION_ORDER
         }
 
         story: list[object] = []
@@ -138,17 +174,35 @@ class ATSRenderer:
             if section_name != "headline":
                 label = LABELS[document.language].get(section_name)
                 if label:
-                    story.append(Paragraph(escape(label), section))
+                    story.append(Paragraph(escape(label).upper(), section))
 
             for claim in claims:
-                style = headline if section_name == "headline" else body
+                style = body
                 prefix = ""
-                if claim.kind == "bullet":
+                if section_name == "headline":
+                    if claim.kind == "identity":
+                        style = name
+                    elif claim.kind == "headline":
+                        style = role
+                    elif claim.kind in {"contact", "location", "link"}:
+                        style = metadata
+                    else:
+                        style = body
+                elif claim.kind == "bullet":
                     style = bullet
                     prefix = "• "
                 story.append(Paragraph(prefix + escape(claim.text), style))
 
             if section_name == "headline":
                 story.append(Spacer(1, 4))
+                story.append(
+                    HRFlowable(
+                        width="100%",
+                        thickness=0.65,
+                        color=accent,
+                        spaceBefore=1,
+                        spaceAfter=5,
+                    )
+                )
 
         return story
