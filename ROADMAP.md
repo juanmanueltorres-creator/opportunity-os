@@ -4,13 +4,11 @@ Opportunity OS no apunta a ser un autopilot que “consigue trabajo”. Apunta a
 
 La regla para agregar features es simple:
 
-> automatizar lo repetitivo, conservar evidencia, y dejar la decisión humana donde una acción cambia algo afuera del sistema.
+> automatizar lo repetitivo, conservar evidencia y dejar la decisión humana donde una acción cambia algo afuera del sistema.
 
 ## Estado actual
 
 ### ✅ V0.2A — Intelligent Radar
-
-Ya implementado.
 
 - ingesta desde fuentes públicas y manual import;
 - normalización y deduplicación;
@@ -21,18 +19,13 @@ Ya implementado.
 
 ### ✅ V0.2A2 — Target Accounts
 
-Implementado en esta slice.
-
 - `TargetAccount` separado de `Opportunity`;
 - registry YAML público/privado con validación estricta;
-- señales de afinidad con provenance y fecha de observación;
 - score independiente de capability/sector, proximity, scale/stability, innovation, contactability y hiring;
-- selección del mejor candidate track sin mezclar evidencia entre tracks;
+- selección del mejor candidate track sin mezclar evidencia;
 - confidence sensible a freshness;
-- cooldown por organización;
-- recomendaciones `WATCH`, `RESEARCH_CONTACT` y `PREPARE_SPECULATIVE`;
-- endpoint read-only `POST /api/v1/targets/radar/run`;
-- ejemplos públicos ficticios y `targets.local.yaml` privado/gitignored.
+- ejemplos públicos ficticios y `targets.local.yaml` privado/gitignored;
+- endpoint de recomendación `POST /api/v1/targets/radar/run` sin efectos externos.
 
 La semántica permanece separada:
 
@@ -51,8 +44,6 @@ Target Accounts no agrega `SEND`, no crea CVs, no consume créditos de Apollo y 
 
 ### ✅ V0.2B — CV Factory
 
-Ya implementado.
-
 - facts y evidence privados/verificados;
 - selección de evidencia por track;
 - `ClaimValidator` fail-closed;
@@ -61,8 +52,6 @@ Ya implementado.
 - guardas para que proyectos, empleos, métricas y tecnologías no se mezclen ni inventen.
 
 ### ✅ V0.2C — Email Outreach Core
-
-Ya implementado.
 
 - resolución de contacto permitido;
 - `OutreachBrief`;
@@ -74,89 +63,99 @@ Ya implementado.
 - ledger append-only;
 - privacy guards.
 
-El flujo del operador ya fue probado en uso real, pero la integración end-to-end entre el core determinista y las herramientas externas todavía puede hacerse más directa.
+El flujo del operador ya fue probado en uso real, pero el core no presupone integración automática con proveedores externos.
+
+### ✅ V0.2D — Relationship Memory / Context Bridge
+
+Relationship Memory evita que cada corrida empiece de cero.
+
+- storage privado SQLite: `state/relationships.local.sqlite3`;
+- estado actual de cuenta/contactos separado de eventos append-only;
+- eventos idempotentes por `event_id` y conflictos fail-closed;
+- estados persistidos `UNTOUCHED`, `CONTACTED`, `REPLIED`, `PROCESS_OPEN`, `PROCESS_CLOSED`;
+- `DORMANT` derivado por lectura, nunca persistido por el Context Bridge;
+- contactos `AVAILABLE`, `HELD` e `INACTIVE`;
+- un contacto `HELD` puede conservarse sin recomendar usarlo mientras existe otro canal activo;
+- `PROCESS_OPEN` no se degrada por un contacto o reply posterior;
+- cooldown explícito por relación;
+- `FOLLOW_UP` requiere historia, timing mínimo y una razón nueva concreta;
+- Context Bridge redactado: no expone nombres, emails, bodies, provider IDs ni notas privadas;
+- Target Accounts consume `RelationshipContext` antes de recomendar acción;
+- endpoints locales read-only:
+  - `GET /api/v1/relationships/context`
+  - `GET /api/v1/relationships/{account_id}/context`;
+- si la DB no existe, el sistema usa memoria vacía y no crea el archivo por una lectura.
+
+Acciones posibles tras combinar afinidad + memoria:
+
+```text
+WATCH
+FOLLOW_UP
+RESEARCH_CONTACT
+PREPARE_SPECULATIVE
+```
+
+Ninguna equivale a `SEND`.
+
+Relationship Memory no importa automáticamente Gmail, Apollo, el vault ni un CRM existente. Esos datos reales permanecen privados y sólo pueden entrar mediante una futura integración autorizada.
 
 ---
 
-## NEXT — Relationship memory / Context Bridge
+## NEXT — Operator integration
 
-Este bloque surge de una limitación práctica: descubrir un buen contacto sirve poco si el sistema olvida al día siguiente que ya se habló con esa persona o empresa.
-
-La memoria real debe ser **privada** y responder preguntas operativas simples:
-
-- ¿ya contactamos a esta empresa?;
-- ¿por qué canal?;
-- ¿qué rol o intención motivó el contacto?;
-- ¿hubo respuesta?;
-- ¿hay un proceso abierto?;
-- ¿hasta cuándo corre el cooldown?;
-- ¿hay otro contacto técnico valioso que conviene guardar pero no usar todavía?;
-- ¿apareció una razón nueva y concreta para retomar la conversación?
-
-Contrato privado de referencia:
-
-```text
-CareerContact
-- company
-- person
-- role
-- contact_type
-- verification_status
-- verification_source
-- observed_at
-- affinity_reason
-- last_contacted_at
-- cooldown_until
-- relationship_state
-- notes
-```
-
-Los emails reales, nombres de contactos, mailbox exports, procesos y notas privadas **no pertenecen al repositorio público**.
-
-El core público puede definir contratos y fixtures ficticios. La instancia real debe vivir en storage local/privado.
-
-### Integración con Target Accounts
-
-El selector V0.2A2 ya acepta una abstracción `OutreachHistory.last_contacted_at(account_id)` y aplica cooldown. El próximo slice debe reemplazar esa memoria mínima por un contexto más rico sin darle autoridad para enviar nada.
-
-```text
-empresa detectada
-        ↓
-¿hay proceso/contacto previo?
-        ↓
-SÍ -> leer estado + cooldown + última razón
-NO -> resolver canal de contacto
-        ↓
-recomendar WATCH / FOLLOW_UP / RESEARCH_CONTACT / PREPARE
-```
-
-La memoria no autoriza acciones externas. Sólo evita repetición, contradicciones y spam.
-
----
-
-## AFTER — Operator integration
-
-El core ya representa `ApplicationPacket`, drafts, approvals, send gates y receipts. Falta cerrar mejor el puente con herramientas reales sin romper esa separación.
+Ahora el core ya sabe representar oportunidades, targets, evidencia, drafts, approvals, receipts y memoria de relaciones. El siguiente problema es conectar observaciones reales **sin destruir esas fronteras**.
 
 Objetivo:
 
 ```text
-core determinista
-↕
-operator / connected tools
-↕
-Gmail, contact discovery, public research
+Gmail / contact discovery / public research / private workspace
+                       ↓
+              authorized adapter
+                       ↓
+          normalized observation/event
+                       ↓
+            deterministic core state
 ```
 
-El operador puede ejecutar una acción externa sólo después de una intención humana inequívoca.
+El adapter debería poder traducir hechos autorizados, por ejemplo:
 
-No se planea meter credenciales de Gmail/Apollo dentro del core ni convertir proveedores externos en dependencias obligatorias.
+- “este mensaje fue enviado y el proveedor lo confirmó”;
+- “este recruiter respondió”;
+- “este proceso cambió de estado”;
+- “este contacto fue verificado en esta fecha”;
+- “apareció una nueva vacante que constituye una razón nueva”.
+
+Pero debe conservar estas reglas:
+
+- no copiar credenciales al core;
+- no convertir Gmail/Apollo en dependencias obligatorias;
+- no inventar contactos ni estados;
+- no consumir créditos sin control explícito;
+- no traducir una observación ambigua en una acción irreversible;
+- idempotencia y provenance para cada evento importado;
+- fallas de un proveedor no deben corromper la memoria local.
+
+### Primer slice recomendado
+
+Empezar por **importación explícita de observaciones**, no por autopilot.
+
+```text
+operator obtiene dato autorizado
+        ↓
+preview normalizado
+        ↓
+humano confirma importación
+        ↓
+RelationshipService / Outreach ledger
+```
+
+Eso da mucho valor sin convertir Opportunity OS en una campaña automática.
 
 ---
 
-## LATER — Monitoring y follow-up
+## AFTER — Monitoring y follow-up
 
-Con Target Accounts implementado y relationship memory como próximo bloque, el sistema podrá producir recordatorios útiles en vez de más volumen:
+Con Target Accounts y Relationship Memory ya implementados, el sistema puede producir recordatorios útiles en vez de más volumen:
 
 - apareció una vacante nueva en una empresa de alta afinidad;
 - terminó un cooldown;
@@ -165,6 +164,23 @@ Con Target Accounts implementado y relationship memory como próximo bloque, el 
 - una empresa target empezó a contratar una familia de roles relevante.
 
 El principio sigue siendo el mismo: **notificar cuando cambió algo útil**, no generar actividad por generar actividad.
+
+`FOLLOW_UP` seguirá significando “hay una razón defendible para preparar una continuación”, nunca “mandar automáticamente otro mensaje”.
+
+---
+
+## LATER — Mejoras de producto
+
+Después de cerrar el bridge con operadores reales, pueden evaluarse:
+
+- vistas/resúmenes diarios que combinen vacantes, targets y relationships;
+- motivos estructurados para follow-up;
+- adapters adicionales de fuentes públicas;
+- reporting de pipeline sin exponer PII;
+- export/import local y portable del estado privado;
+- mejor observabilidad de freshness/provenance.
+
+No son promesas de release; deben entrar sólo si el uso real demuestra valor.
 
 ---
 
@@ -178,7 +194,8 @@ Opportunity OS no tiene como objetivo:
 - inventar experiencia o “optimizar” claims falsos;
 - comprar/enriquecer contactos sin control de costo;
 - mandar campañas masivas de cold email;
-- publicar el perfil privado, CRM o historial de una persona.
+- publicar el perfil privado, CRM o historial de una persona;
+- convertir el paso del tiempo en permiso automático para contactar de nuevo.
 
 ## Cómo leer este roadmap
 
