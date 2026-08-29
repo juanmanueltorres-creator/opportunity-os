@@ -6,7 +6,7 @@ Opportunity OS organiza la búsqueda laboral como un sistema: encuentra oportuni
 
 Open source, auditable y deliberadamente humano en los pasos que cambian algo afuera del sistema.
 
-> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C y Relationship Memory / Context Bridge V0.2D.
+> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D y Operator Observation Bridge V0.2E.
 
 ## En 30 segundos
 
@@ -47,7 +47,8 @@ Una búsqueda laboral real es bastante más complicada que una lista de avisos:
 - una IA puede rellenar huecos con experiencia que nunca existió;
 - encontrar un recruiter no significa que haya que escribirle;
 - aprobar un borrador no significa autorizar un envío;
-- si el sistema olvida a quién ya contactaste, vuelve a mandar mensajes, contradice procesos abiertos y quema relaciones útiles.
+- si el sistema olvida a quién ya contactaste, vuelve a mandar mensajes, contradice procesos abiertos y quema relaciones útiles;
+- una observación externa no debería poder modificar estado sin mostrar antes exactamente qué produciría.
 
 Opportunity OS trata esos problemas por separado y los conecta con contratos explícitos.
 
@@ -60,7 +61,8 @@ Opportunity OS trata esos problemas por separado y los conecta con contratos exp
 | **V0.2B — CV Factory** | ✅ | genera CVs ATS usando sólo hechos y evidencia verificados |
 | **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
 | **V0.2D — Relationship Memory / Context Bridge** | ✅ | recuerda contactos, procesos, cooldowns y contexto sin exponer el CRM privado |
-| **Operator Integration** | 🧭 NEXT | traducir observaciones autorizadas de herramientas externas a los contratos del core |
+| **V0.2E — Operator Observation Bridge** | ✅ | permite previsualizar, confirmar e importar hechos externos normalizados al estado local |
+| **V0.2E1 — Gmail read adapter** | 🧭 NEXT | traducir hechos seleccionados de Gmail a `OperatorObservation` sin importarlos automáticamente |
 
 Ver [`ROADMAP.md`](ROADMAP.md).
 
@@ -182,7 +184,54 @@ La base real queda fuera del repo:
 state/relationships.local.sqlite3
 ```
 
-Y esta slice **no importa automáticamente Gmail, Apollo ni el CRM**. Tampoco busca contactos, consume créditos o sincroniza proveedores. Ese puente pertenece a Operator Integration.
+Y esta slice **no importa automáticamente Gmail, Apollo ni el CRM**. Tampoco busca contactos, consume créditos o sincroniza proveedores.
+
+## Operator Observation Bridge V0.2E
+
+V0.2E agrega una frontera provider-neutral para traer un hecho autorizado al estado local sin darle autoridad al proveedor sobre el dominio.
+
+```text
+Observe → preview → confirm → import local fact
+```
+
+El flujo concreto es:
+
+```text
+OperatorObservation
+        ↓
+normalización determinista
+        ↓
+ObservationPreview
+        ↓
+preview_sha256 exacto
+        ↓
+confirmación humana de ese hash
+        ↓
+RelationshipEvent
+        ↓
+Relationship Memory
+```
+
+El preview es un **dry-run** contra el estado actual y usa las mismas reglas de transición y cronología que el import real. No escribe cuentas, contactos ni eventos.
+
+La confirmación queda ligada al hash exacto de la observación normalizada y del estado relevante. Si el estado cambia antes del primer import, el preview viejo queda inválido. Un reintento exactamente idéntico después de un import exitoso devuelve `ALREADY_IMPORTED` sin duplicar el evento. Reutilizar la misma identidad con otra semántica falla cerrado como conflicto.
+
+Los hechos soportados en esta slice son:
+
+```text
+CONTACT_VERIFIED
+MESSAGE_SENT
+REPLY_RECEIVED
+PROCESS_OPENED
+PROCESS_UPDATED
+PROCESS_CLOSED
+```
+
+`MESSAGE_SENT` sólo puede convertirse en historial de relación `CONTACTED`. No fabrica un receipt del Outreach Core ni saltea la cadena draft → approval → SendRequest → SendGate → provider success.
+
+**An imported observation is evidence about what happened; it is not authority to make something happen.**
+
+V0.2E no lee Gmail por sí mismo, no llama Apollo, no hace HTTP desde `app/operator_bridge`, no crea drafts y no manda mensajes. Los provider adapters siguen siendo slices posteriores.
 
 ## La evidencia manda
 
@@ -253,6 +302,8 @@ Estas garantías forman parte del release contract testeado:
 
 Relationship Memory tampoco agrega una excepción: recordar que existe un contacto o recomendar `FOLLOW_UP` no autoriza un draft ni un envío.
 
+Operator Observation Bridge tampoco agrega una excepción: confirmar un import local no es una aprobación de outreach ni un permiso de envío.
+
 Un proveedor debe confirmar éxito antes de registrar `SENT`.
 
 ## Probado con uso real, sin vender humo
@@ -272,7 +323,7 @@ oportunidad
 
 Eso no significa que todo el recorrido esté automatizado end-to-end. El core determinista y las herramientas del operador siguen siendo capas separadas.
 
-V0.2D mejora justamente esa separación: el core ya puede **recordar contexto** sin fingir que sabe sincronizar por sí solo Gmail, Apollo, un vault o cualquier otro proveedor.
+V0.2D permite recordar contexto. V0.2E agrega un contrato seguro para importar observaciones normalizadas, pero **todavía no sincroniza Gmail, Apollo, un vault ni otro proveedor por sí solo**.
 
 ## Arquitectura
 
@@ -301,9 +352,13 @@ WATCH / FOLLOW_UP / RESEARCH_CONTACT / PREPARE_SPECULATIVE
 
 PRIVATE RELATIONSHIP SQLITE
 current state + append-only events
-                ↓
-         CONTEXT BRIDGE
-      (redacted projection)
+                ↑
+         RELATIONSHIP SERVICE
+                ↑
+       OPERATOR OBSERVATION BRIDGE
+   preview → exact confirm → local import
+                ↑
+   future authorized provider adapters
 ```
 
 ## Fuentes de vacantes soportadas
@@ -348,11 +403,16 @@ OPPORTUNITY_ALIAS_REGISTRY_PATH=data/skill_aliases.yaml
 OPPORTUNITY_SOURCES_PATH=sources.local.yaml
 OPPORTUNITY_TARGETS_PATH=targets.local.yaml
 OPPORTUNITY_RELATIONSHIPS_PATH=state/relationships.local.sqlite3
+OPPORTUNITY_OPERATOR_IMPORT_ENABLED=false
 ```
 
 Si el archivo de Relationship Memory no existe, Opportunity OS usa una memoria vacía y **no crea la base sólo por arrancar o consultar el API**.
 
+Las rutas de Operator Observation Bridge están ausentes por defecto. Activar `OPPORTUNITY_OPERATOR_IMPORT_ENABLED=true` sólo registra el bridge local. No habilita Gmail, Apollo, web research ni ningún proveedor. Si se habilita el bridge pero la base de Relationship Memory no existe, los endpoints operator devuelven `503 relationship_storage_unavailable` sin crearla silenciosamente.
+
 ## HTTP API
+
+Siempre disponible según las demás dependencias locales:
 
 ```text
 GET  /health
@@ -367,7 +427,14 @@ GET  /api/v1/relationships/context
 GET  /api/v1/relationships/{account_id}/context
 ```
 
-Las rutas de Relationship Memory son **read-only y redactadas**. V0.2D no expone `POST`, `PUT`, `PATCH` ni `DELETE` para el CRM.
+Con `OPPORTUNITY_OPERATOR_IMPORT_ENABLED=true`:
+
+```text
+POST /api/v1/operator/observations/preview
+POST /api/v1/operator/observations/import
+```
+
+Las rutas de Relationship Memory siguen siendo **read-only y redactadas**. V0.2E no agrega `POST`, `PUT`, `PATCH` ni `DELETE` bajo `/api/v1/relationships/...`.
 
 V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundaries siguen locales.
 
@@ -381,6 +448,8 @@ V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundar
 - Relationship Memory real en storage local/gitignored;
 - datos reales de recruiters/contactos fuera del core público;
 - Context Bridge redactado por defecto;
+- `OperatorObservation` no admite body, raw payload ni metadata libre;
+- el bridge no persiste mailbox dumps;
 - outreach state local;
 - errores externos sanitizados;
 - unknown facts permanecen unknown;
@@ -399,16 +468,25 @@ docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-dormant-state-amendment.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge-design.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge-approval-amendment.md
 
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge.md
+docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge.md
 ```
 
 ## Próximo bloque
 
-**Operator Integration**: adapters autorizados que traduzcan observaciones externas a los contratos existentes, sin meter credenciales ni SDKs de proveedores dentro del core determinista.
+**V0.2E1 — Gmail read adapter**: lectura autorizada y selectiva que traduzca hechos de mensajes/threads elegidos a `OperatorObservation`.
 
-No es una licencia para automatizar todo. La misma regla sigue vigente: **observar y preparar puede automatizarse; una acción externa irreversible necesita intención humana inequívoca.**
+No será sincronización automática ni permiso de import. El flujo seguirá siendo:
+
+```text
+Gmail read adapter → OperatorObservation → preview → confirm → import local fact
+```
+
+La misma regla sigue vigente: **observar y preparar puede automatizarse; una acción externa irreversible necesita intención humana inequívoca.**
 
 ## License
 
