@@ -51,7 +51,7 @@ V0.2B1 includes:
 - a single restrained accent color for non-semantic hierarchy only;
 - deterministic horizontal rules/dividers where safe;
 - improved section spacing and bullet rhythm;
-- support for a more prominent primary headline and secondary role line when represented by validated claims;
+- differentiated rendering of existing validated headline claim kinds;
 - deterministic link rendering as ordinary selectable text;
 - `LayoutQA` that evaluates rendered PDF geometry and page utilization;
 - professional deterministic output filename generation from candidate + role + company;
@@ -95,9 +95,9 @@ LayoutQAResult
 
 `ATSRendererV2` may consume only validated `CVDocumentModel` content.
 
-`LayoutQA` may inspect the rendered artifact and derived page geometry. It must not rewrite claims or silently mutate content.
+`LayoutQA` may inspect the rendered artifact and renderer-owned deterministic geometry metrics. It must not rewrite claims or silently mutate content.
 
-If layout QA fails a hard rule, preparation fails as `BLOCKED_RENDER` (or an explicit render/layout subcode) and partial output is removed according to existing cleanup behavior.
+If layout QA fails a hard rule, preparation fails using the existing `BLOCKED_RENDER` status. A bounded layout error code may be attached to the failure detail, but no new preparation status is introduced. Partial output is removed according to existing cleanup behavior.
 
 ## 5. Renderer V2 visual contract
 
@@ -122,31 +122,47 @@ Helvetica-Bold
 Recommended hierarchy:
 
 ```text
-primary name/headline: 17–20 pt
-secondary role line:   10.5–12 pt
-section label:         10.5–11.5 pt bold
-body:                   9.5–10.2 pt
-metadata/contact:       8.8–9.5 pt
+primary identity/name:   17–20 pt
+secondary role headline: 10.5–12 pt
+section label:           10.5–11.5 pt bold
+body:                     9.5–10.2 pt
+metadata/contact:         8.8–9.5 pt
 ```
 
-Exact values are implementation choices but must be constants and tested.
+Exact implementation values must be named constants and regression-tested.
 
 No body text below 9 pt.
 
-### 5.3 Color
+### 5.3 Headline claim-kind mapping
+
+V0.2B1 does not add a new semantic model. It uses the existing `CVClaim.kind` values inside the existing `headline` section:
+
+```text
+kind=identity  → primary identity/name style
+kind=headline  → secondary target-role style
+kind=location  → metadata style
+kind=contact   → metadata style
+kind=link      → metadata/link style
+```
+
+Any other claim kind appearing in `headline` falls back to ordinary headline/body-safe styling and does not gain semantic authority.
+
+This mapping changes presentation only. The renderer does not infer a person's name, role, contact information, or target position from free text.
+
+### 5.4 Color
 
 Default semantic text remains black/dark gray.
 
 Renderer may define one restrained accent color for:
 
-- primary name/headline;
+- primary identity/name;
 - secondary role line;
 - section labels;
 - divider lines.
 
 Color must never encode information that disappears in grayscale.
 
-### 5.4 Spacing
+### 5.5 Spacing
 
 V2 must visibly separate:
 
@@ -157,7 +173,7 @@ V2 must visibly separate:
 
 The renderer should use whitespace rather than decorative boxes to create hierarchy.
 
-### 5.5 Rules/dividers
+### 5.6 Rules/dividers
 
 A thin deterministic horizontal rule may appear beneath the identity/contact header or between major regions.
 
@@ -213,9 +229,10 @@ Juan_Manuel_Torres_Backend_Engineer_Scale_Up.pdf
 Rules:
 
 - no `_UPDATED`, `_FINAL`, `(1)`, timestamps, random UUIDs, or raw application IDs in the recruiter-facing filename;
-- ASCII-safe or Unicode-normalized deterministic output;
-- bounded length;
-- no path traversal characters;
+- Unicode-normalize then sanitize to a portable filename;
+- maximum filename length, including `.pdf`, is 120 characters;
+- no path separators or traversal components;
+- collapse repeated separators/underscores;
 - same semantic candidate/role/company → same filename.
 
 The internal ApplicationPacket may continue to track canonical paths/hashes independently.
@@ -228,7 +245,7 @@ Create a focused component, for example:
 app/cv/layout_qa.py
 ```
 
-with a result model similar to:
+with a strict result model similar to:
 
 ```text
 LayoutQAResult
@@ -236,56 +253,57 @@ LayoutQAResult
 - page_count: int
 - warnings: tuple[str, ...]
 - errors: tuple[str, ...]
-- metrics: bounded deterministic metrics
+- used_height_ratio: float | None
+- headline_line_count: int | None
 ```
 
-No raw PDF object dump or arbitrary metadata dict is needed.
+Do not expose a raw PDF object dump or arbitrary metadata dictionary.
 
 ### 9.1 Hard errors
 
-Layout QA must fail closed for at least:
+Layout QA fails closed for:
 
 - zero-page PDF;
-- page count above configured maximum for this renderer profile;
-- text/content outside A4 media box bounds when measurable;
-- overlapping or invalid frame geometry produced by renderer instrumentation;
-- body font configured below minimum;
+- page count above the renderer profile maximum of 2 pages;
+- renderer-owned geometry outside configured A4 usable bounds;
+- overlapping or invalid frame geometry reported by renderer instrumentation;
+- body font configured below 9 pt;
 - unresolved renderer exception;
-- missing selectable text extraction from a non-empty validated document.
+- non-empty validated document yielding no extractable/selectable text in the generated PDF.
 
 ### 9.2 Warnings
 
-Warnings should not automatically block unless explicitly promoted later.
+Warnings do not block V0.2B1.
 
-Useful warnings include:
+Initial deterministic warnings:
 
-- unusually low page utilization;
-- unusually high page utilization;
-- headline wraps beyond configured line count;
-- orphan-like final lines/very small trailing block;
-- excessive single-section density;
-- suspiciously long unbroken URL/text token.
+```text
+low_utilization       → one-page used_height_ratio < 0.58
+high_utilization      → one-page used_height_ratio > 0.96
+headline_wrap         → primary/secondary header region exceeds 3 text lines total
+long_unbroken_token   → visible token exceeds configured safe length
+```
 
-V0.2B1 should keep warning policy simple and deterministic.
+Orphan and section-density heuristics are deferred; they are not acceptance requirements for V0.2B1.
 
 ## 10. Page utilization metric
 
-The current real PDF left substantial unused lower-page area. V2 should measure approximate vertical use from renderer-owned layout instrumentation rather than computer vision.
-
-Recommended metric:
+The current real PDF left substantial unused lower-page area. V2 measures approximate vertical use from renderer-owned layout instrumentation rather than computer vision.
 
 ```text
 used_height_ratio = rendered_content_height / usable_page_height
 ```
 
-For a one-page CV, initial warning thresholds may be approximately:
+For one-page output:
 
 ```text
 < 0.58 → low_utilization warning
 > 0.96 → high_utilization warning
 ```
 
-These are warnings, not truth gates. Exact thresholds must be constants and regression-tested.
+These are warnings, not truth gates.
+
+For two-page output, V0.2B1 records page count but does not apply a combined utilization threshold.
 
 ## 11. Determinism
 
@@ -313,7 +331,7 @@ Tests must prove:
 8. renderer refuses invalid/unvalidated documents exactly as before;
 9. renderer does not import private MasterFacts/EvidenceCatalog directly;
 10. deterministic document produces deterministic PDF bytes/hash;
-11. professional filename is deterministic and sanitized;
+11. professional filename is deterministic, sanitized and bounded to 120 characters;
 12. layout QA never mutates semantic content;
 13. failed hard layout QA leaves no successful ApplicationPacket/PDF artifact;
 14. existing track-isolation and claim-validation tests remain unchanged and green.
@@ -335,7 +353,8 @@ RED tests for:
 
 RED tests for deterministic story/style specification:
 
-- primary headline is materially larger than body;
+- `identity`, `headline`, `contact/location/link` use distinct approved styles;
+- primary identity is materially larger than body;
 - section labels are visually distinct;
 - divider is deterministic and non-semantic;
 - spacing constants prevent collapsed sections.
@@ -345,10 +364,11 @@ RED tests for deterministic story/style specification:
 RED tests for:
 
 - one-page healthy fixture;
-- low-utilization warning;
-- high-utilization warning;
-- headline-wrap warning;
+- low-utilization warning at `< 0.58`;
+- high-utilization warning at `> 0.96`;
+- headline-wrap warning above 3 header lines;
 - missing extractable text hard failure;
+- page count above 2 hard failure;
 - no semantic mutation.
 
 ### Task D — Filename
@@ -358,12 +378,14 @@ RED tests for:
 - sanitized role/company;
 - no `_UPDATED`/`FINAL` suffix patterns;
 - deterministic output;
-- bounded length/path-safe output.
+- maximum 120 characters;
+- path-safe output.
 
 ### Task E — Integration
 
 - CV preparation invokes renderer V2 then Layout QA;
-- hard layout failure blocks packet creation;
+- hard layout failure maps to existing `BLOCKED_RENDER`;
+- hard layout failure removes the partial PDF;
 - valid layout preserves existing `cv_sha256` / packet semantics;
 - full regression suite remains green.
 
@@ -392,7 +414,7 @@ app/cv/renderer.py
 app/cv/layout_qa.py
 app/cv/models.py            # only bounded result/config models if needed
 app/cv/service.py           # invoke layout QA
-app/cv/filename.py          # optional focused helper
+app/cv/filename.py          # focused filename helper
 README.md
 ROADMAP.md
 tests/test_cv_renderer.py
@@ -413,8 +435,8 @@ V0.2B1 is complete when:
 3. renderer never changes semantic claims;
 4. `ClaimValidator` remains the hard semantic gate;
 5. Layout QA returns deterministic hard errors/warnings and blocks only hard failures;
-6. one-page page utilization is measured and low/high utilization can be detected;
-7. recruiter-facing filename is professional and deterministic;
+6. one-page page utilization is measured with exact warning thresholds `0.58 / 0.96`;
+7. recruiter-facing filename is professional, path-safe and deterministic;
 8. fixed input produces deterministic bytes/hash;
 9. existing CV Factory provenance/track/application packet tests remain green;
 10. real backend-target smoke PDF contains only verified evidence and no fabricated AWS experience;
@@ -425,13 +447,14 @@ V0.2B1 is complete when:
 Not part of V0.2B1:
 
 - second visual theme;
-- two-page senior profile;
+- two-page senior profile tuning beyond the 2-page hard ceiling;
 - company-branded variants;
 - browser/HTML renderer;
 - generative design selection;
 - visual screenshot scoring with computer vision;
 - automatic content rewriting to fit a page;
-- auto-dropping experience solely to satisfy a layout target.
+- auto-dropping experience solely to satisfy a layout target;
+- orphan/section-density heuristics.
 
 Those should only be considered after V2 is validated on real applications.
 
