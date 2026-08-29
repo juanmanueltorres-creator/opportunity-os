@@ -150,11 +150,13 @@ def create_api_router(
                 status_code=503,
                 detail="Target account registry unavailable",
             )
-        current_reasons = request.current_reasons if request is not None else None
+        now = datetime.now(timezone.utc)
+        if request is None or not request.current_reasons:
+            return target_service.run(profile, now=now)
         return target_service.run(
             profile,
-            now=datetime.now(timezone.utc),
-            current_reasons=current_reasons,
+            now=now,
+            current_reasons=request.current_reasons,
         )
 
     @router.get(
