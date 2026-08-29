@@ -19,6 +19,36 @@ Ya implementado.
 - selector diario determinista;
 - provenance y manejo explícito de información faltante.
 
+### ✅ V0.2A2 — Target Accounts
+
+Implementado en esta slice.
+
+- `TargetAccount` separado de `Opportunity`;
+- registry YAML público/privado con validación estricta;
+- señales de afinidad con provenance y fecha de observación;
+- score independiente de capability/sector, proximity, scale/stability, innovation, contactability y hiring;
+- selección del mejor candidate track sin mezclar evidencia entre tracks;
+- confidence sensible a freshness;
+- cooldown por organización;
+- recomendaciones `WATCH`, `RESEARCH_CONTACT` y `PREPARE_SPECULATIVE`;
+- endpoint read-only `POST /api/v1/targets/radar/run`;
+- ejemplos públicos ficticios y `targets.local.yaml` privado/gitignored.
+
+La semántica permanece separada:
+
+```text
+ACTIVE_POSTING
+= existe una requisición publicada
+
+TARGET_ACCOUNT
+= la organización tiene afinidad suficiente para seguirla o investigarla
+
+SPECULATIVE_OUTREACH
+= el sistema recomienda preparar un contacto espontáneo verdadero
+```
+
+Target Accounts no agrega `SEND`, no crea CVs, no consume créditos de Apollo y no manda emails.
+
 ### ✅ V0.2B — CV Factory
 
 Ya implementado.
@@ -48,68 +78,7 @@ El flujo del operador ya fue probado en uso real, pero la integración end-to-en
 
 ---
 
-## NEXT — Target Accounts
-
-Diseñado; todavía no implementado en `main`.
-
-Hoy el radar piensa principalmente en vacantes. El siguiente paso es poder responder otra pregunta:
-
-> ¿Qué empresas vale la pena tener en el radar aunque hoy no publiquen un puesto exacto para mí?
-
-La semántica debe permanecer separada:
-
-```text
-ACTIVE_POSTING
-= existe una requisición publicada
-
-TARGET_ACCOUNT
-= la organización tiene afinidad suficiente para seguirla o investigarla
-
-SPECULATIVE_OUTREACH
-= el sistema recomienda preparar un contacto espontáneo verdadero
-```
-
-### Target affinity
-
-El score diseñado combina señales distintas del job match:
-
-```text
-capability / sector affinity     30%
-proximity / logistics            20%
-scale / stability                15%
-innovation / AI / digital        15%
-contactability                   10%
-current hiring signal            10%
-```
-
-No se necesita una vacante activa para que una empresa sea un buen target.
-
-Cada señal utilizada para scoring debe tener provenance y fecha de observación. Los datos reales de empresas objetivo pueden vivir en configuración privada; el repo público conserva contratos y ejemplos ficticios.
-
-### Anti-spam
-
-Target Accounts no agrega un botón de `SEND`.
-
-Las recomendaciones siguen estas reglas:
-
-- un contacto relevante por evento, no una ráfaga de recruiters;
-- nunca adivinar emails;
-- cooldown configurable por organización;
-- si ya hubo contacto reciente, recomendar `WATCH`;
-- si falta un canal confiable, recomendar `RESEARCH_CONTACT`;
-- si afinidad y confianza son suficientes, recomendar `PREPARE_SPECULATIVE`;
-- una empresa sin vacante nunca se muestra como active posting.
-
-Spec y plan:
-
-```text
-docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
-```
-
----
-
-## AFTER — Relationship memory / Context Bridge
+## NEXT — Relationship memory / Context Bridge
 
 Este bloque surge de una limitación práctica: descubrir un buen contacto sirve poco si el sistema olvida al día siguiente que ya se habló con esa persona o empresa.
 
@@ -146,9 +115,9 @@ Los emails reales, nombres de contactos, mailbox exports, procesos y notas priva
 
 El core público puede definir contratos y fixtures ficticios. La instancia real debe vivir en storage local/privado.
 
-### Qué cambia en el comportamiento
+### Integración con Target Accounts
 
-Con relationship memory, una nueva corrida no empieza de cero:
+El selector V0.2A2 ya acepta una abstracción `OutreachHistory.last_contacted_at(account_id)` y aplica cooldown. El próximo slice debe reemplazar esa memoria mínima por un contexto más rico sin darle autoridad para enviar nada.
 
 ```text
 empresa detectada
@@ -165,7 +134,7 @@ La memoria no autoriza acciones externas. Sólo evita repetición, contradiccion
 
 ---
 
-## LATER — Operator integration
+## AFTER — Operator integration
 
 El core ya representa `ApplicationPacket`, drafts, approvals, send gates y receipts. Falta cerrar mejor el puente con herramientas reales sin romper esa separación.
 
@@ -187,7 +156,7 @@ No se planea meter credenciales de Gmail/Apollo dentro del core ni convertir pro
 
 ## LATER — Monitoring y follow-up
 
-Una vez que Target Accounts y relationship memory existan, el sistema puede producir recordatorios útiles en vez de más volumen:
+Con Target Accounts implementado y relationship memory como próximo bloque, el sistema podrá producir recordatorios útiles en vez de más volumen:
 
 - apareció una vacante nueva en una empresa de alta afinidad;
 - terminó un cooldown;
@@ -213,9 +182,9 @@ Opportunity OS no tiene como objetivo:
 
 ## Cómo leer este roadmap
 
-`NEXT` significa: diseño existente y candidato inmediato a implementación.
+`NEXT` significa: próximo problema validado y candidato inmediato a diseño/implementación.
 
-`AFTER` significa: problema validado y dirección clara, pero debe diseñarse/implementarse después del bloque anterior.
+`AFTER` significa: dirección clara, pero debe hacerse después del bloque NEXT.
 
 `LATER` significa: dirección útil, todavía no una promesa de release.
 
