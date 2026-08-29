@@ -15,6 +15,8 @@ _USABLE_VERIFICATION = {"VERIFIED", "PUBLIC_SOURCE"}
 
 
 class RelationshipMemory(Protocol):
+    def account_ids(self) -> list[str]: ...
+
     def context_for(
         self,
         account_id: str,
@@ -57,6 +59,9 @@ class EmptyRelationshipMemory:
     def __init__(self, policy: RelationshipPolicy | None = None) -> None:
         self.policy = policy or RelationshipPolicy()
 
+    def account_ids(self) -> list[str]:
+        return []
+
     def context_for(
         self,
         account_id: str,
@@ -86,6 +91,9 @@ class SQLiteRelationshipMemory:
     ) -> None:
         self.repository = repository
         self.policy = policy or RelationshipPolicy()
+
+    def account_ids(self) -> list[str]:
+        return [account.account_id for account in self.repository.list_accounts()]
 
     def context_for(
         self,
