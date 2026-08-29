@@ -32,15 +32,23 @@ class TargetRadarService:
         self._relationship_memory = relationship_memory or EmptyRelationshipMemory()
         self._policy = policy or TargetAccountPolicy()
 
-    def run(self, profile: CandidateProfile, *, now: datetime) -> TargetAccountBatch:
+    def run(
+        self,
+        profile: CandidateProfile,
+        *,
+        now: datetime,
+        current_reasons: dict[str, str] | None = None,
+    ) -> TargetAccountBatch:
         assessments = [
             assess_target_account(account, profile, now=now)
             for account in self._targets
         ]
+        reasons = current_reasons or {}
         relationship_contexts = {
             item.account_id: self._relationship_memory.context_for(
                 item.account_id,
                 now=now,
+                current_reason=reasons.get(item.account_id),
             )
             for item in assessments
         }
