@@ -1,29 +1,34 @@
-from datetime import datetime, timedelta, timezone
-from typing import Protocol
+from datetime import datetime, timezone
 
-from app.targets.models import TargetAccountAssessment, TargetAccountBatch, TargetAccountPolicy
-
-
-class OutreachHistory(Protocol):
-    def last_contacted_at(self, account_id: str) -> datetime | None: ...
+from app.relationships.models import RelationshipContext
+from app.targets.models import (
+    TargetAccountAssessment,
+    TargetAccountBatch,
+    TargetAccountPolicy,
+    TargetAction,
+)
 
 
 _ACTION_ORDER = {
-    "PREPARE_SPECULATIVE": 0,
-    "RESEARCH_CONTACT": 1,
-    "WATCH": 2,
+    "FOLLOW_UP": 0,
+    "PREPARE_SPECULATIVE": 1,
+    "RESEARCH_CONTACT": 2,
+    "WATCH": 3,
 }
 
 
 def _action_for(
     item: TargetAccountAssessment,
     policy: TargetAccountPolicy,
-    *,
-    cooldown_active: bool,
-) -> str:
-    if cooldown_active:
-        return "WATCH"
-    if item.account_affinity < policy.minimum_affinity or item.confidence < policy.minimum_confidence:
+    relationship: RelationshipContext,
+) -> TargetAction:
+    relationship_action = relationship.recommended_relationship_action
+    if relationship_action != "PREPARE_SPECULATIVE":
+        return relationship_action
+    if (
+        item.account_affinity < policy.minimum_affinity
+        or item.confidence < policy.minimum_confidence
+    ):
         return "WATCH"
     if item.contactability_fit <= 20:
         return "RESEARCH_CONTACT"
@@ -33,7 +38,7 @@ def _action_for(
 def select_target_batch(
     assessments: list[TargetAccountAssessment],
     policy: TargetAccountPolicy,
-    history: OutreachHistory,
+    relationship_contexts: dict[str, RelationshipContext],
     *,
     now: datetime,
     profile_fingerprint: str = "unbound",
@@ -53,17 +58,14 @@ def select_target_batch(
 
     materialized: list[TargetAccountAssessment] = []
     for item in selected.values():
-        last_contact = history.last_contacted_at(item.account_id)
-        cooldown_active = False
-        if last_contact is not None:
-            if last_contact.tzinfo is None or last_contact.utcoffset() is None:
-                raise ValueError("history timestamps must be timezone-aware")
-            cooldown_active = now < last_contact.astimezone(timezone.utc) + timedelta(days=policy.cooldown_days)
-        action = _action_for(item, policy, cooldown_active=cooldown_active)
+        relationship = relationship_contexts.get(item.account_id)
+        if relationship is None:
+            raise ValueError("relationship context missing for target account")
+        action = _action_for(item, policy, relationship)
         materialized.append(
             item.model_copy(
                 update={
-                    "cooldown_active": cooldown_active,
+                    "cooldown_active": relationship.cooldown_active,
                     "recommended_action": action,
                 }
             )
