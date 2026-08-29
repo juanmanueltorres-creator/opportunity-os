@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 import sqlite3
+from typing import Literal
 
 from app.relationships.models import CareerContact, RelationshipAccount, RelationshipEvent
 
 ProjectionResult = tuple[RelationshipAccount, list[CareerContact]]
 Projector = Callable[[RelationshipAccount | None, list[CareerContact]], ProjectionResult]
+EventDisposition = Literal["NEW", "IDENTICAL"]
 
 
 class SQLiteRelationshipRepository:
@@ -251,7 +254,7 @@ class SQLiteRelationshipRepository:
         self,
         conn: sqlite3.Connection,
         account_id: str,
-    ) -> tuple[object, str] | None:
+    ) -> tuple[datetime, str] | None:
         row = conn.execute(
             """
             SELECT payload_json
@@ -267,18 +270,35 @@ class SQLiteRelationshipRepository:
         latest = RelationshipEvent.model_validate_json(row["payload_json"])
         return latest.occurred_at, latest.event_id
 
-    def _append_event_conn(
-        self, conn: sqlite3.Connection, event: RelationshipEvent
-    ) -> tuple[RelationshipEvent, bool]:
+    def _validate_event_conn(
+        self,
+        conn: sqlite3.Connection,
+        event: RelationshipEvent,
+    ) -> EventDisposition:
         existing = self._get_event_conn(conn, event.event_id)
         if existing is not None:
             if existing != event:
                 raise ValueError("relationship event_id conflict")
-            return existing, False
+            return "IDENTICAL"
 
         latest_order = self._latest_event_order_conn(conn, event.account_id)
         if latest_order is not None and (event.occurred_at, event.event_id) <= latest_order:
             raise ValueError("out-of-order relationship event")
+        return "NEW"
+
+    def validate_event(self, event: RelationshipEvent) -> EventDisposition:
+        with self._connect() as conn:
+            return self._validate_event_conn(conn, event)
+
+    def _append_event_conn(
+        self, conn: sqlite3.Connection, event: RelationshipEvent
+    ) -> tuple[RelationshipEvent, bool]:
+        disposition = self._validate_event_conn(conn, event)
+        if disposition == "IDENTICAL":
+            existing = self._get_event_conn(conn, event.event_id)
+            if existing is None:
+                raise ValueError("idempotent relationship event disappeared")
+            return existing, False
 
         conn.execute(
             """
