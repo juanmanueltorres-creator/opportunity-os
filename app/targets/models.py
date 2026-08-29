@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 TargetMode = Literal["TARGET_ACCOUNT", "SPECULATIVE_OUTREACH"]
 ProximityBucket = Literal[
@@ -92,6 +92,26 @@ class TargetAccountPolicy(StrictTargetModel):
     max_items: int = Field(default=20, ge=1)
     minimum_affinity: float = Field(default=65, ge=0, le=100)
     minimum_confidence: float = Field(default=60, ge=0, le=100)
+
+
+class TargetRadarRunRequest(StrictTargetModel):
+    current_reasons: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("current_reasons")
+    @classmethod
+    def normalize_current_reasons(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for raw_account_id, raw_reason in value.items():
+            account_id = raw_account_id.strip()
+            reason = raw_reason.strip()
+            if not account_id:
+                raise ValueError("current reason account_id must be non-empty")
+            if not reason:
+                raise ValueError("current reason must be non-empty")
+            if account_id in normalized:
+                raise ValueError("duplicate current reason account_id")
+            normalized[account_id] = reason
+        return normalized
 
 
 class TargetAccountBatch(StrictTargetModel):
