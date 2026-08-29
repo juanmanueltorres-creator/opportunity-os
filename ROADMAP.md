@@ -97,65 +97,142 @@ PREPARE_SPECULATIVE
 
 Ninguna equivale a `SEND`.
 
-Relationship Memory no importa automáticamente Gmail, Apollo, el vault ni un CRM existente. Esos datos reales permanecen privados y sólo pueden entrar mediante una futura integración autorizada.
+Relationship Memory no importa automáticamente Gmail, Apollo, el vault ni un CRM existente. Esos datos reales permanecen privados.
+
+### ✅ V0.2E — Operator Observation Bridge
+
+V0.2E implementa el primer bridge provider-neutral para traer hechos externos autorizados al estado local sin darles autoridad de acción.
+
+Flujo:
+
+```text
+operator / future adapter
+        ↓
+OperatorObservation
+        ↓
+normalización determinista
+        ↓
+ObservationPreview
+        ↓
+hash exacto del preview + estado relevante
+        ↓
+confirmación humana
+        ↓
+RelationshipEvent
+        ↓
+Relationship Memory
+```
+
+Implementado:
+
+- contratos Pydantic estrictos y provider-neutral;
+- observaciones soportadas:
+  - `CONTACT_VERIFIED`
+  - `MESSAGE_SENT`
+  - `REPLY_RECEIVED`
+  - `PROCESS_OPENED`
+  - `PROCESS_UPDATED`
+  - `PROCESS_CLOSED`;
+- `reason` corto y acotado; no hay `body`, raw payload ni metadata libre;
+- `RelationshipService.preview()` y `record()` comparten la misma lógica de transición;
+- validación cronológica read-only compartida con el ledger;
+- event IDs deterministas por identidad de la observación;
+- semantic hash separado del event ID;
+- preview sin escrituras;
+- hash del preview sensible a la observación y al estado relevante;
+- import sólo con confirmación del hash exacto;
+- retry idéntico devuelve `ALREADY_IMPORTED` sin segundo evento;
+- misma identidad con semántica distinta falla cerrado;
+- cambio de estado antes del primer import invalida el preview anterior;
+- `MESSAGE_SENT` sólo actualiza Relationship Memory como `CONTACTED`;
+- no crea `SendReceipt` ni entra al send path del Outreach Core;
+- operator routes ausentes por defecto;
+- flag explícito `OPPORTUNITY_OPERATOR_IMPORT_ENABLED=false`;
+- bridge habilitado sin DB de relaciones existente devuelve `503` sin crearla;
+- `app/operator_bridge` no contiene Gmail/Apollo SDK, HTTP/network I/O ni dependencias del send path.
+
+La frontera queda explícita:
+
+> An imported observation is evidence about what happened; it is not authority to make something happen.
+
+Los provider adapters remain future work: V0.2E implementa el enchufe seguro, no Gmail/Apollo sync.
 
 ---
 
-## NEXT — Operator integration
+## NEXT — V0.2E1 — Gmail read adapter
 
-Ahora el core ya sabe representar oportunidades, targets, evidencia, drafts, approvals, receipts y memoria de relaciones. El siguiente problema es conectar observaciones reales **sin destruir esas fronteras**.
+El siguiente slice debe conectar Gmail en **lectura autorizada y selectiva** sin cambiar el contrato central.
 
 Objetivo:
 
 ```text
-Gmail / contact discovery / public research / private workspace
-                       ↓
-              authorized adapter
-                       ↓
-          normalized observation/event
-                       ↓
-            deterministic core state
+selected Gmail message/thread
+        ↓
+read-only adapter
+        ↓
+normalized OperatorObservation
+        ↓
+V0.2E preview
+        ↓
+human confirm
+        ↓
+local import
 ```
 
-El adapter debería poder traducir hechos autorizados, por ejemplo:
+Requisitos:
 
-- “este mensaje fue enviado y el proveedor lo confirmó”;
-- “este recruiter respondió”;
-- “este proceso cambió de estado”;
-- “este contacto fue verificado en esta fecha”;
-- “apareció una nueva vacante que constituye una razón nueva”.
+- leer sólo mensajes/threads explícitamente seleccionados o consultados;
+- no importar automáticamente;
+- no crear drafts;
+- no enviar;
+- no transformar una respuesta ambigua en estado definitivo sin evidencia suficiente;
+- conservar message/thread provenance sin copiar cuerpos completos al core;
+- provider failure no debe alterar Relationship Memory;
+- mantener V0.2E como única frontera de import.
 
-Pero debe conservar estas reglas:
+El adapter debe poder producir hechos como:
 
-- no copiar credenciales al core;
-- no convertir Gmail/Apollo en dependencias obligatorias;
-- no inventar contactos ni estados;
-- no consumir créditos sin control explícito;
-- no traducir una observación ambigua en una acción irreversible;
-- idempotencia y provenance para cada evento importado;
-- fallas de un proveedor no deben corromper la memoria local.
+- `MESSAGE_SENT` cuando existe evidencia autorizada suficiente;
+- `REPLY_RECEIVED` cuando se observa una respuesta concreta;
+- eventualmente una observación de proceso sólo cuando la clasificación pueda defenderse y siga pasando por preview/confirm.
 
-### Primer slice recomendado
+---
 
-Empezar por **importación explícita de observaciones**, no por autopilot.
+## AFTER — Contact/public research adapters
+
+Después del Gmail read adapter pueden evaluarse adapters de:
+
+- fuentes públicas;
+- páginas oficiales de careers;
+- contact discovery autorizado;
+- private workspace.
+
+Cualquier fuente paga debe tener control explícito de costo. Ningún adapter puede inventar emails, contactos o estados.
+
+---
+
+## AFTER — Outreach reconciliation
+
+La evidencia histórica de un proveedor puede servir para reconciliar lo ocurrido con el Outreach Core, pero una observación externa no equivale a un receipt fuerte.
+
+La reconciliación futura debe respetar:
 
 ```text
-operator obtiene dato autorizado
-        ↓
-preview normalizado
-        ↓
-humano confirma importación
-        ↓
-RelationshipService / Outreach ledger
+DraftSnapshot
+→ ApprovalRecord
+→ SendRequest
+→ SendGate
+→ provider-confirmed success
+→ SendReceipt
 ```
 
-Eso da mucho valor sin convertir Opportunity OS en una campaña automática.
+V0.2E no fabrica esa cadena retrospectivamente.
 
 ---
 
 ## AFTER — Monitoring y follow-up
 
-Con Target Accounts y Relationship Memory ya implementados, el sistema puede producir recordatorios útiles en vez de más volumen:
+Con Target Accounts, Relationship Memory y observaciones reales entrando de forma segura, el sistema puede producir recordatorios útiles en vez de más volumen:
 
 - apareció una vacante nueva en una empresa de alta afinidad;
 - terminó un cooldown;
@@ -195,7 +272,8 @@ Opportunity OS no tiene como objetivo:
 - comprar/enriquecer contactos sin control de costo;
 - mandar campañas masivas de cold email;
 - publicar el perfil privado, CRM o historial de una persona;
-- convertir el paso del tiempo en permiso automático para contactar de nuevo.
+- convertir el paso del tiempo en permiso automático para contactar de nuevo;
+- tratar una observación importada como permiso de envío.
 
 ## Cómo leer este roadmap
 
