@@ -2,11 +2,11 @@
 
 **Buscar trabajo no debería ser abrir veinte pestañas, mandar el mismo CV a todo y esperar.**
 
-Opportunity OS organiza ese problema como un sistema: encuentra oportunidades, separa lo que sirve para carrera de lo que sirve para ingresos, arma CVs sólo con evidencia verificable y prepara contactos sin inventar vacantes ni mandar mensajes por accidente.
+Opportunity OS organiza ese problema como un sistema: encuentra oportunidades, separa lo que sirve para carrera de lo que sirve para ingresos, detecta empresas que vale la pena tener en radar aunque hoy no publiquen una vacante, arma CVs sólo con evidencia verificable y mantiene los contactos bajo reglas explícitas.
 
 Open source, auditable y deliberadamente humano en los pasos que importan.
 
-> **Estado actual:** prerelease V0.2C (`0.2.0c1`). El radar, la CV Factory y el core de outreach ya existen. Target Accounts y memoria de relaciones están en el roadmap, no en `main` todavía.
+> **Estado actual:** prerelease V0.2C (`0.2.0c1`) + Target Accounts V0.2A2. El radar de vacantes, el radar de empresas, la CV Factory y el core de outreach existen. Relationship Memory / Context Bridge es el próximo bloque del roadmap.
 
 ## En 30 segundos
 
@@ -15,62 +15,113 @@ fuentes públicas / importación manual
         ↓
 normalizar + deduplicar
         ↓
-¿sirve para carrera, para ingreso ahora, o para ambas?
+¿hay una vacante real?
+   ↙               ↘
+ SÍ                 NO
+ ↓                   ↓
+job match       target-account affinity
+        ↘           ↙
+¿sirve para carrera, ingreso ahora o seguimiento?
         ↓
-usar sólo evidencia real del candidato
+usar sólo evidencia real
         ↓
-preparar CV verificable
-        ↓
-resolver un canal de contacto válido
-        ↓
-crear draft
+preparar CV / investigar contacto
         ↓
 revisión humana
         ↓
-orden explícita de envío
-        ↓
-receipt + historial auditable
+acción explícita + historial auditable
 ```
 
-No intenta decidir la carrera de una persona con un score mágico. El objetivo es sacar trabajo repetitivo del medio y dejar visibles las decisiones importantes.
+No intenta decidir la carrera de una persona con un score mágico. La idea es sacar trabajo repetitivo del medio y dejar visibles las decisiones importantes.
 
-## El problema que intenta resolver
+## El problema
 
-Una búsqueda laboral real tiene bastante más ruido que un listado de vacantes:
+Una búsqueda laboral real es más complicada que una lista de avisos:
 
 - la misma oferta aparece varias veces;
-- hay roles interesantes que no sirven para el momento económico actual;
-- hay trabajos útiles para generar ingresos que no son el destino profesional final;
-- un CV genérico termina diciendo poco;
-- una herramienta de IA puede completar huecos con experiencia que nunca existió;
+- una buena empresa puede no tener una vacante exacta hoy;
+- un trabajo puede servir para ingreso inmediato sin ser el destino profesional final;
+- un CV genérico dice poco;
+- una IA puede rellenar huecos con experiencia que nunca existió;
 - encontrar un recruiter no significa que haya que escribirle;
 - aprobar un borrador no significa autorizar un envío;
-- una empresa puede ser muy interesante aunque hoy no tenga una vacante publicada;
-- si no se guarda historial, cada nueva sesión vuelve a empezar de cero.
+- si el sistema olvida contactos anteriores, termina repitiendo mensajes y quemando relaciones.
 
-Opportunity OS trata esas cosas como problemas distintos en vez de mezclarlos en una sola automatización.
+Opportunity OS trata esas cosas como problemas distintos.
 
 ## Qué hace hoy
 
 | Slice | Estado | Para qué sirve |
 | --- | --- | --- |
-| **V0.2A — Intelligent Radar** | ✅ implementado | descubre, normaliza, puntúa y prioriza oportunidades |
-| **V0.2B — CV Factory** | ✅ implementado | genera CVs ATS usando sólo hechos y evidencia verificados |
-| **V0.2C — Email Outreach Core** | ✅ implementado | controla contacto, draft, aprobación y envío como estados separados |
-| **Target Accounts** | 🧭 diseñado / roadmap | detectar empresas valiosas aunque no exista una vacante activa |
-| **Relationship memory / Context Bridge** | 🧭 roadmap | recordar contactos, cooldowns, procesos y razones para volver a hablar |
+| **V0.2A — Intelligent Radar** | ✅ | descubre, normaliza, puntúa y prioriza vacantes reales |
+| **V0.2A2 — Target Accounts** | ✅ | detecta organizaciones de alta afinidad aunque no exista una vacante activa |
+| **V0.2B — CV Factory** | ✅ | genera CVs ATS usando sólo hechos y evidencia verificados |
+| **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
+| **Relationship Memory / Context Bridge** | 🧭 NEXT | recordar procesos, contactos, cooldowns y razones para retomar una relación |
 
-El roadmap público está en [`ROADMAP.md`](ROADMAP.md).
+Ver [`ROADMAP.md`](ROADMAP.md).
+
+## Vacante, empresa y contacto no son lo mismo
+
+```text
+ACTIVE_POSTING
+= existe una requisición publicada de verdad
+
+TARGET_ACCOUNT
+= una organización que vale la pena seguir o investigar
+
+SPECULATIVE_OUTREACH
+= una recomendación para preparar un contacto espontáneo honesto
+```
+
+Una empresa puede ser un target fuerte por sector, ubicación, estabilidad, adopción tecnológica, canal de CV o afinidad con las capacidades del candidato.
+
+Pero `TARGET_ACCOUNT` nunca cuenta como vacante.
+
+## Target Accounts V0.2A2
+
+Cada empresa se evalúa con un score distinto al job match:
+
+| Componente | Peso |
+| --- | ---: |
+| Capability / sector affinity | 30% |
+| Proximity / logistics | 20% |
+| Scale / stability | 15% |
+| Innovation / AI / digital | 15% |
+| Contactability | 10% |
+| Current hiring signal | 10% |
+
+Las señales numéricas requieren **provenance y fecha de observación**. La falta de una vacante activa baja sólo la señal de contratación; no elimina automáticamente una empresa útil.
+
+El selector puede recomendar únicamente:
+
+```text
+PREPARE_SPECULATIVE
+RESEARCH_CONTACT
+WATCH
+```
+
+Nunca devuelve `SEND`.
+
+### Cooldown y anti-spam
+
+- cooldown por organización: 30 días por defecto;
+- un contacto reciente fuerza `WATCH`;
+- sin canal usable, prioriza `RESEARCH_CONTACT`;
+- afinidad/confianza insuficientes terminan en `WATCH`;
+- no adivina emails;
+- no diseña ráfagas a varios recruiters;
+- una recomendación no autoriza una acción externa.
+
+Los targets reales viven en `targets.local.yaml`, que está gitignored. El repo público trae sólo `targets/example_targets.yaml` con fixtures ficticios.
 
 ## Tres preguntas, no un solo score
 
-El radar separa tres cosas que suelen confundirse:
+El radar de vacantes mantiene separadas:
 
-- **CAREER** — cuánto empuja una oportunidad hacia la dirección profesional elegida.
-- **INCOME_NOW** — qué tan realista es conseguirla y hacerla útil como ingreso en el corto plazo.
-- **CONFIDENCE** — qué tan buenos son los datos usados para llegar a esa conclusión.
-
-Ejemplo:
+- **CAREER** — cuánto empuja una oportunidad hacia una dirección profesional;
+- **INCOME_NOW** — qué tan viable es como ingreso cercano;
+- **CONFIDENCE** — qué tan confiables son los datos usados.
 
 ```text
 CAREER       31 / 100
@@ -82,13 +133,11 @@ no es un gran destino de carrera,
 pero puede ser una buena oportunidad de ingreso ahora.
 ```
 
-La confianza no es fit. La falta de información baja confianza; no se transforma silenciosamente en un dato negativo sobre la persona.
+Confidence no es fit. La falta de información baja confianza; no se transforma silenciosamente en un dato negativo sobre la persona.
 
 ## La evidencia manda
 
-Opportunity OS no debería poder escribir en un CV algo que el candidato no pueda defender después.
-
-La **CV Factory** parte de hechos privados verificados y módulos de evidencia aprobados. Puede seleccionar, ordenar u omitir información, pero no inventar años de experiencia, empleadores, títulos, métricas, herramientas o proyectos.
+La **CV Factory** no debería poder escribir algo que el candidato no pueda defender después.
 
 ```text
 Radar-selected opportunity
@@ -100,151 +149,28 @@ Radar-selected opportunity
 -> reproducible ApplicationPacket
 ```
 
-Los requisitos se distinguen entre experiencia exacta, alias aprobados, habilidades relacionadas y desconocidos. Una tecnología “parecida” puede aportar contexto; no demuestra experiencia directa con otra herramienta.
+Puede seleccionar, ordenar u omitir información. No inventa años, empleadores, títulos, métricas, herramientas o proyectos.
+
+Los datos privados permanecen locales:
+
+```text
+profile/master_facts.local.yaml
+profile/evidence_catalog.local.yaml
+artifacts/applications/<application_id>/cv.pdf
+```
 
 ## Contactar no es spamear
 
-El core de outreach usa una prioridad simple:
+Prioridad del core de outreach:
 
 ```text
 email publicado en la vacante
--> canal oficial de Careers / HR
+-> canal oficial Careers / HR
 -> recruiter verificado
--> formulario o ruta manual
+-> formulario / ruta manual
 ```
 
-No adivina direcciones tipo `jobs@empresa.com`.
-
-Una vez preparado el mensaje, **draft, aprobación y envío son eventos diferentes**. Un draft aprobado no puede enviarse sólo por existir: hace falta una instrucción explícita posterior y evidencia de éxito del proveedor antes de registrar `SENT`.
-
-Eso permite mantener idempotencia, trazabilidad y una regla básica: una automatización nunca debería convertir una intención ambigua en una acción externa irreversible.
-
-## Lo que se niega a hacer
-
-- inventar experiencia para mejorar un match;
-- presentar una empresa interesante como si tuviera una vacante que no existe;
-- mezclar evidencia de perfiles profesionales distintos;
-- mandar el mismo mensaje a varios recruiters para “subir probabilidades”;
-- considerar un draft aprobado como una orden de envío;
-- exponer CVs reales, contactos o historial privado en el repositorio público;
-- ocultar gaps o incertidumbre detrás de un score prolijo;
-- convertir un máximo diario en una cuota de spam.
-
-## Probado con uso real, sin vender humo
-
-El flujo operativo ya se usó como smoke test en una candidatura real:
-
-```text
-oportunidad
-→ evidencia
-→ CV
-→ contacto publicado
-→ draft Gmail
-→ revisión humana
-→ instrucción explícita
-→ envío confirmado
-```
-
-Eso **no** significa que todo el recorrido esté automatizado end-to-end. El core determinista y las herramientas del operador siguen siendo capas separadas; conectar ambos de forma más directa está en el roadmap.
-
-Ese límite es intencional: primero tiene que ser verificable y seguro; después, cómodo.
-
-## Lo próximo: ver empresas, no sólo avisos
-
-El siguiente bloque diseñado es **Target Accounts**.
-
-La idea es separar claramente:
-
-```text
-ACTIVE_POSTING
-= una vacante publicada de verdad
-
-TARGET_ACCOUNT
-= una organización que vale la pena seguir o investigar
-
-SPECULATIVE_OUTREACH
-= una recomendación para preparar un contacto espontáneo honesto
-```
-
-Una empresa puede ser un target fuerte por sector, ubicación, estabilidad, adopción tecnológica o afinidad con las capacidades del candidato aunque hoy no tenga un puesto abierto.
-
-Pero `TARGET_ACCOUNT` nunca debe contarse como una vacante.
-
-El diseño completo está en:
-
-```text
-docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
-```
-
-## Technical reference
-
-### V0.2A — Intelligent Radar
-
-El scoring de carrera conserva los pesos originales:
-
-| Component | Weight |
-| --- | ---: |
-| Core / mandatory skill fit | 40% |
-| Role / domain fit | 20% |
-| Verified evidence fit | 20% |
-| Location / remote fit | 10% |
-| Freshness | 10% |
-
-Default CAREER tiers:
-
-```text
-HIGH    match >= 78 and confidence >= 75
-MEDIUM  match >= 65 and confidence >= 65
-STRETCH match >= 55 but below MEDIUM
-DISCARD match < 55 or factual hard fail
-```
-
-INCOME_NOW usa otra función:
-
-| Component | Weight |
-| --- | ---: |
-| Verified capability / requirement fit | 35% |
-| Logistics / location feasibility | 25% |
-| Schedule / work-mode compatibility | 15% |
-| Entry friction / formal barrier fit | 15% |
-| Freshness / deadline | 10% |
-
-```text
-HIGH    viability >= 75 and confidence >= 75
-MEDIUM  viability >= 62 and confidence >= 65
-LOW     otherwise
-```
-
-Los pesos y thresholds son configuración de producto versionada, no una verdad científica.
-
-### Candidate tracks
-
-Los tracks evitan mezclar evidencia incompatible:
-
-```text
-tech_geospatial       -> CAREER + INCOME_NOW
-gastronomy_operations -> INCOME_NOW
-general_operations    -> INCOME_NOW
-```
-
-Un CV técnico no puede tomar experiencia de otro track sólo para llenar espacio.
-
-### CV Factory
-
-`CVDocumentModel` mantiene claims visibles y provenance. Antes de renderizar, `ClaimValidator` verifica entre otras cosas:
-
-- que cada claim tenga origen;
-- que facts/evidence existan y estén verificados;
-- que pertenezcan al track seleccionado;
-- que títulos, fechas y métricas coincidan con su fuente;
-- que los gaps sigan siendo gaps.
-
-La salida actual es un PDF ATS deliberadamente simple: A4, una columna, texto seleccionable, sin imágenes, iconos, tablas ni skill bars.
-
-Un `ApplicationPacket` exitoso guarda el track, metadata del radar, hashes de fuentes, evidencia seleccionada, gaps, modelo validado, versión del renderer y hashes reproducibles.
-
-### Email outreach core
+Después:
 
 ```text
 ApplicationPacket
@@ -258,90 +184,68 @@ ApplicationPacket
 -> append-only ledger
 ```
 
-`DraftSnapshot` usa identidad semántica: destinatario, asunto, cuerpo, reply target, attachment y hashes relevantes. IDs de Gmail y timestamps no definen el contenido del draft.
-
-Una modificación material invalida la aprobación anterior.
+Draft, aprobación y envío son cosas distintas.
 
 ### Hard release boundaries
 
-Estas frases en inglés son parte del release contract testeado y se mantienen explícitas aunque el resto del README use lenguaje más humano:
+Estas garantías forman parte del release contract testeado:
 
 - **CV Factory does not send email and does not submit applications.**
-- **Opportunity OS does not create Gmail drafts automatically.** El operador puede crear uno sólo después de una instrucción humana.
+- **Opportunity OS does not create Gmail drafts automatically.**
 - **Approval is not a send command.**
 
-Los datos privados del CV permanecen fuera del repo público:
+Un proveedor debe confirmar éxito antes de registrar `SENT`.
+
+## Probado con uso real, sin vender humo
+
+El flujo del operador ya se usó como smoke test en una candidatura real:
 
 ```text
-profile/master_facts.local.yaml
-profile/evidence_catalog.local.yaml
-artifacts/applications/<application_id>/cv.pdf
+oportunidad
+→ evidencia
+→ CV
+→ contacto publicado
+→ draft Gmail
+→ revisión humana
+→ instrucción explícita
+→ envío confirmado
 ```
 
-## Daily selector
+Eso no significa que todo el recorrido esté automatizado end-to-end. El core determinista y las herramientas del operador siguen siendo capas separadas.
 
-El modo por defecto es `income_first`, con límites anti-spam:
-
-- máximo 20 oportunidades totales, nunca como cuota;
-- sólo HIGH o MEDIUM entran al batch;
-- STRETCH no rellena capacidad sobrante;
-- máximo 2 oportunidades de la misma empresa por defecto;
-- requisiciones ya aplicadas se excluyen;
-- duplicados aparecen una sola vez;
-- cooldowns son explícitos;
-- CAREER fuerte sigue visible aunque el selector priorice ingreso.
-
-Si sólo 7 oportunidades cumplen calidad, el batch contiene 7.
-
-## Architecture
+## Arquitectura
 
 ```text
-Authorized public sources / manual import
+PUBLIC JOB SOURCES / MANUAL IMPORT
                 ↓
-Source adapters + isolated failures
+          OPPORTUNITY RADAR
                 ↓
-Normalized Opportunity
+CAREER / INCOME_NOW / CONFIDENCE
                 ↓
-SQLite persistence + deduplication
+           CV FACTORY
                 ↓
-Versioned enrichment + provenance
+        ApplicationPacket
                 ↓
-Candidate tracks
+          OUTREACH CORE
+
+PRIVATE / SOURCED TARGET REGISTRY
                 ↓
-Factual eligibility gates
+        TARGET ACCOUNT RADAR
                 ↓
-CAREER + INCOME_NOW scoring
+account affinity + confidence
                 ↓
-Independent confidence
-                ↓
-Deterministic daily selector
-                ↓
-Verified private facts + evidence
-                ↓
-CV Factory + ClaimValidator
-                ↓
-ApplicationPacket
-                ↓
-Verified contact + OutreachBrief
-                ↓
-DraftSnapshot + ApprovalRecord
-                ↓
-SendRequest + SendGate
-                ↓
-Provider receipt + append-only ledger
+WATCH / RESEARCH_CONTACT / PREPARE_SPECULATIVE
 ```
 
-Source-specific payloads stay inside connectors. El scoring, CV preparation y outreach policy no dependen de raw ATS JSON, un taxonomy service vivo, Gmail/Apollo SDKs ni de que un LLM “tenga razón”.
+La memoria de relaciones será el puente entre ambos recorridos: recordar qué empresa/persona ya fue contactada, cuándo, por qué y con qué resultado.
 
-## Sources
+## Fuentes de vacantes soportadas
 
-V0.2A soporta registros locales construidos desde:
-
-- **Remotive** — public remote-job feed;
-- **Greenhouse Job Board API** — public GET job-board data;
-- **Lever Postings API** — public published postings;
-- **Ashby Public Job Posting API** — public job-board postings;
-- **manual import** — para oportunidades provistas por el usuario u otras fuentes no cubiertas.
+- **Remotive**;
+- **Greenhouse Job Board API**;
+- **Lever Postings API**;
+- **Ashby Public Job Posting API**;
+- **manual import**.
 
 Una fuente caída no invalida las demás.
 
@@ -355,6 +259,7 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 cp profiles/example_profile.yaml profile.local.yaml
 cp sources/example_sources.yaml sources.local.yaml
+cp targets/example_targets.yaml targets.local.yaml
 uvicorn app.main:app --reload
 ```
 
@@ -365,8 +270,6 @@ python -m pytest -v
 python -m compileall app
 ```
 
-Fixtures de tests, CV y outreach no necesitan acceso live a job boards, Gmail, Apollo o taxonomy services.
-
 ## Local configuration
 
 ```text
@@ -376,9 +279,8 @@ HTTP_TIMEOUT_SECONDS=10
 OPPORTUNITY_TAXONOMY_PATH=
 OPPORTUNITY_ALIAS_REGISTRY_PATH=data/skill_aliases.yaml
 OPPORTUNITY_SOURCES_PATH=sources.local.yaml
+OPPORTUNITY_TARGETS_PATH=targets.local.yaml
 ```
-
-Los datos reales permanecen locales y gitignored.
 
 ## HTTP API
 
@@ -390,64 +292,35 @@ POST /api/v1/opportunities/manual
 POST /api/v1/ingest/remotive
 POST /api/v1/assessments/{opportunity_id}
 POST /api/v1/radar/run
+POST /api/v1/targets/radar/run
 ```
 
-V0.2B y V0.2C no agregan endpoints públicos: CV preparation y outreach orchestration permanecen como boundaries internas/locales.
+V0.2B y V0.2C no agregan endpoints públicos para CV/outreach: esas boundaries siguen locales. V0.2A2 sí expone un endpoint **read-only de recomendación** para Target Accounts; no crea CV, draft, contacto ni envío.
 
 ## Privacy by default
 
 - no committed credentials;
-- no public personal candidate profile;
-- no real CV tracked by default;
-- private facts/evidence remain gitignored;
-- generated application files are guarded by CI;
-- real recruiter/contact data stays outside the public core;
-- real outreach state stays local;
-- external errors are sanitized;
-- unknown facts remain unknown;
-- numeric/title/date claims require verified support;
-- provider success evidence is required before `SENT`.
+- no perfil personal público;
+- no CV real tracked por defecto;
+- facts/evidence privados gitignored;
+- targets reales gitignored;
+- datos reales de recruiters/contactos fuera del core público;
+- outreach state local;
+- errores externos sanitizados;
+- unknown facts permanecen unknown;
+- claims numéricos/títulos/fechas requieren soporte verificable.
 
-Los ejemplos públicos son ficticios. El repo contiene contratos y comportamiento; los datos reales pertenecen a la capa privada del operador.
-
-## Design docs
-
-V0.1:
+## Diseño y planes
 
 ```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.1-design.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.1.md
-```
-
-V0.2A:
-
-```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-intelligent-radar-design.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-multi-intent-amendment.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a1-multi-intent-radar-core.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a1-self-review-corrections.md
-```
-
-Target Accounts / speculative outreach:
-
-```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
-```
-
-V0.2B:
-
-```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2b-cv-factory.md
-```
-
-V0.2C:
-
-```text
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2c-email-outreach.md
-docs/superpowers/plans/2026-08-28-opportunity-os-v0.2c-email-outreach-self-review.md
+
+docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
 ```
 
 ## License
