@@ -141,7 +141,6 @@ def _build_rendercv_payload(
 
     custom_connections = [
         {
-            "fontawesome_icon": "envelope",
             "placeholder": claim_text(claim_id),
             "url": None,
         }
