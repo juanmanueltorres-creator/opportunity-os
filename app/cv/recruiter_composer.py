@@ -405,9 +405,12 @@ def _reduce_once(
             update={"link_claim_ids": document.link_claim_ids[:-1]}
         )
 
-    # 2. Lower-relevance skills: groups and skills are already relevance ordered,
-    # so remove from the tail first.
-    if document.technology_groups:
+    # 2. Lower-relevance skills: preserve one skill token as minimum
+    # recruiter context, then continue to later reduction categories.
+    skill_token_count = sum(
+        len(group.skill_claim_ids) for group in document.technology_groups
+    )
+    if skill_token_count > 1:
         groups = [group.model_copy(deep=True) for group in document.technology_groups]
         last = groups[-1]
         if len(last.skill_claim_ids) > 1:
