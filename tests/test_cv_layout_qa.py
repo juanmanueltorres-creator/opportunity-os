@@ -62,6 +62,20 @@ def test_high_utilization_is_warning_not_error(tmp_path: Path) -> None:
     assert "layout_high_utilization" in {warning.code for warning in result.warnings}
 
 
+def test_two_pages_with_small_overflow_warns_about_tiny_trailing_page(
+    tmp_path: Path,
+) -> None:
+    result = LayoutQA().evaluate(
+        _pdf(tmp_path / "tiny-trailing.pdf", pages=2),
+        _metrics(page_count=2, ratio=1.10),
+    )
+
+    assert result.valid is True
+    assert "layout_tiny_trailing_page" in {
+        warning.code for warning in result.warnings
+    }
+
+
 def test_more_than_two_pages_is_hard_error(tmp_path: Path) -> None:
     result = LayoutQA().evaluate(
         _pdf(tmp_path / "three.pdf", pages=3),
