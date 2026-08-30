@@ -158,6 +158,22 @@ def test_rendercv_28_offline_package_path_contains_local_fontawesome_shim():
     assert "fa-icon" in (shim / "lib.typ").read_text(encoding="utf-8")
 
 
+def test_recruiter_renderer_does_not_spawn_rendercv_cli_subprocess(tmp_path, monkeypatch):
+    def fail_subprocess(*args, **kwargs):
+        raise AssertionError("recruiter renderer must use RenderCV Python API in-process")
+
+    monkeypatch.setattr(rendercv_renderer_module.subprocess, "run", fail_subprocess)
+
+    result = RenderCVTypstRenderer().render(
+        recruiter_document=_recruiter_document(),
+        source_document=_source_document(),
+        output_path=tmp_path / "cv.pdf",
+        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+    )
+
+    assert Path(result.artifact.path).is_file()
+
+
 def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
     result = RenderCVTypstRenderer().render(
         recruiter_document=_recruiter_document(),
