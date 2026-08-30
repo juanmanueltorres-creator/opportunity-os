@@ -6,7 +6,7 @@ Opportunity OS organiza la búsqueda laboral como un sistema: encuentra oportuni
 
 Open source, auditable y deliberadamente humano en los pasos que cambian algo afuera del sistema.
 
-> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D, Operator Observation Bridge V0.2E y Gmail Read Adapter V0.2E1.
+> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, ATS Polished Renderer + Layout QA V0.2B1, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D, Operator Observation Bridge V0.2E y Gmail Read Adapter V0.2E1.
 
 ## En 30 segundos
 
@@ -59,6 +59,7 @@ Opportunity OS trata esos problemas por separado y los conecta con contratos exp
 | **V0.2A — Intelligent Radar** | ✅ | descubre, normaliza, puntúa y prioriza vacantes reales |
 | **V0.2A2 — Target Accounts** | ✅ | detecta organizaciones de alta afinidad aunque no exista una vacante activa |
 | **V0.2B — CV Factory** | ✅ | genera CVs ATS usando sólo hechos y evidencia verificados |
+| **V0.2B1 — ATS Polished Renderer + Layout QA** | ✅ | mejora jerarquía visual, controla layout y conserva el contrato ATS/provenance |
 | **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
 | **V0.2D — Relationship Memory / Context Bridge** | ✅ | recuerda contactos, procesos, cooldowns y contexto sin exponer el CRM privado |
 | **V0.2E — Operator Observation Bridge** | ✅ | permite previsualizar, confirmar e importar hechos externos normalizados al estado local |
@@ -286,9 +287,14 @@ Radar-selected opportunity
 -> evidence selection
 -> provenance-backed CV model
 -> ClaimValidator
--> ATS PDF
+-> ATS Polished Renderer (ats-pdf-v2)
+-> Layout QA
 -> reproducible ApplicationPacket
 ```
+
+V0.2B1 mantiene el PDF **A4, one-column, selectable-text y con fuentes Helvetica estándar**, pero agrega una jerarquía visual más clara y una sola tonalidad de acento no semántica. `Layout QA` mide page count, utilización aproximada, tamaño mínimo de cuerpo, wrapping del headline y presencia de texto extraíble antes de permitir el `ApplicationPacket`.
+
+La presentación no gana autoridad sobre la evidencia: **unsupported target skills remain gaps**. Un requisito de una vacante no aparece como experiencia sólo porque mejoraría el match visual o lexical.
 
 Puede seleccionar, ordenar u omitir información. No inventa años, empleadores, títulos, métricas, herramientas o proyectos.
 
@@ -514,6 +520,7 @@ docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-intelligent-radar-design.
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-multi-intent-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
+docs/superpowers/specs/2026-08-29-opportunity-os-v0.2b1-ats-polished-renderer-design.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-dormant-state-amendment.md
@@ -522,6 +529,7 @@ docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e-operator-observation-brid
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter-design.md
 
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
+docs/superpowers/plans/2026-08-29-opportunity-os-v0.2b1-ats-polished-renderer.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter.md

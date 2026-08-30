@@ -252,6 +252,22 @@ class RenderedCVArtifact(StrictCVModel):
     renderer_version: str = Field(min_length=1)
 
 
+class RenderLayoutMetrics(StrictCVModel):
+    page_count: int = Field(ge=0)
+    usable_height: float = Field(gt=0)
+    rendered_content_height: float = Field(ge=0)
+    headline_line_count: int = Field(ge=0)
+    body_font_size: float = Field(gt=0)
+
+
+class LayoutQAResult(StrictCVModel):
+    valid: bool
+    page_count: int = Field(ge=0)
+    warnings: list[ValidationIssue] = Field(default_factory=list)
+    errors: list[ValidationIssue] = Field(default_factory=list)
+    used_height_ratio: float = Field(ge=0)
+
+
 class ApplicationPacket(StrictCVModel):
     status: Literal["PREPARED"] = "PREPARED"
     application_id: str = Field(min_length=1)
