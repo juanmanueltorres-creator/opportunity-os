@@ -319,7 +319,12 @@ def _insert_clickable_links(
                             "uri": uri,
                         }
                     )
-        document.saveIncr()
+        document.save(
+            output_path,
+            incremental=True,
+            encryption=fitz.PDF_ENCRYPT_KEEP,
+            no_new_id=True,
+        )
     finally:
         document.close()
 
