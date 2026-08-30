@@ -219,15 +219,35 @@ def _validate_claim_roles(
                 errors=errors,
             )
 
-    for claim_id in recruiter_document.selected_project_claim_ids:
-        _require_kind(
-            claim_id,
-            allowed={"project"},
-            role="project",
-            claim_by_id=claim_by_id,
-            validated_ids=validated_ids,
-            errors=errors,
-        )
+    if recruiter_document.project_entries:
+        for entry in recruiter_document.project_entries:
+            _require_kind(
+                entry.primary_claim_id,
+                allowed={"project"},
+                role="project",
+                claim_by_id=claim_by_id,
+                validated_ids=validated_ids,
+                errors=errors,
+            )
+            for claim_id in entry.bullet_claim_ids:
+                _require_kind(
+                    claim_id,
+                    allowed={"bullet"},
+                    role="project_bullet",
+                    claim_by_id=claim_by_id,
+                    validated_ids=validated_ids,
+                    errors=errors,
+                )
+    else:
+        for claim_id in recruiter_document.selected_project_claim_ids:
+            _require_kind(
+                claim_id,
+                allowed={"project"},
+                role="project",
+                claim_by_id=claim_by_id,
+                validated_ids=validated_ids,
+                errors=errors,
+            )
 
     for entry in recruiter_document.experience_entries:
         _require_kind(
