@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from html import escape
 from pathlib import Path
 
@@ -51,11 +52,34 @@ SECTION_ORDER = (
     "links",
 )
 
+_EMAIL_RE = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+_URL_RE = re.compile(
+    r"(?:https?://)?(?:www\.)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+"
+    r"(?:/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?"
+)
+_PHONE_RE = re.compile(r"\+?\d[\d\s().-]{5,}\d")
+
 
 class DeterministicCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         kwargs["invariant"] = 1
         super().__init__(*args, **kwargs)
+
+
+class ClickableParagraph(Paragraph):
+    def __init__(self, text: str, style: ParagraphStyle, *, uri: str | None = None):
+        super().__init__(text, style)
+        self._uri = uri
+
+    def draw(self) -> None:
+        super().draw()
+        if self._uri:
+            self.canv.linkURL(
+                self._uri,
+                (0, 0, self.width, self.height),
+                relative=1,
+                thickness=0,
+            )
 
 
 class ATSRenderer:
@@ -238,7 +262,15 @@ class ATSRenderer:
                 elif claim.kind == "bullet":
                     style = active_styles["bullet"]
                     prefix = "• "
-                story.append(Paragraph(prefix + escape(claim.text), style))
+
+                uri = self._claim_uri(claim.text, kind=claim.kind)
+                story.append(
+                    ClickableParagraph(
+                        escape(prefix + claim.text),
+                        style,
+                        uri=uri,
+                    )
+                )
 
             if section_name == "headline":
                 story.append(Spacer(1, 4))
@@ -253,6 +285,31 @@ class ATSRenderer:
                 )
 
         return story
+
+    @staticmethod
+    def _claim_uri(text: str, *, kind: str) -> str | None:
+        if kind == "contact":
+            email = _EMAIL_RE.search(text)
+            if email:
+                return f"mailto:{email.group(0)}"
+
+            phone = _PHONE_RE.search(text)
+            if phone:
+                visible = phone.group(0)
+                digits = "".join(character for character in visible if character.isdigit())
+                if len(digits) >= 7:
+                    prefix = "+" if visible.lstrip().startswith("+") else ""
+                    return f"tel:{prefix}{digits}"
+
+        if kind == "link":
+            url = _URL_RE.search(text)
+            if url:
+                visible = url.group(0)
+                if visible.startswith(("http://", "https://")):
+                    return visible
+                return f"https://{visible}"
+
+        return None
 
     @staticmethod
     def _measure_story(
