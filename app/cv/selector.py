@@ -19,6 +19,7 @@ _STRUCTURAL_FACT_KINDS = {
     "link",
     "summary_claim",
     "role",
+    "employment",
     "education",
     "language",
 }
