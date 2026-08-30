@@ -225,7 +225,8 @@ def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(t
     recruiter_document = _golden_recruiter_document()
     claim_by_id = {claim.claim_id: claim.text for claim in source_document.claims}
     compact_text = "\n".join(
-        claim_by_id[claim_id] for claim_id in recruiter_document.all_claim_ids()
+        claim_by_id[claim_id].replace("–", "-").replace("—", "-")
+        for claim_id in recruiter_document.all_claim_ids()
     )
     _write_pdf(pdf, pages=[compact_text])
 
