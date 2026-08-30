@@ -1,0 +1,74 @@
+{
+  "source_document": {
+    "document_version": "cvdoc-v1",
+    "language": "en",
+    "claims": [
+      {"claim_id": "to:name", "section": "headline", "kind": "identity", "text": "Morgan Lee"},
+      {"claim_id": "to:role", "section": "headline", "kind": "headline", "text": "Technology and Operations Analyst"},
+      {"claim_id": "to:email", "section": "headline", "kind": "contact", "text": "morgan.lee@example.test"},
+      {"claim_id": "to:summary", "section": "summary", "kind": "summary", "text": "Connects software, operational data, and process improvement to make everyday workflows easier to measure and run."},
+      {"claim_id": "to:python", "section": "skills", "kind": "skill", "text": "Python"},
+      {"claim_id": "to:sql", "section": "skills", "kind": "skill", "text": "SQL"},
+      {"claim_id": "to:automation", "section": "skills", "kind": "skill", "text": "Automation"},
+      {"claim_id": "to:process", "section": "skills", "kind": "skill", "text": "process improvement"},
+      {"claim_id": "to:inventory", "section": "skills", "kind": "skill", "text": "inventory"},
+      {"claim_id": "to:purchasing", "section": "skills", "kind": "skill", "text": "purchasing"},
+      {"claim_id": "to:kpi", "section": "skills", "kind": "skill", "text": "KPI"},
+      {"claim_id": "to:project-1", "section": "projects", "kind": "project", "text": "Ops Console - dashboard for reviewing workload and process status."},
+      {"claim_id": "to:project-2", "section": "projects", "kind": "project", "text": "Stock Flow - small workflow for validating inventory movements."},
+      {"claim_id": "to:project-3", "section": "projects", "kind": "project", "text": "Route Sandbox - deterministic simulator for delivery planning scenarios."},
+      {"claim_id": "to:experience-1", "section": "experience", "kind": "organization", "text": "Example Distribution | Operations Analyst | 2024-Present"},
+      {"claim_id": "to:experience-1-bullet", "section": "experience", "kind": "bullet", "text": "Tracked workflow indicators and standardized recurring operational checks."},
+      {"claim_id": "to:experience-2", "section": "experience", "kind": "organization", "text": "Corner Market Group | Operations Coordinator | 2021-2024"},
+      {"claim_id": "to:experience-2-bullet", "section": "experience", "kind": "bullet", "text": "Coordinated purchasing, stock controls, and daily team routines."},
+      {"claim_id": "to:education", "section": "education", "kind": "education", "text": "Diploma in Information Systems - Example Technical Institute"},
+      {"claim_id": "to:language", "section": "languages", "kind": "language", "text": "English - Working proficiency"},
+      {"claim_id": "to:link", "section": "links", "kind": "link", "text": "github.com/morgan-lee-example"}
+    ],
+    "entries": [],
+    "provenance_map": {
+      "to:name": {"fact_ids": ["to:name"]},
+      "to:role": {"fact_ids": ["to:role"]},
+      "to:email": {"fact_ids": ["to:email"]},
+      "to:summary": {"fact_ids": ["to:summary"]},
+      "to:python": {"fact_ids": ["to:python"]},
+      "to:sql": {"fact_ids": ["to:sql"]},
+      "to:automation": {"fact_ids": ["to:automation"]},
+      "to:process": {"fact_ids": ["to:process"]},
+      "to:inventory": {"fact_ids": ["to:inventory"]},
+      "to:purchasing": {"fact_ids": ["to:purchasing"]},
+      "to:kpi": {"fact_ids": ["to:kpi"]},
+      "to:project-1": {"fact_ids": ["to:project-1"]},
+      "to:project-2": {"fact_ids": ["to:project-2"]},
+      "to:project-3": {"fact_ids": ["to:project-3"]},
+      "to:experience-1": {"fact_ids": ["to:experience-1"]},
+      "to:experience-1-bullet": {"fact_ids": ["to:experience-1"]},
+      "to:experience-2": {"fact_ids": ["to:experience-2"]},
+      "to:experience-2-bullet": {"fact_ids": ["to:experience-2"]},
+      "to:education": {"fact_ids": ["to:education"]},
+      "to:language": {"fact_ids": ["to:language"]},
+      "to:link": {"fact_ids": ["to:link"]}
+    }
+  },
+  "recruiter_document": {
+    "document_version": "recruiter-doc-v1",
+    "source_cv_document_version": "cvdoc-v1",
+    "language": "en",
+    "identity_claim_id": "to:name",
+    "headline_claim_id": "to:role",
+    "contact_claim_ids": ["to:email"],
+    "profile_claim_ids": ["to:summary"],
+    "technology_groups": [
+      {"label_id": "software_data", "skill_claim_ids": ["to:python", "to:sql", "to:automation"]},
+      {"label_id": "operations_systems", "skill_claim_ids": ["to:process", "to:inventory", "to:purchasing", "to:kpi"]}
+    ],
+    "selected_project_claim_ids": ["to:project-1", "to:project-2", "to:project-3"],
+    "experience_entries": [
+      {"primary_claim_id": "to:experience-1", "bullet_claim_ids": ["to:experience-1-bullet"]},
+      {"primary_claim_id": "to:experience-2", "bullet_claim_ids": ["to:experience-2-bullet"]}
+    ],
+    "education_claim_ids": ["to:education"],
+    "language_claim_ids": ["to:language"],
+    "link_claim_ids": ["to:link"]
+  }
+}
