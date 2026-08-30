@@ -26,6 +26,8 @@ design:
     space_below_name: 0.15cm
     space_below_headline: 0.12cm
     space_below_connections: 0.25cm
+    connections:
+      show_icons: false
   section_titles:
     type: with_full_line
     line_thickness: 0.4pt
