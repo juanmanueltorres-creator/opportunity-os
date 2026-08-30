@@ -129,7 +129,12 @@ def _validate_policy_caps(
             )
         )
 
-    if len(document.selected_project_claim_ids) > policy.max_projects:
+    project_count = (
+        len(document.project_entries)
+        if document.project_entries
+        else len(document.selected_project_claim_ids)
+    )
+    if project_count > policy.max_projects:
         errors.append(
             ValidationIssue(
                 code="recruiter_project_cap_exceeded",
