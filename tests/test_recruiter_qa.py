@@ -219,6 +219,27 @@ def test_blank_nonextractable_pdf_is_hard_recruiter_failure(tmp_path):
     assert "recruiter_text_not_extractable" in {issue.code for issue in result.errors}
 
 
+def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(tmp_path):
+    pdf = tmp_path / "underfilled.pdf"
+    source_document = _golden_source_document()
+    recruiter_document = _golden_recruiter_document()
+    claim_by_id = {claim.claim_id: claim.text for claim in source_document.claims}
+    compact_text = "\n".join(
+        claim_by_id[claim_id] for claim_id in recruiter_document.all_claim_ids()
+    )
+    _write_pdf(pdf, pages=[compact_text])
+
+    result = RecruiterQualityQA().evaluate(
+        render_result=_render_result(pdf),
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+    )
+
+    assert result.valid is False
+    assert "recruiter_content_underfilled" in {issue.code for issue in result.errors}
+
+
 def test_real_rendercv_pdf_survives_qa_and_two_independent_extractors(tmp_path):
     policy = load_recruiter_policy("config/recruiter_policy.yaml")
     source_document = _golden_source_document()
