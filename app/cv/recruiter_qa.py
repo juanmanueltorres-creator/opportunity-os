@@ -77,7 +77,7 @@ class RecruiterQualityQA:
                     )
                 )
 
-            if render_result.metrics.body_font_size < policy.min_body_font_size:
+            if render_result.metrics.body_font_size < policy.min_body_font_pt:
                 errors.append(
                     _issue(
                         "recruiter_body_font_too_small",
