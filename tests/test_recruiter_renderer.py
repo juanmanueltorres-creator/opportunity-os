@@ -176,6 +176,29 @@ def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
     assert first.artifact.sha256 == second.artifact.sha256
 
 
+def test_golden_fixture_shapes_match_approved_reference_contract() -> None:
+    software, software_source = _load_golden_fixture("recruiter_software")
+    tech_ops, tech_ops_source = _load_golden_fixture("recruiter_tech_operations")
+
+    assert len(software.technology_groups) == 3
+    assert len(software.selected_project_claim_ids) == 4
+    assert len(software.experience_entries) == 5
+    assert len(software.contact_claim_ids) >= 2
+
+    assert {group.label_id for group in tech_ops.technology_groups} >= {
+        "software_data",
+        "operations_systems",
+    }
+    assert 2 <= len(tech_ops.selected_project_claim_ids) <= 4
+    assert len(tech_ops.experience_entries) >= 2
+    assert len(tech_ops.contact_claim_ids) >= 2
+
+    tech_ops_text = "\n".join(claim.text for claim in tech_ops_source.claims).casefold()
+    assert "power bi" not in tech_ops_text
+    assert "sap" not in tech_ops_text
+    assert software_source.language == "en"
+
+
 @pytest.mark.parametrize(
     "fixture_name",
     ["recruiter_software", "recruiter_tech_operations"],
@@ -204,7 +227,7 @@ def test_golden_recruiter_profiles_are_exactly_one_page(fixture_name, tmp_path):
     "fixture_name",
     ["recruiter_software", "recruiter_tech_operations"],
 )
-def test_golden_skill_groups_survive_two_extractors(fixture_name, tmp_path):
+def test_golden_ground_truth_survives_two_extractors(fixture_name, tmp_path):
     policy = load_recruiter_policy("config/recruiter_policy.yaml")
     recruiter_document, source_document = _load_golden_fixture(fixture_name)
     output = tmp_path / f"{fixture_name}.pdf"
@@ -223,11 +246,12 @@ def test_golden_skill_groups_survive_two_extractors(fixture_name, tmp_path):
         document.close()
 
     claims_by_id = {claim.claim_id: claim.text for claim in source_document.claims}
+    for claim_id in recruiter_document.all_claim_ids():
+        ground_truth = claims_by_id[claim_id]
+        assert ground_truth in pypdf_text
+        assert ground_truth in pymupdf_text
+
     for group in recruiter_document.technology_groups:
         label = policy.skill_groups[group.label_id].labels[recruiter_document.language]
         assert label in pypdf_text
         assert label in pymupdf_text
-        for claim_id in group.skill_claim_ids:
-            skill = claims_by_id[claim_id]
-            assert skill in pypdf_text
-            assert skill in pymupdf_text
