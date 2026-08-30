@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -21,6 +22,7 @@ from app.cv.recruiter_policy import RecruiterPolicy
 RENDERER_VERSION = "rendercv-typst-v1"
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_DESIGN_PATH = _PROJECT_ROOT / "config" / "rendercv_one_page.yaml"
+_FONTAWESOME_STUB_PATH = _PROJECT_ROOT / "config" / "typst_fontawesome_stub"
 _SECTION_LABELS = {
     "en": {
         "profile": "Profile",
@@ -125,6 +127,22 @@ class RenderCVTypstRenderer:
             raise
         except Exception as exc:
             raise ValueError("RenderCV/Typst render failed") from exc
+
+
+def _prepare_rendercv_offline_package_path() -> Path:
+    from rendercv.renderer.pdf_png import get_package_path
+
+    package_path = get_package_path()
+    target = package_path / "preview" / "fontawesome" / "0.6.0"
+    target.mkdir(parents=True, exist_ok=True)
+
+    for filename in ("typst.toml", "lib.typ"):
+        source = _FONTAWESOME_STUB_PATH / filename
+        if not source.is_file():
+            raise ValueError("RenderCV/Typst render failed")
+        shutil.copyfile(source, target / filename)
+
+    return package_path
 
 
 def _build_rendercv_payload(
