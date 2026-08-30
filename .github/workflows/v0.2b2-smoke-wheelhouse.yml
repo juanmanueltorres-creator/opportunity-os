@@ -1,0 +1,32 @@
+name: v0.2b2 smoke wheelhouse
+
+on:
+  push:
+    branches:
+      - chore/v0.2b2-smoke-wheelhouse
+
+permissions:
+  contents: read
+
+jobs:
+  wheelhouse:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download exact renderer dependencies
+        run: |
+          python -m pip download --only-binary=:all: --dest wheelhouse \
+            "rendercv[full]==2.8" \
+            "typst==0.15.0"
+
+      - name: Upload wheelhouse
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0.2b2-smoke-wheelhouse-py313-linux-x86_64
+          path: wheelhouse/
+          if-no-files-found: error
+          retention-days: 1
