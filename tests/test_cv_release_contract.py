@@ -68,3 +68,19 @@ def test_roadmap_marks_v02b1_as_implemented_without_changing_next_provider_slice
     assert "ats-pdf-v2" in text
     assert "Layout QA" in text
     assert "## NEXT — V0.2E2 — Conversation-provider adapter design" in text
+
+
+def test_public_recruiter_fixtures_are_fictional() -> None:
+    paths = [
+        Path("tests/fixtures/recruiter_software.json"),
+        Path("tests/fixtures/recruiter_tech_operations.json"),
+    ]
+    forbidden = [
+        "juan.manuel.torres@",
+        "+54 9 351",
+        "master_facts.local.yaml",
+        "evidence_catalog.local.yaml",
+    ]
+    payload = "\n".join(path.read_text(encoding="utf-8") for path in paths)
+    for token in forbidden:
+        assert token not in payload
