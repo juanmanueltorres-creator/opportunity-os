@@ -1,4 +1,3 @@
-from app.cv.models import CVPolicy
 from app.cv.recruiter_composer import reduce_recruiter_document
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
@@ -9,13 +8,8 @@ from app.cv.recruiter_models import (
 from app.cv.recruiter_policy import load_recruiter_policy
 
 
-def test_reduction_skips_last_required_skill_and_continues_with_projects() -> None:
+def test_reduction_skips_last_skill_and_continues_with_projects() -> None:
     recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
-    cv_policy = CVPolicy(
-        language="en",
-        required_identity_kinds=["identity", "contact"],
-        required_sections=["projects", "skills"],
-    )
     document = RecruiterDocumentModel(
         source_cv_document_version="cvdoc-v1",
         language="en",
@@ -41,7 +35,6 @@ def test_reduction_skips_last_required_skill_and_continues_with_projects() -> No
         document,
         recruiter_policy,
         step=0,
-        required_sections=set(cv_policy.required_sections),
     )
 
     assert reduced.technology_groups == document.technology_groups
