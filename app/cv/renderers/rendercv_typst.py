@@ -23,6 +23,14 @@ RENDERER_VERSION = "rendercv-typst-v1"
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_DESIGN_PATH = _PROJECT_ROOT / "config" / "rendercv_one_page.yaml"
 _FONTAWESOME_STUB_PATH = _PROJECT_ROOT / "config" / "typst_fontawesome_stub"
+_EMAIL_PATTERN = re.compile(
+    r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$",
+    re.IGNORECASE,
+)
+_WEB_URL_PATTERN = re.compile(
+    r"(?P<url>https?://[^\s|]+|(?:www\.)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/[^\s|]*)?)"
+)
+_TRAILING_URL_PUNCTUATION = ".,);]}>"
 _SECTION_LABELS = {
     "en": {
         "profile": "Profile",
@@ -175,7 +183,7 @@ def _build_rendercv_payload(
         {
             "fontawesome_icon": "envelope",
             "placeholder": claim_text(claim_id),
-            "url": None,
+            "url": _infer_claim_uri(_claim_text(source_document, claim_id)),
         }
         for claim_id in recruiter_document.contact_claim_ids
     ]
@@ -249,7 +257,7 @@ def _build_rendercv_payload(
 
     if recruiter_document.link_claim_ids:
         sections[labels["links"]] = [
-            claim_text(claim_id)
+            _render_link_claim(source_document, claim_id)
             for claim_id in recruiter_document.link_claim_ids
         ]
 
@@ -274,6 +282,32 @@ def _claim_text(source_document: CVDocumentModel, claim_id: str) -> str:
         return claim_by_id[claim_id].text
     except KeyError as exc:
         raise ValueError("RenderCV/Typst render failed") from exc
+
+
+def _render_link_claim(source_document: CVDocumentModel, claim_id: str) -> str:
+    raw_text = _claim_text(source_document, claim_id)
+    visible_text = _escape_markdown(raw_text)
+    uri = _infer_claim_uri(raw_text)
+    if uri is None:
+        return visible_text
+    return f"[{visible_text}]({uri})"
+
+
+def _infer_claim_uri(text: str) -> str | None:
+    value = text.strip()
+    if _EMAIL_PATTERN.fullmatch(value):
+        return f"mailto:{value}"
+
+    match = _WEB_URL_PATTERN.search(value)
+    if match is None:
+        return None
+
+    url = match.group("url").rstrip(_TRAILING_URL_PUNCTUATION)
+    if not url:
+        return None
+    if not url.casefold().startswith(("http://", "https://")):
+        url = f"https://{url}"
+    return url
 
 
 def _escape_markdown(text: str) -> str:
