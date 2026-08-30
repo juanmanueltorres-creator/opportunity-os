@@ -45,6 +45,28 @@ def test_recruiter_document_carries_claim_ids_not_free_candidate_text():
     assert not hasattr(document, "headline_text")
 
 
+def test_recruiter_document_accepts_project_entry_with_one_approved_bullet():
+    document = RecruiterDocumentModel(
+        document_version="recruiter-doc-v1",
+        source_cv_document_version="cvdoc-v1",
+        language="en",
+        identity_claim_id="fact:name",
+        headline_claim_id="fact:role",
+        project_entries=[
+            {
+                "primary_claim_id": "fact:project-1",
+                "bullet_claim_ids": ["approved:project-1-bullet"],
+            }
+        ],
+    )
+
+    assert document.project_entries[0].primary_claim_id == "fact:project-1"
+    assert document.project_entries[0].bullet_claim_ids == [
+        "approved:project-1-bullet"
+    ]
+    assert "approved:project-1-bullet" in document.all_claim_ids()
+
+
 def test_technology_group_rejects_more_than_twenty_four_skill_claims():
     with pytest.raises(ValidationError):
         TechnologyGroup(
