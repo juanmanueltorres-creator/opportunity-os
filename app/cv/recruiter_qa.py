@@ -78,6 +78,16 @@ class RecruiterQualityQA:
                     )
                 )
 
+            if page_count == policy.max_pages and extracted_text:
+                text_height_ratio = _text_height_ratio(document[0])
+                if text_height_ratio < policy.min_text_height_ratio:
+                    errors.append(
+                        _issue(
+                            "recruiter_page_underutilized",
+                            "Recruiter PDF does not use enough of the available page height.",
+                        )
+                    )
+
             if render_result.metrics.body_font_size < policy.min_body_font_pt:
                 errors.append(
                     _issue(
@@ -128,6 +138,18 @@ class RecruiterQualityQA:
             )
         finally:
             document.close()
+
+
+def _text_height_ratio(page: pymupdf.Page) -> float:
+    words = page.get_text("words")
+    if not words:
+        return 0.0
+    top = min(float(word[1]) for word in words)
+    bottom = max(float(word[3]) for word in words)
+    page_height = float(page.rect.height)
+    if page_height <= 0:
+        return 0.0
+    return max(0.0, min(1.0, (bottom - top) / page_height))
 
 
 def _validate_claim_order(
