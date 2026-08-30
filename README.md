@@ -6,7 +6,7 @@ Opportunity OS organiza la búsqueda laboral como un sistema: encuentra oportuni
 
 Open source, auditable y deliberadamente humano en los pasos que cambian algo afuera del sistema.
 
-> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, ATS Polished Renderer + Layout QA V0.2B1, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D, Operator Observation Bridge V0.2E y Gmail Read Adapter V0.2E1.
+> **Estado actual:** el package sigue en la línea prerelease V0.2C (`0.2.0c1`). Ya están implementados Intelligent Radar, Target Accounts V0.2A2, CV Factory V0.2B, ATS Polished Renderer + Layout QA V0.2B1, One-page Recruiter Pipeline V0.2B2, Email Outreach Core V0.2C, Relationship Memory / Context Bridge V0.2D, Operator Observation Bridge V0.2E y Gmail Read Adapter V0.2E1.
 
 ## En 30 segundos
 
@@ -60,6 +60,7 @@ Opportunity OS trata esos problemas por separado y los conecta con contratos exp
 | **V0.2A2 — Target Accounts** | ✅ | detecta organizaciones de alta afinidad aunque no exista una vacante activa |
 | **V0.2B — CV Factory** | ✅ | genera CVs ATS usando sólo hechos y evidencia verificados |
 | **V0.2B1 — ATS Polished Renderer + Layout QA** | ✅ | mejora jerarquía visual, controla layout y conserva el contrato ATS/provenance |
+| **V0.2B2 — One-page Recruiter Pipeline** | ✅ | compone y valida un CV recruiter exactamente de una página con RenderCV/Typst y packet reproducible |
 | **V0.2C — Email Outreach Core** | ✅ | separa contacto, draft, aprobación y envío en estados auditables |
 | **V0.2D — Relationship Memory / Context Bridge** | ✅ | recuerda contactos, procesos, cooldowns y contexto sin exponer el CRM privado |
 | **V0.2E — Operator Observation Bridge** | ✅ | permite previsualizar, confirmar e importar hechos externos normalizados al estado local |
@@ -281,18 +282,21 @@ Confidence no es fit. La falta de información baja confianza; no se transforma 
 
 La **CV Factory** tampoco debería poder escribir algo que el candidato no pueda defender después.
 
+V0.2B1 mantiene el renderer histórico `ats-pdf-v2` y su `Layout QA` como contratos testeados. V0.2B2 agrega la salida recruiter canónica de una sola página sin ampliar la autoridad semántica:
+
 ```text
-Radar-selected opportunity
--> verified private facts
--> evidence selection
--> provenance-backed CV model
+RadarAssessment
+-> EvidenceSelector
+-> CVComposer
 -> ClaimValidator
--> ATS Polished Renderer (ats-pdf-v2)
--> Layout QA
--> reproducible ApplicationPacket
+-> RecruiterDocumentComposer
+-> RecruiterDocumentValidator
+-> RenderCV/Typst one-page renderer
+-> RecruiterQualityQA
+-> ApplicationPacket
 ```
 
-V0.2B1 mantiene el PDF **A4, one-column, selectable-text y con fuentes Helvetica estándar**, pero agrega una jerarquía visual más clara y una sola tonalidad de acento no semántica. `Layout QA` mide page count, utilización aproximada, tamaño mínimo de cuerpo, wrapping del headline y presencia de texto extraíble antes de permitir el `ApplicationPacket`.
+`ClaimValidator` sigue decidiendo qué afirmaciones están respaldadas. La capa recruiter sólo puede seleccionar, agrupar, ordenar u omitir claims ya validados. Si el resultado no puede cumplir exactamente una página A4 con los mínimos de calidad, el pipeline falla cerrado en vez de degradar a dos páginas o fabricar contenido.
 
 La presentación no gana autoridad sobre la evidencia: **unsupported target skills remain gaps**. Un requisito de una vacante no aparece como experiencia sólo porque mejoraría el match visual o lexical.
 
@@ -304,7 +308,23 @@ Los datos privados permanecen locales:
 profile/master_facts.local.yaml
 profile/evidence_catalog.local.yaml
 artifacts/applications/<application_id>/cv.pdf
+artifacts/applications/<application_id>/application_packet.json
 ```
+
+### Preparación canónica de una aplicación
+
+El input `--opportunity` es un `RadarAssessment` serializado completo, no un `Opportunity` crudo. El comando canónico es:
+
+```bash
+python -m app.application.prepare \
+  --opportunity <private-radar-assessment.json> \
+  --master-facts profile/master_facts.local.yaml \
+  --evidence-catalog profile/evidence_catalog.local.yaml \
+  --recruiter-policy config/recruiter_policy.yaml \
+  --output-root artifacts/applications
+```
+
+Sólo `PREPARED` produce el `ApplicationPacket`. Un track faltante, evidencia insuficiente, claim inválido o fallo recruiter/QA queda explícitamente bloqueado. El runbook operativo para un agente fresco está en [`docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md`](docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md).
 
 ## Contactar no es spamear
 
@@ -490,7 +510,7 @@ POST /api/v1/adapters/gmail/observe
 
 Las rutas de Relationship Memory siguen siendo **read-only y redactadas**. V0.2E no agrega `POST`, `PUT`, `PATCH` ni `DELETE` bajo `/api/v1/relationships/...`.
 
-V0.2B y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundaries siguen locales.
+V0.2B, V0.2B2 y V0.2C tampoco agregan endpoints públicos para CV/outreach: esas boundaries siguen locales.
 
 ## Privacy by default
 
@@ -521,6 +541,8 @@ docs/superpowers/specs/2026-08-28-opportunity-os-v0.2a-multi-intent-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2-target-accounts-speculative-outreach-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2b-cv-factory-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2b1-ats-polished-renderer-design.md
+docs/superpowers/specs/2026-08-30-opportunity-os-v0.2b2-one-page-recruiter-pipeline-design.md
+docs/superpowers/specs/2026-08-30-opportunity-os-v0.2b2-one-page-recruiter-pipeline-approval-amendment.md
 docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge-design.md
 docs/superpowers/specs/2026-08-29-opportunity-os-v0.2d-dormant-state-amendment.md
@@ -530,9 +552,12 @@ docs/superpowers/specs/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter-desig
 
 docs/superpowers/plans/2026-08-28-opportunity-os-v0.2a2-target-accounts.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2b1-ats-polished-renderer.md
+docs/superpowers/plans/2026-08-30-opportunity-os-v0.2b2-one-page-recruiter-pipeline.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2d-relationship-memory-context-bridge.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e-operator-observation-bridge.md
 docs/superpowers/plans/2026-08-29-opportunity-os-v0.2e1-gmail-read-adapter.md
+
+docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md
 ```
 
 ## Próximo bloque
