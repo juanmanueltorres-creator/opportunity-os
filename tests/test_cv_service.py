@@ -10,6 +10,7 @@ from app.cv.models import (
     CVPolicy,
     EvidenceCatalogSnapshot,
     EvidenceModule,
+    LayoutQAResult,
     MasterFact,
     MasterFactsSnapshot,
     ValidationIssue,
@@ -187,11 +188,16 @@ def _inputs(*, project_value: str = "Geo platform project", minimum: bool = True
     return master, catalog, policy
 
 
-def _service(application_id: str = "app-1", renderer=None) -> CVPreparationService:
+def _service(
+    application_id: str = "app-1",
+    renderer=None,
+    layout_qa=None,
+) -> CVPreparationService:
     return CVPreparationService(
         taxonomy_resolver=_resolver(),
         id_factory=lambda: application_id,
         renderer=renderer,
+        layout_qa=layout_qa,
     )
 
 
@@ -304,6 +310,69 @@ def test_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: Path) -> No
     assert result.status == "BLOCKED_RENDER"
     assert result.packet is None
     assert list(tmp_path.rglob("*.pdf")) == []
+
+
+def test_hard_layout_failure_blocks_packet_and_removes_pdf(tmp_path: Path) -> None:
+    master, catalog, policy = _inputs()
+
+    class FailingLayoutQA:
+        def evaluate(self, artifact, metrics, *, expected_nonempty=True):
+            return LayoutQAResult(
+                valid=False,
+                page_count=metrics.page_count,
+                errors=[
+                    ValidationIssue(
+                        code="layout_page_count_exceeded",
+                        message="fictional hard layout failure",
+                    )
+                ],
+                used_height_ratio=0.75,
+            )
+
+    result = _service(layout_qa=FailingLayoutQA()).prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path,
+        now=NOW,
+    )
+
+    assert result.status == "BLOCKED_RENDER"
+    assert result.packet is None
+    assert "layout_page_count_exceeded" in {error.code for error in result.errors}
+    assert list(tmp_path.rglob("*.pdf")) == []
+
+
+def test_layout_warning_is_returned_without_blocking_packet(tmp_path: Path) -> None:
+    master, catalog, policy = _inputs()
+
+    class WarningLayoutQA:
+        def evaluate(self, artifact, metrics, *, expected_nonempty=True):
+            return LayoutQAResult(
+                valid=True,
+                page_count=metrics.page_count,
+                warnings=[
+                    ValidationIssue(
+                        code="layout_low_utilization",
+                        message="fictional layout warning",
+                    )
+                ],
+                used_height_ratio=0.50,
+            )
+
+    result = _service(layout_qa=WarningLayoutQA()).prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path,
+        now=NOW,
+    )
+
+    assert result.status == "PREPARED"
+    assert result.packet is not None
+    assert "layout_low_utilization" in {warning.code for warning in result.warnings}
 
 
 def test_packet_hash_excludes_id_time_and_path(tmp_path: Path) -> None:
