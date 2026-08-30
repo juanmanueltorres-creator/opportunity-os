@@ -11,6 +11,7 @@ from app.cv.models import (
 
 LOW_UTILIZATION = 0.58
 HIGH_UTILIZATION = 0.96
+TINY_TRAILING_PAGE_MAX_TOTAL_UTILIZATION = 1.20
 MAX_PAGES = 2
 MIN_BODY_FONT = 9.0
 MAX_HEADLINE_LINES = 2
@@ -77,6 +78,18 @@ class LayoutQA:
                 ValidationIssue(
                     code="layout_high_utilization",
                     message="rendered CV uses unusually much of the available page height",
+                )
+            )
+
+        if (
+            page_count == 2
+            and metrics.page_count == 2
+            and 1.0 < used_height_ratio < TINY_TRAILING_PAGE_MAX_TOTAL_UTILIZATION
+        ):
+            warnings.append(
+                ValidationIssue(
+                    code="layout_tiny_trailing_page",
+                    message="second CV page contains only a small trailing content block",
                 )
             )
 
