@@ -12,6 +12,12 @@ jobs:
   wheelhouse:
     runs-on: ubuntu-24.04
     steps:
+      - name: Check out exact verified V0.2B2 source
+        uses: actions/checkout@v4
+        with:
+          ref: 8cf4b16bfa3ff3313e3524d32f840502d4f8ab3e
+          fetch-depth: 1
+
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
@@ -28,5 +34,17 @@ jobs:
         with:
           name: v0.2b2-smoke-wheelhouse-py313-linux-x86_64
           path: wheelhouse/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload exact canonical source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0.2b2-canonical-source-8cf4b16
+          path: |
+            app/
+            config/
+            data/skill_aliases.yaml
+            pyproject.toml
           if-no-files-found: error
           retention-days: 1
