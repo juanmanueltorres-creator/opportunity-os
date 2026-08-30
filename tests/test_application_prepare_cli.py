@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import app.application.prepare as prepare_module
 from app.application.prepare import main
 from app.models.domain import Opportunity
 from app.radar.models import (
@@ -238,6 +239,40 @@ def test_cli_prepares_from_serialized_radar_assessment(
     assert len(output["packet_sha256"]) == 64
     assert Path(output["cv_pdf_path"]).is_file()
     assert Path(output["cv_pdf_path"]).with_name("application_packet.json").is_file()
+
+
+def test_cli_removes_recruiter_pdf_when_packet_write_fails(
+    assessment_path: Path,
+    master_path: Path,
+    catalog_path: Path,
+    policy_path: Path,
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    output_root = tmp_path / "applications"
+
+    def fail_packet_write(_result):
+        raise OSError("simulated packet write failure")
+
+    monkeypatch.setattr(prepare_module, "_write_packet", fail_packet_write)
+
+    exit_code = main(
+        _args(
+            opportunity_path=assessment_path,
+            master_path=master_path,
+            catalog_path=catalog_path,
+            policy_path=policy_path,
+            output_root=output_root,
+        )
+    )
+    output = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 2
+    assert output["status"] == "ERROR"
+    assert output["error"] == "application_artifact_write_failed"
+    assert list(output_root.rglob("*.pdf")) == []
+    assert list(output_root.rglob("application_packet.json")) == []
 
 
 def test_cli_rejects_plain_opportunity_without_radar_assessment(
