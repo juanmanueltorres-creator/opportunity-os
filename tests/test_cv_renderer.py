@@ -106,6 +106,20 @@ def test_pdf_contains_selectable_candidate_text(tmp_path: Path) -> None:
     assert artifact.renderer_version == "ats-pdf-v2"
 
 
+def test_renderer_exposes_bounded_layout_metrics_after_render(tmp_path: Path) -> None:
+    renderer = ATSRenderer()
+
+    renderer.render(_document(), _valid_validation(), tmp_path / "metrics.pdf")
+    metrics = renderer.layout_metrics
+
+    assert metrics is not None
+    assert metrics.page_count == 1
+    assert metrics.usable_height > 0
+    assert metrics.rendered_content_height > 0
+    assert metrics.body_font_size == renderer.body_font_size
+    assert metrics.headline_line_count == 1
+
+
 def test_identical_document_produces_identical_pdf_bytes(tmp_path: Path) -> None:
     renderer = ATSRenderer()
     document = _document()
