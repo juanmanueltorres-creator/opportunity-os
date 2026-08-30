@@ -13,11 +13,12 @@ dependencies = [
   "pydantic>=2",
   "PyYAML",
   "reportlab>=4.2",
+  "rendercv[full]>=2.8,<3",
   "uvicorn",
 ]
 
 [project.optional-dependencies]
-dev = ["pypdf>=5", "pytest", "pytest-asyncio"]
+dev = ["pypdf>=5", "PyMuPDF>=1.26,<2", "pytest", "pytest-asyncio"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
