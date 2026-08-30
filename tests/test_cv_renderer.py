@@ -47,10 +47,68 @@ def _document() -> CVDocumentModel:
     )
 
 
+def _document_with_clickable_contacts() -> CVDocumentModel:
+    claims = [
+        CVClaim(
+            claim_id="claim-name",
+            section="headline",
+            kind="identity",
+            text="Alex Example",
+        ),
+        CVClaim(
+            claim_id="claim-role",
+            section="headline",
+            kind="headline",
+            text="Backend Engineer",
+        ),
+        CVClaim(
+            claim_id="claim-email",
+            section="headline",
+            kind="contact",
+            text="alex@example.com",
+        ),
+        CVClaim(
+            claim_id="claim-phone",
+            section="headline",
+            kind="contact",
+            text="+54 9 351 555 1234",
+        ),
+        CVClaim(
+            claim_id="claim-linkedin",
+            section="headline",
+            kind="link",
+            text="LinkedIn: linkedin.com/in/alex-example",
+        ),
+        CVClaim(
+            claim_id="claim-github",
+            section="links",
+            kind="link",
+            text="GitHub: https://github.com/alex-example",
+        ),
+    ]
+    return CVDocumentModel(
+        document_version="cv-doc-v1",
+        language="en",
+        claims=claims,
+        entries=[],
+        provenance_map={
+            claim.claim_id: ClaimProvenance(fact_ids=[f"fact-{claim.claim_id}"])
+            for claim in claims
+        },
+    )
+
+
 def _valid_validation() -> ValidationResult:
     return ValidationResult(
         valid=True,
         validated_claim_ids=["claim-name", "claim-role", "claim-skill"],
+    )
+
+
+def _validation_for(document: CVDocumentModel) -> ValidationResult:
+    return ValidationResult(
+        valid=True,
+        validated_claim_ids=[claim.claim_id for claim in document.claims],
     )
 
 
@@ -64,6 +122,17 @@ def _invalid_validation() -> ValidationResult:
             )
         ],
     )
+
+
+def _annotation_uris(path: str | Path) -> set[str]:
+    uris: set[str] = set()
+    for page in PdfReader(path).pages:
+        for annotation_ref in page.get("/Annots", []):
+            annotation = annotation_ref.get_object()
+            action = annotation.get("/A")
+            if action is not None and action.get("/URI") is not None:
+                uris.add(str(action["/URI"]))
+    return uris
 
 
 def test_renderer_v2_contract() -> None:
@@ -104,6 +173,41 @@ def test_pdf_contains_selectable_candidate_text(tmp_path: Path) -> None:
     assert artifact.path == str(tmp_path / "cv.pdf")
     assert len(artifact.sha256) == 64
     assert artifact.renderer_version == "ats-pdf-v2"
+
+
+def test_contact_and_link_claims_create_clickable_pdf_annotations(tmp_path: Path) -> None:
+    document = _document_with_clickable_contacts()
+
+    artifact = ATSRenderer().render(
+        document,
+        _validation_for(document),
+        tmp_path / "clickable.pdf",
+    )
+
+    assert _annotation_uris(artifact.path) == {
+        "mailto:alex@example.com",
+        "tel:+5493515551234",
+        "https://linkedin.com/in/alex-example",
+        "https://github.com/alex-example",
+    }
+
+
+def test_clickable_links_preserve_visible_selectable_text(tmp_path: Path) -> None:
+    document = _document_with_clickable_contacts()
+
+    artifact = ATSRenderer().render(
+        document,
+        _validation_for(document),
+        tmp_path / "selectable-links.pdf",
+    )
+    text = "\n".join(
+        page.extract_text() or "" for page in PdfReader(artifact.path).pages
+    )
+
+    assert "alex@example.com" in text
+    assert "+54 9 351 555 1234" in text
+    assert "linkedin.com/in/alex-example" in text
+    assert "https://github.com/alex-example" in text
 
 
 def test_renderer_exposes_bounded_layout_metrics_after_render(tmp_path: Path) -> None:
