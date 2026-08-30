@@ -51,6 +51,32 @@ Target Accounts no agrega `SEND`, no crea CVs, no consume créditos de Apollo y 
 - `ApplicationPacket` con hashes y gaps visibles;
 - guardas para que proyectos, empleos, métricas y tecnologías no se mezclen ni inventen.
 
+### ✅ V0.2B1 — ATS Polished Renderer + Layout QA
+
+V0.2B1 mejora la presentación del CV sin ampliar la autoridad semántica de CV Factory.
+
+- renderer determinista `ats-pdf-v2`;
+- A4, one-column y texto seleccionable;
+- Helvetica / Helvetica-Bold únicamente;
+- jerarquía tipográfica más fuerte y un único color de acento no semántico;
+- sin fotos, logos, tablas, sidebars, charts, skill bars ni fuentes externas;
+- `Layout QA` posterior al render y anterior al `ApplicationPacket`;
+- errores duros de layout siguen mapeando a `BLOCKED_RENDER` y eliminan el PDF parcial;
+- low/high page utilization producen warnings deterministas, no claims ni decisiones nuevas;
+- filename recruiter-facing profesional, determinista y path-safe;
+- requisitos objetivo no soportados siguen siendo gaps: layout y keyword matching no inventan experiencia.
+
+La frontera sigue siendo:
+
+```text
+verified facts/evidence
+→ CVComposer
+→ ClaimValidator
+→ ats-pdf-v2
+→ Layout QA
+→ ApplicationPacket
+```
+
 ### ✅ V0.2C — Email Outreach Core
 
 - resolución de contacto permitido;
