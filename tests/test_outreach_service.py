@@ -5,6 +5,7 @@ import hashlib
 
 from app.cv.hashing import canonical_sha256
 from app.cv.models import ApplicationPacket, ClaimProvenance, CVClaim, CVDocumentModel
+from app.cv.recruiter_models import RecruiterDocumentModel, TechnologyGroup
 from app.models.domain import Opportunity
 from app.outreach.models import ContactPolicy, OutreachPolicy
 from app.outreach.repository import SQLiteOutreachRepository
@@ -86,6 +87,18 @@ def _packet(tmp_path) -> ApplicationPacket:
             )
         },
     )
+    recruiter_document = RecruiterDocumentModel(
+        source_cv_document_version=document.document_version,
+        language="en",
+        identity_claim_id="skill-postgis",
+        headline_claim_id="skill-postgis",
+        technology_groups=[
+            TechnologyGroup(
+                label_id="geospatial",
+                skill_claim_ids=["skill-postgis"],
+            )
+        ],
+    )
     opportunity = _opportunity()
     return ApplicationPacket(
         application_id="app-1",
@@ -104,11 +117,13 @@ def _packet(tmp_path) -> ApplicationPacket:
         evidence_catalog_version="e" * 64,
         composer_version="composer-v1",
         cv_document_version=document.document_version,
-        renderer_version="renderer-v1",
+        recruiter_policy_version="recruiter-policy-v1",
+        renderer_version="rendercv-typst-v1",
         selected_fact_ids=["fact-postgis"],
         selected_evidence_ids=["evidence-geo"],
         unresolved_gaps=[],
         cv_document=document,
+        recruiter_document=recruiter_document,
         cv_pdf_path=str(cv_path),
         cv_sha256=cv_sha,
         packet_sha256="p" * 64,
