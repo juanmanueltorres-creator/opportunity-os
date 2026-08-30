@@ -24,6 +24,12 @@ def _source_fixture():
         CVClaim(claim_id="fact:qgis", section="skills", kind="skill", text="QGIS"),
         CVClaim(claim_id="fact:project-1", section="projects", kind="project", text="Mapping Console"),
         CVClaim(claim_id="fact:project-2", section="projects", kind="project", text="Fleet Simulator"),
+        CVClaim(
+            claim_id="approved:project-2-bullet",
+            section="projects",
+            kind="bullet",
+            text="Deterministic route simulation with auditable vehicle state.",
+        ),
         CVClaim(claim_id="fact:employment-1", section="experience", kind="organization", text="Example Operations | 2024–Present"),
         CVClaim(claim_id="approved:employment-1-bullet", section="experience", kind="bullet", text="Improved inventory and workflow visibility."),
         CVClaim(claim_id="fact:education", section="education", kind="education", text="BSc Applied Sciences"),
@@ -41,6 +47,11 @@ def _source_fixture():
         "fact:qgis": ClaimProvenance(fact_ids=["qgis"]),
         "fact:project-1": ClaimProvenance(fact_ids=["project-1"]),
         "fact:project-2": ClaimProvenance(fact_ids=["project-2"], evidence_ids=["module-fleet"]),
+        "approved:project-2-bullet": ClaimProvenance(
+            fact_ids=["project-2"],
+            evidence_ids=["module-fleet"],
+            approved_claim_id="project-2-bullet",
+        ),
         "fact:employment-1": ClaimProvenance(fact_ids=["employment-1"]),
         "approved:employment-1-bullet": ClaimProvenance(
             fact_ids=["employment-1"],
@@ -148,6 +159,25 @@ def test_target_supported_project_precedes_fallback_project():
         "fact:project-2",
         "fact:project-1",
     ]
+
+
+def test_project_bullet_is_associated_only_by_overlapping_provenance():
+    document, validation, selection = _source_fixture()
+
+    recruiter = compose_recruiter_document(
+        document=document,
+        validation=validation,
+        selection=selection,
+        policy=_policy(),
+    )
+
+    assert len(recruiter.project_entries) == 2
+    assert recruiter.project_entries[0].primary_claim_id == "fact:project-2"
+    assert recruiter.project_entries[0].bullet_claim_ids == [
+        "approved:project-2-bullet"
+    ]
+    assert recruiter.project_entries[1].primary_claim_id == "fact:project-1"
+    assert recruiter.project_entries[1].bullet_claim_ids == []
 
 
 def test_experience_bullet_is_associated_only_by_overlapping_provenance():
