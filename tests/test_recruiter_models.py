@@ -67,6 +67,28 @@ def test_recruiter_document_accepts_project_entry_with_one_approved_bullet():
     assert "approved:project-1-bullet" in document.all_claim_ids()
 
 
+def test_project_entries_are_canonical_when_legacy_project_ids_also_exist():
+    document = RecruiterDocumentModel(
+        document_version="recruiter-doc-v1",
+        source_cv_document_version="cvdoc-v1",
+        language="en",
+        identity_claim_id="fact:name",
+        headline_claim_id="fact:role",
+        selected_project_claim_ids=["fact:project-1"],
+        project_entries=[
+            {
+                "primary_claim_id": "fact:project-1",
+                "bullet_claim_ids": ["approved:project-1-bullet"],
+            }
+        ],
+    )
+
+    claim_ids = document.all_claim_ids()
+
+    assert claim_ids.count("fact:project-1") == 1
+    assert "approved:project-1-bullet" in claim_ids
+
+
 def test_technology_group_rejects_more_than_twenty_four_skill_claims():
     with pytest.raises(ValidationError):
         TechnologyGroup(
