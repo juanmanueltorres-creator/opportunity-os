@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 
 from app.cv.models import (
+    ApprovedClaim,
     CVPolicy,
     EvidenceCatalogSnapshot,
+    EvidenceModule,
     MasterFact,
     MasterFactsSnapshot,
 )
@@ -32,6 +34,23 @@ def _fact(
     )
 
 
+def _empty_enrichment() -> OpportunityEnrichment:
+    return OpportunityEnrichment(
+        opportunity_id="opportunity-1",
+        requirements=[],
+        extractor_version="rules-v1",
+        created_at=NOW,
+    )
+
+
+def _policy() -> CVPolicy:
+    return CVPolicy(
+        language="en",
+        required_identity_kinds=["identity", "contact"],
+        required_sections=[],
+    )
+
+
 def test_verified_employment_on_selected_track_is_structural_recruiter_context() -> None:
     master_facts = MasterFactsSnapshot(
         schema_version="v1",
@@ -58,25 +77,66 @@ def test_verified_employment_on_selected_track_is_structural_recruiter_context()
         content_sha256="b" * 64,
         modules=[],
     )
-    enrichment = OpportunityEnrichment(
-        opportunity_id="opportunity-1",
-        requirements=[],
-        extractor_version="rules-v1",
-        created_at=NOW,
-    )
-    policy = CVPolicy(
-        language="en",
-        required_identity_kinds=["identity", "contact"],
-        required_sections=[],
-    )
 
     selection = select_evidence(
-        enrichment=enrichment,
+        enrichment=_empty_enrichment(),
         application_track_id="tech",
         master_facts=master_facts,
         evidence_catalog=evidence_catalog,
-        policy=policy,
+        policy=_policy(),
     )
 
     assert "employment-tech" in selection.selected_fact_ids
     assert "employment-operations" not in selection.selected_fact_ids
+
+
+def test_module_documenting_structural_employment_is_selected_for_approved_bullet() -> None:
+    master_facts = MasterFactsSnapshot(
+        schema_version="v1",
+        content_sha256="a" * 64,
+        facts=[
+            _fact("name", "Alex Example", kind="identity", tracks=["tech"]),
+            _fact("email", "alex@example.test", kind="contact", tracks=["tech"]),
+            _fact(
+                "employment-tech",
+                "Software Developer | Example Labs | 2024 - Present",
+                kind="employment",
+                tracks=["tech"],
+            ),
+            _fact("testing", "Testing", kind="skill", tracks=["tech"]),
+        ],
+    )
+    module = EvidenceModule(
+        id="module-tech-experience",
+        track_ids=["tech"],
+        label="Tech experience",
+        fact_ids=["employment-tech", "testing"],
+        claims=[
+            ApprovedClaim(
+                id="approved-employment-tech",
+                section="experience",
+                kind="bullet",
+                text_by_language={"en": "Built and tested production software."},
+                fact_ids=["employment-tech", "testing"],
+                keywords=["software", "testing"],
+            )
+        ],
+        keywords=["software", "testing"],
+        verified=True,
+    )
+    evidence_catalog = EvidenceCatalogSnapshot(
+        schema_version="v1",
+        content_sha256="b" * 64,
+        modules=[module],
+    )
+
+    selection = select_evidence(
+        enrichment=_empty_enrichment(),
+        application_track_id="tech",
+        master_facts=master_facts,
+        evidence_catalog=evidence_catalog,
+        policy=_policy(),
+    )
+
+    assert selection.selected_evidence_ids == ["module-tech-experience"]
+    assert "testing" in selection.selected_fact_ids
