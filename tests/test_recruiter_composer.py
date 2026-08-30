@@ -225,3 +225,37 @@ def test_reduction_never_drops_below_two_projects_when_two_are_available():
     maximally_reduced = reduce_recruiter_document(recruiter, _policy(), step=100)
 
     assert len(maximally_reduced.selected_project_claim_ids) == 2
+
+
+def test_reduction_trims_canonical_project_entries_and_keeps_legacy_ids_in_sync():
+    document, validation, selection = _source_fixture()
+    recruiter = compose_recruiter_document(
+        document=document,
+        validation=validation,
+        selection=selection,
+        policy=_policy(),
+    )
+    third_entry = recruiter.project_entries[-1].model_copy(
+        update={"primary_claim_id": "fact:project-3", "bullet_claim_ids": []}
+    )
+    recruiter = recruiter.model_copy(
+        update={
+            "selected_project_claim_ids": [
+                "fact:project-2",
+                "fact:project-1",
+                "fact:project-3",
+            ],
+            "project_entries": [*recruiter.project_entries, third_entry],
+        }
+    )
+
+    maximally_reduced = reduce_recruiter_document(recruiter, _policy(), step=100)
+
+    assert [entry.primary_claim_id for entry in maximally_reduced.project_entries] == [
+        "fact:project-2",
+        "fact:project-1",
+    ]
+    assert maximally_reduced.selected_project_claim_ids == [
+        "fact:project-2",
+        "fact:project-1",
+    ]
