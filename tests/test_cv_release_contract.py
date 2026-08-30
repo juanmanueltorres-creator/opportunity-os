@@ -28,6 +28,8 @@ def test_cv_privacy_rules_preserve_existing_gitignore_contract() -> None:
     assert "activemq-data/" in lines
     assert "profile/master_facts.local.yaml" in lines
     assert "profile/evidence_catalog.local.yaml" in lines
+    assert "profile/*.local.yaml" in lines
+    assert "*.local.yaml" in lines
     assert "artifacts/applications/" in lines
 
 
@@ -68,3 +70,69 @@ def test_roadmap_marks_v02b1_as_implemented_without_changing_next_provider_slice
     assert "ats-pdf-v2" in text
     assert "Layout QA" in text
     assert "## NEXT — V0.2E2 — Conversation-provider adapter design" in text
+
+
+def test_public_recruiter_fixtures_are_fictional() -> None:
+    paths = [
+        Path("tests/fixtures/recruiter_software.json"),
+        Path("tests/fixtures/recruiter_tech_operations.json"),
+    ]
+    forbidden = [
+        "juan.manuel.torres@",
+        "+54 9 351",
+        "master_facts.local.yaml",
+        "evidence_catalog.local.yaml",
+    ]
+    payload = "\n".join(path.read_text(encoding="utf-8") for path in paths)
+    for token in forbidden:
+        assert token not in payload
+
+
+def test_agent_runbook_opens_with_exact_safety_contract() -> None:
+    expected = """# Opportunity OS Agent Runbook
+
+DO NOT reconstruct CV generation from memory.
+DO NOT hand-build recruiter PDFs when the canonical command is available.
+PREPARED requires exactly one recruiter-quality A4 page.
+PREPARED != APPROVE != SEND.
+Private candidate snapshots and generated artifacts never enter the public repo.
+"""
+    text = Path("docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md").read_text(encoding="utf-8")
+    assert text.startswith(expected)
+
+
+def test_v02b2_docs_expose_canonical_recruiter_pipeline_and_command() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    runbook = Path("docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md").read_text(encoding="utf-8")
+    roadmap = Path("ROADMAP.md").read_text(encoding="utf-8")
+
+    flow = [
+        "RadarAssessment",
+        "EvidenceSelector",
+        "CVComposer",
+        "ClaimValidator",
+        "RecruiterDocumentComposer",
+        "RecruiterDocumentValidator",
+        "RenderCV/Typst",
+        "RecruiterQualityQA",
+        "ApplicationPacket",
+    ]
+    for token in flow:
+        assert token in readme
+        assert token in runbook
+
+    command = "python -m app.application.prepare"
+    assert command in readme
+    assert command in runbook
+    assert "✅ V0.2B2" in roadmap
+    assert "exactly one" in runbook
+    assert "ACTIVE_POSTING" in runbook
+    assert "TARGET_ACCOUNT" in runbook
+    assert "unsupported" in runbook.casefold()
+
+
+def test_ci_uses_single_dev_environment_for_recruiter_verification() -> None:
+    workflow = Path(".github/workflows/tests.yml").read_text(encoding="utf-8")
+    assert 'python -m pip install -e ".[dev]"' in workflow
+    assert "python -m pytest" in workflow
+    assert "python -m compileall app" in workflow

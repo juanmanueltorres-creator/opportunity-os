@@ -11,8 +11,10 @@ dependencies = [
   "fastapi",
   "httpx",
   "pydantic>=2",
+  "PyMuPDF>=1.26,<2",
   "PyYAML",
   "reportlab>=4.2",
+  "rendercv[full]>=2.8,<3",
   "uvicorn",
 ]
 

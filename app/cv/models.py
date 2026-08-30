@@ -287,15 +287,26 @@ class ApplicationPacket(StrictCVModel):
     evidence_catalog_version: str = Field(min_length=64, max_length=64)
     composer_version: str = Field(min_length=1)
     cv_document_version: str = Field(min_length=1)
+    recruiter_policy_version: str = Field(min_length=1)
     renderer_version: str = Field(min_length=1)
     selected_fact_ids: list[str] = Field(default_factory=list)
     selected_evidence_ids: list[str] = Field(default_factory=list)
     unresolved_gaps: list[str] = Field(default_factory=list)
     cv_document: CVDocumentModel
+    recruiter_document: Any
     cv_pdf_path: str = Field(min_length=1)
     cv_sha256: str = Field(min_length=64, max_length=64)
     packet_sha256: str = Field(min_length=64, max_length=64)
     created_at: datetime
+
+    @field_validator("recruiter_document", mode="before")
+    @classmethod
+    def recruiter_document_must_be_typed(cls, value: Any) -> Any:
+        # Imported lazily to keep app.cv.models independent from recruiter_models,
+        # which itself depends on the core CV models in this module.
+        from app.cv.recruiter_models import RecruiterDocumentModel
+
+        return RecruiterDocumentModel.model_validate(value)
 
     @field_validator("created_at")
     @classmethod

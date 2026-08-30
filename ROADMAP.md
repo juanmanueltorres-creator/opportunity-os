@@ -77,6 +77,41 @@ verified facts/evidence
 → ApplicationPacket
 ```
 
+### ✅ V0.2B2 — One-page Recruiter Pipeline
+
+V0.2B2 convierte la salida recruiter en un artefacto canónico de exactamente una página sin ampliar la autoridad sobre claims.
+
+```text
+RadarAssessment
+-> EvidenceSelector
+-> CVComposer
+-> ClaimValidator
+-> RecruiterDocumentComposer
+-> RecruiterDocumentValidator
+-> RenderCV/Typst one-page renderer
+-> RecruiterQualityQA
+-> ApplicationPacket
+```
+
+Implementado:
+
+- `RecruiterDocumentModel` sólo referencia claims del `CVDocumentModel` semántico;
+- grupos de skills y presupuestos de contenido definidos por `recruiter-policy-v1`;
+- reducción determinista y acotada cuando el primer render no entra;
+- exactamente una página A4 como condición de `PREPARED`;
+- body font mínimo de 9 pt y texto extraíble;
+- `RenderCV/Typst` con renderer versionado `rendercv-typst-v1`;
+- `RecruiterQualityQA` con hard fail para dos páginas, clipping/overflow defendible, fuente insuficiente o texto no extraíble;
+- verificación ATS con PyPDF y PyMuPDF;
+- golden fixtures públicas ficticias para software/geoespacial y tech+operations;
+- `ApplicationPacket` conserva documento semántico, documento recruiter, versiones y hashes reproducibles;
+- `packet_sha256` cambia si cambia el agrupamiento/orden recruiter relevante;
+- CLI canónico `python -m app.application.prepare` que exige un `RadarAssessment` serializado y nunca inventa track/score/intent;
+- runbook fresh-context en `docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md`;
+- datos privados y PDFs reales permanecen fuera del repo.
+
+No existe fallback automático a dos páginas. Un hard fail recruiter termina en `BLOCKED_RENDER` y elimina el PDF parcial. `PREPARED` sigue sin significar `APPROVE` ni `SEND`.
+
 ### ✅ V0.2C — Email Outreach Core
 
 - resolución de contacto permitido;

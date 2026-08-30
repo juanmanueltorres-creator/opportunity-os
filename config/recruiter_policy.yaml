@@ -1,0 +1,58 @@
+version: recruiter-policy-v1
+max_pages: 1
+min_body_font_pt: 9.0
+preferred_body_font_pt: 9.4
+max_projects: 4
+max_experience_entries: 5
+max_experience_bullets: 1
+max_skill_groups: 4
+max_skill_tokens: 24
+max_profile_claims: 3
+max_education_items: 4
+
+skill_groups:
+  software_data:
+    en: Software & Data
+    es: Software y Datos
+    members:
+      - Python
+      - FastAPI
+      - SQL
+      - PostgreSQL
+      - PostGIS
+      - REST APIs
+      - Automation
+  frontend_web:
+    en: Frontend & Web
+    es: Frontend y Web
+    members:
+      - React
+      - TypeScript
+      - JavaScript
+      - Vite
+  geospatial:
+    en: Geospatial
+    es: Geoespacial
+    members:
+      - MapLibre
+      - Leaflet
+      - Cesium
+      - CesiumJS
+      - QGIS
+      - GIS
+      - spatial data
+  operations_systems:
+    en: Operations & Systems
+    es: Operaciones y Sistemas
+    members:
+      - process improvement
+      - operational workflows
+      - inventory
+      - purchasing
+      - procurement
+      - KPI
+      - dashboards
+  additional:
+    en: Additional
+    es: Adicional
+    members: []

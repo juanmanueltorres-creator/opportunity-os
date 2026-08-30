@@ -19,6 +19,8 @@ _STRUCTURAL_FACT_KINDS = {
     "link",
     "summary_claim",
     "role",
+    "employment",
+    "project",
     "education",
     "language",
 }
@@ -93,11 +95,12 @@ def select_evidence(
         if enrichment.normalized_title is not None
         else ""
     )
+    module_relevance_fact_ids = set(selected_fact_ids)
 
     for module in eligible_modules:
         if _module_is_relevant(
             module=module,
-            supported_fact_ids=supported_fact_ids,
+            relevance_fact_ids=module_relevance_fact_ids,
             requirement_terms=requirement_terms,
             title_text=title_text,
             required_sections=set(policy.required_sections),
@@ -192,7 +195,7 @@ def _find_fact_by_value(
 def _module_is_relevant(
     *,
     module,
-    supported_fact_ids: set[str],
+    relevance_fact_ids: set[str],
     requirement_terms: set[str],
     title_text: str,
     required_sections: set[str],
@@ -201,7 +204,7 @@ def _module_is_relevant(
     for claim in module.claims:
         referenced_ids.update(claim.fact_ids)
 
-    if referenced_ids & supported_fact_ids:
+    if referenced_ids & relevance_fact_ids:
         return True
 
     normalized_keywords = {_normalize(keyword) for keyword in module.keywords}

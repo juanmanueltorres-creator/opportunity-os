@@ -23,6 +23,7 @@ from app.cv.models import (
     ValidationIssue,
     ValidationResult,
 )
+from app.cv.recruiter_models import RecruiterDocumentModel, TechnologyGroup
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
@@ -41,30 +42,69 @@ def verified_fact(*, fact_id: str = "skill-python", value: str = "Python") -> Ma
 
 
 def sample_document() -> CVDocumentModel:
-    claim = CVClaim(
-        claim_id="claim-python",
-        section="skills",
-        kind="skill",
-        text="Python",
-    )
+    claims = [
+        CVClaim(
+            claim_id="claim-name",
+            section="headline",
+            kind="identity",
+            text="Alex Example",
+        ),
+        CVClaim(
+            claim_id="claim-role",
+            section="headline",
+            kind="headline",
+            text="Software Developer",
+        ),
+        CVClaim(
+            claim_id="claim-email",
+            section="headline",
+            kind="contact",
+            text="alex@example.test",
+        ),
+        CVClaim(
+            claim_id="claim-python",
+            section="skills",
+            kind="skill",
+            text="Python",
+        ),
+    ]
     return CVDocumentModel(
         document_version="cvdoc-v1",
         language="en",
-        claims=[claim],
+        claims=claims,
         entries=[
             CVEntry(
                 entry_id="skills-main",
                 section="skills",
-                claim_ids=[claim.claim_id],
+                claim_ids=["claim-python"],
             )
         ],
         provenance_map={
-            claim.claim_id: ClaimProvenance(
+            "claim-name": ClaimProvenance(fact_ids=["identity-name"]),
+            "claim-role": ClaimProvenance(fact_ids=["role-primary"]),
+            "claim-email": ClaimProvenance(fact_ids=["contact-email"]),
+            "claim-python": ClaimProvenance(
                 fact_ids=["skill-python"],
                 evidence_ids=["module-tech"],
                 approved_claim_id="approved-python",
-            )
+            ),
         },
+    )
+
+
+def sample_recruiter_document() -> RecruiterDocumentModel:
+    return RecruiterDocumentModel(
+        source_cv_document_version="cvdoc-v1",
+        language="en",
+        identity_claim_id="claim-name",
+        headline_claim_id="claim-role",
+        contact_claim_ids=["claim-email"],
+        technology_groups=[
+            TechnologyGroup(
+                label_id="software_data",
+                skill_claim_ids=["claim-python"],
+            )
+        ],
     )
 
 
@@ -87,11 +127,13 @@ def sample_packet() -> ApplicationPacket:
         evidence_catalog_version="c" * 64,
         composer_version="composer-v1",
         cv_document_version="cvdoc-v1",
-        renderer_version="renderer-v1",
+        recruiter_policy_version="recruiter-policy-v1",
+        renderer_version="rendercv-typst-v1",
         selected_fact_ids=["skill-python"],
         selected_evidence_ids=["module-tech"],
         unresolved_gaps=["Kubernetes"],
         cv_document=sample_document(),
+        recruiter_document=sample_recruiter_document(),
         cv_pdf_path="artifacts/applications/application-1/cv.pdf",
         cv_sha256="d" * 64,
         packet_sha256="e" * 64,
@@ -262,6 +304,7 @@ def test_rendered_artifact_requires_sha256_and_renderer_version() -> None:
 def test_application_packet_is_prepared_only_and_requires_aware_timestamp() -> None:
     packet = sample_packet()
     assert packet.status == "PREPARED"
+    assert packet.recruiter_document.document_version == "recruiter-doc-v1"
 
     payload = packet.model_dump()
     payload["created_at"] = datetime(2026, 8, 28, 12, 0)
