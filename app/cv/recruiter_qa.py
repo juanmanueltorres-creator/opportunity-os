@@ -112,15 +112,21 @@ class RecruiterQualityQA:
                     )
                 )
 
+            content_bottom_ratio = (
+                _content_bottom_ratio(document[0]) if page_count == 1 else None
+            )
             if (
-                page_count == 1
+                content_bottom_ratio is not None
                 and len(recruiter_document.all_claim_ids()) >= _MIN_SUBSTANTIVE_CLAIMS
-                and _content_bottom_ratio(document[0]) < _MIN_CONTENT_BOTTOM_RATIO
+                and content_bottom_ratio < _MIN_CONTENT_BOTTOM_RATIO
             ):
                 errors.append(
                     _issue(
                         "recruiter_content_underfilled",
-                        "Recruiter PDF leaves an excessive unused lower page region.",
+                        (
+                            "Recruiter PDF leaves an excessive unused lower page region "
+                            f"(content_bottom_ratio={content_bottom_ratio:.3f})."
+                        ),
                     )
                 )
 
