@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pymupdf
 import pytest
 
 from app.cv.hashing import canonical_sha256
@@ -13,9 +15,13 @@ from app.cv.models import (
     LayoutQAResult,
     MasterFact,
     MasterFactsSnapshot,
+    RenderedCVArtifact,
     ValidationIssue,
     ValidationResult,
 )
+from app.cv.recruiter_models import RecruiterRenderMetrics, RecruiterRenderResult
+from app.cv.recruiter_policy import load_recruiter_policy
+from app.cv.recruiter_qa import RecruiterQualityQA
 from app.cv.renderer import ATSRenderer
 from app.cv.service import CVPreparationService
 from app.models.domain import Opportunity
@@ -145,6 +151,7 @@ def _inputs(*, project_value: str = "Geo platform project", minimum: bool = True
     facts = [
         _fact("identity-name", "identity", "Alex Example"),
         _fact("contact-email", "contact", "alex@example.test"),
+        _fact("role-primary", "role", "GIS Developer"),
     ]
     modules: list[EvidenceModule] = []
     if minimum:
@@ -192,13 +199,23 @@ def _service(
     application_id: str = "app-1",
     renderer=None,
     layout_qa=None,
+    recruiter_policy=None,
+    recruiter_renderer=None,
+    recruiter_qa=None,
 ) -> CVPreparationService:
-    return CVPreparationService(
-        taxonomy_resolver=_resolver(),
-        id_factory=lambda: application_id,
-        renderer=renderer,
-        layout_qa=layout_qa,
-    )
+    kwargs = {
+        "taxonomy_resolver": _resolver(),
+        "id_factory": lambda: application_id,
+        "renderer": renderer,
+        "layout_qa": layout_qa,
+    }
+    if recruiter_policy is not None:
+        kwargs["recruiter_policy"] = recruiter_policy
+    if recruiter_renderer is not None:
+        kwargs["recruiter_renderer"] = recruiter_renderer
+    if recruiter_qa is not None:
+        kwargs["recruiter_qa"] = recruiter_qa
+    return CVPreparationService(**kwargs)
 
 
 def test_prepare_returns_packet_only_after_validation_and_render(tmp_path: Path) -> None:
@@ -423,6 +440,77 @@ def test_semantic_fact_change_changes_packet_hash(tmp_path: Path) -> None:
     assert first.packet is not None
     assert second.packet is not None
     assert first.packet.packet_sha256 != second.packet.packet_sha256
+
+
+def test_prepare_blocks_when_recruiter_output_is_two_pages(tmp_path: Path) -> None:
+    master, catalog, policy = _inputs()
+
+    class TwoPageRecruiterRenderer:
+        renderer_version = "rendercv-typst-v1"
+
+        def render(self, recruiter_document, source_document, output_path, policy):
+            path = Path(output_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            document = pymupdf.open()
+            page = document.new_page(width=595.28, height=841.89)
+            page.insert_text(
+                (48, 72),
+                "Alex Example\nGIS Developer\nalex@example.test\nPostGIS\nGeo platform project",
+                fontsize=10,
+            )
+            second_page = document.new_page(width=595.28, height=841.89)
+            second_page.insert_text((48, 72), "spillover", fontsize=10)
+            document.save(path)
+            document.close()
+            return RecruiterRenderResult(
+                artifact=RenderedCVArtifact(
+                    path=str(path),
+                    sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                    renderer_version=self.renderer_version,
+                ),
+                metrics=RecruiterRenderMetrics(
+                    body_font_size=9.4,
+                    headline_line_count=1,
+                    overflow_detected=False,
+                ),
+            )
+
+    result = _service(
+        recruiter_policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        recruiter_renderer=TwoPageRecruiterRenderer(),
+        recruiter_qa=RecruiterQualityQA(),
+    ).prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path,
+        now=NOW,
+    )
+
+    assert result.status == "BLOCKED_RENDER"
+    assert result.packet is None
+    assert list(tmp_path.rglob("*.pdf")) == []
+    assert "recruiter_one_page_failed" in {item.code for item in result.errors}
+
+
+def test_prepared_packet_contains_semantic_and_recruiter_documents(tmp_path: Path) -> None:
+    master, catalog, policy = _inputs()
+    result = _service().prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path,
+        now=NOW,
+    )
+
+    assert result.status == "PREPARED"
+    assert result.packet is not None
+    assert result.packet.cv_document.document_version == "cvdoc-v1"
+    assert result.packet.recruiter_document.document_version == "recruiter-doc-v1"
+    assert result.packet.recruiter_policy_version == "recruiter-policy-v1"
+    assert result.packet.renderer_version == "rendercv-typst-v1"
 
 
 def test_prepare_rejects_naive_now_before_any_output(tmp_path: Path) -> None:
