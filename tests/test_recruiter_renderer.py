@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pymupdf
 import pytest
+import yaml
 from pypdf import PdfReader
 
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
@@ -13,7 +14,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
-from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer, _build_rendercv_payload
+from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 
 
 def _source_document() -> CVDocumentModel:
@@ -138,16 +139,11 @@ def test_rendercv_runtime_is_importable():
     assert typst is not None
 
 
-def test_rendercv_payload_does_not_require_external_fontawesome_package():
-    payload = _build_rendercv_payload(
-        recruiter_document=_recruiter_document(),
-        source_document=_source_document(),
-        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
-    )
+def test_recruiter_theme_disables_connection_and_external_link_icons():
+    design = yaml.safe_load(Path("config/rendercv_one_page.yaml").read_text(encoding="utf-8"))
 
-    connections = payload["cv"]["custom_connections"]
-    assert connections
-    assert all("fontawesome_icon" not in connection for connection in connections)
+    assert design["design"]["header"]["connections"]["show_icons"] is False
+    assert design["design"]["links"]["show_external_link_icon"] is False
 
 
 def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
