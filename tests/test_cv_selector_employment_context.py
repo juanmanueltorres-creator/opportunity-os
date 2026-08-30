@@ -90,6 +90,45 @@ def test_verified_employment_on_selected_track_is_structural_recruiter_context()
     assert "employment-operations" not in selection.selected_fact_ids
 
 
+def test_verified_project_on_selected_track_is_available_as_recruiter_fallback() -> None:
+    master_facts = MasterFactsSnapshot(
+        schema_version="v1",
+        content_sha256="a" * 64,
+        facts=[
+            _fact("name", "Alex Example", kind="identity", tracks=["tech"]),
+            _fact("email", "alex@example.test", kind="contact", tracks=["tech"]),
+            _fact(
+                "project-tech",
+                "Auditable Application System",
+                kind="project",
+                tracks=["tech"],
+            ),
+            _fact(
+                "project-operations",
+                "Warehouse Operations Dashboard",
+                kind="project",
+                tracks=["operations"],
+            ),
+        ],
+    )
+    evidence_catalog = EvidenceCatalogSnapshot(
+        schema_version="v1",
+        content_sha256="b" * 64,
+        modules=[],
+    )
+
+    selection = select_evidence(
+        enrichment=_empty_enrichment(),
+        application_track_id="tech",
+        master_facts=master_facts,
+        evidence_catalog=evidence_catalog,
+        policy=_policy(),
+    )
+
+    assert "project-tech" in selection.selected_fact_ids
+    assert "project-operations" not in selection.selected_fact_ids
+
+
 def test_module_documenting_structural_employment_is_selected_for_approved_bullet() -> None:
     master_facts = MasterFactsSnapshot(
         schema_version="v1",
