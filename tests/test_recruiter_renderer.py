@@ -6,6 +6,7 @@ import pytest
 import yaml
 from pypdf import PdfReader
 
+import app.cv.renderers.rendercv_typst as rendercv_renderer_module
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
@@ -144,6 +145,17 @@ def test_recruiter_theme_disables_connection_and_external_link_icons():
 
     assert design["design"]["header"]["connections"]["show_icons"] is False
     assert design["design"]["links"]["show_external_link_icon"] is False
+
+
+def test_rendercv_28_offline_package_path_contains_local_fontawesome_shim():
+    package_path = rendercv_renderer_module._prepare_rendercv_offline_package_path()
+    shim = package_path / "preview" / "fontawesome" / "0.6.0"
+
+    assert (shim / "typst.toml").is_file()
+    assert (shim / "lib.typ").is_file()
+    assert 'name = "fontawesome"' in (shim / "typst.toml").read_text(encoding="utf-8")
+    assert 'version = "0.6.0"' in (shim / "typst.toml").read_text(encoding="utf-8")
+    assert "fa-icon" in (shim / "lib.typ").read_text(encoding="utf-8")
 
 
 def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
