@@ -6,6 +6,7 @@ from app.cv.models import CVClaim, CVDocumentModel, EvidenceSelection, Validatio
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
     RecruiterExperienceEntry,
+    RecruiterProjectEntry,
     TechnologyGroup,
 )
 from app.cv.recruiter_policy import RecruiterPolicy
@@ -72,6 +73,13 @@ def compose_recruiter_document(
         supported_ids=supported_ids,
         source_order=source_order,
     )[: policy.max_projects]
+    project_entries = _compose_project_entries(
+        project_claim_ids=selected_project_claim_ids,
+        claims=validated_claims,
+        document=document,
+        supported_ids=supported_ids,
+        source_order=source_order,
+    )
 
     experience_entries = _compose_experience_entries(
         claims=validated_claims,
@@ -113,6 +121,7 @@ def compose_recruiter_document(
         profile_claim_ids=profile_claim_ids,
         technology_groups=technology_groups,
         selected_project_claim_ids=selected_project_claim_ids,
+        project_entries=project_entries,
         experience_entries=experience_entries,
         education_claim_ids=education_claim_ids,
         language_claim_ids=language_claim_ids,
@@ -265,6 +274,58 @@ def _group_skills(
             TechnologyGroup(label_id=group_id, skill_claim_ids=claim_ids)
         )
         remaining_tokens -= len(claim_ids)
+
+    return result
+
+
+def _compose_project_entries(
+    *,
+    project_claim_ids: list[str],
+    claims: list[CVClaim],
+    document: CVDocumentModel,
+    supported_ids: set[str],
+    source_order: dict[str, int],
+) -> list[RecruiterProjectEntry]:
+    bullets = [
+        claim
+        for claim in claims
+        if claim.section == "projects" and claim.kind == "bullet"
+    ]
+    bullets.sort(
+        key=lambda claim: (
+            0 if claim.claim_id in supported_ids else 1,
+            source_order.get(claim.claim_id, 10**9),
+            claim.claim_id,
+        )
+    )
+
+    used_bullets: set[str] = set()
+    result: list[RecruiterProjectEntry] = []
+
+    for project_claim_id in project_claim_ids:
+        primary_provenance = document.provenance_map.get(project_claim_id)
+        primary_fact_ids = (
+            set(primary_provenance.fact_ids) if primary_provenance is not None else set()
+        )
+        selected_bullet_ids: list[str] = []
+
+        for bullet in bullets:
+            if bullet.claim_id in used_bullets:
+                continue
+            bullet_provenance = document.provenance_map.get(bullet.claim_id)
+            if bullet_provenance is None:
+                continue
+            if primary_fact_ids & set(bullet_provenance.fact_ids):
+                selected_bullet_ids = [bullet.claim_id]
+                used_bullets.add(bullet.claim_id)
+                break
+
+        result.append(
+            RecruiterProjectEntry(
+                primary_claim_id=project_claim_id,
+                bullet_claim_ids=selected_bullet_ids,
+            )
+        )
 
     return result
 
