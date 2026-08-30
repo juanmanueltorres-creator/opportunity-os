@@ -16,6 +16,7 @@ from app.cv.recruiter_policy import RecruiterPolicy
 _A4_WIDTH_POINTS = 595.276
 _A4_HEIGHT_POINTS = 841.89
 _PAGE_TOLERANCE_POINTS = 3.0
+_MAX_HEADLINE_LINES = 2
 
 
 class RecruiterQualityQA:
@@ -85,7 +86,7 @@ class RecruiterQualityQA:
                     )
                 )
 
-            if render_result.metrics.headline_line_count > policy.max_headline_lines:
+            if render_result.metrics.headline_line_count > _MAX_HEADLINE_LINES:
                 errors.append(
                     _issue(
                         "recruiter_headline_too_tall",
