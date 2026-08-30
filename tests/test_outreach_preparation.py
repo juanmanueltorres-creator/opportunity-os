@@ -10,6 +10,7 @@ from app.cv.models import (
     CVClaim,
     CVDocumentModel,
 )
+from app.cv.recruiter_models import RecruiterDocumentModel, TechnologyGroup
 from app.models.domain import Opportunity
 from app.outreach.models import (
     ContactResolution,
@@ -108,6 +109,24 @@ def _document() -> CVDocumentModel:
     )
 
 
+def _recruiter_document() -> RecruiterDocumentModel:
+    # Outreach tests exercise packet consumption, not recruiter structural validation.
+    # Keep the fixture tied only to claims already present in the fictional source CV.
+    return RecruiterDocumentModel(
+        source_cv_document_version="cv-doc-v1",
+        language="en",
+        identity_claim_id="identity-name",
+        headline_claim_id="identity-name",
+        technology_groups=[
+            TechnologyGroup(
+                label_id="geospatial",
+                skill_claim_ids=["skill-postgis"],
+            )
+        ],
+        selected_project_claim_ids=["project-geo"],
+    )
+
+
 def _write_cv(tmp_path, payload: bytes = b"fictional cv pdf bytes"):
     path = tmp_path / "Alex_Example_CV.pdf"
     path.write_bytes(payload)
@@ -134,11 +153,13 @@ def _packet(tmp_path, *, opportunity_id: str = "opp-1", cv_payload: bytes = b"fi
         evidence_catalog_version="e" * 64,
         composer_version="composer-v1",
         cv_document_version="cv-doc-v1",
-        renderer_version="renderer-v1",
+        recruiter_policy_version="recruiter-policy-v1",
+        renderer_version="rendercv-typst-v1",
         selected_fact_ids=["fact-name", "fact-postgis", "fact-project"],
         selected_evidence_ids=["evidence-geo"],
         unresolved_gaps=["PySpark"],
         cv_document=_document(),
+        recruiter_document=_recruiter_document(),
         cv_pdf_path=str(path),
         cv_sha256=cv_hash,
         packet_sha256="p" * 64,
