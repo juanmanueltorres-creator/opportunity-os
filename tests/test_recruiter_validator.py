@@ -240,6 +240,31 @@ def test_recruiter_validator_enforces_dynamic_policy_caps():
     }
 
 
+def test_recruiter_validator_counts_canonical_project_entries_for_policy_cap():
+    source = _source_document()
+    recruiter = _recruiter_document().model_copy(
+        update={
+            "selected_project_claim_ids": [],
+            "project_entries": [
+                RecruiterProjectEntry(primary_claim_id="fact:project")
+            ],
+        }
+    )
+    stricter_policy = _policy().model_copy(update={"max_projects": 0})
+
+    result = validate_recruiter_document(
+        recruiter_document=recruiter,
+        source_document=source,
+        source_validation=_source_validation(source),
+        policy=stricter_policy,
+    )
+
+    assert not result.valid
+    assert "recruiter_project_cap_exceeded" in {
+        issue.code for issue in result.errors
+    }
+
+
 def test_recruiter_validator_rejects_wrong_kind_in_project_entry():
     source = _source_document()
     recruiter = _recruiter_document().model_copy(
