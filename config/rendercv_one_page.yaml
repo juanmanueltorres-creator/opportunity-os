@@ -1,0 +1,38 @@
+design:
+  theme: sb2nov
+  page:
+    size: a4
+    top_margin: 0.45in
+    bottom_margin: 0.45in
+    left_margin: 0.55in
+    right_margin: 0.55in
+    show_footer: false
+    show_top_note: false
+  typography:
+    line_spacing: 0.45em
+    alignment: left
+    font_family: Source Sans 3
+    font_size:
+      body: 9.4pt
+      name: 22pt
+      headline: 10pt
+      connections: 9.4pt
+      section_titles: 1.15em
+  links:
+    underline: false
+    show_external_link_icon: false
+  header:
+    alignment: left
+    space_below_name: 0.15cm
+    space_below_headline: 0.12cm
+    space_below_connections: 0.25cm
+  section_titles:
+    type: with_full_line
+    line_thickness: 0.4pt
+    space_above: 0.25cm
+    space_below: 0.12cm
+  sections:
+    allow_page_break: true
+    space_between_regular_entries: 0.35em
+    space_between_text_based_entries: 0.18em
+    show_time_spans_in: []
