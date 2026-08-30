@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from app.cv.composer import COMPOSER_VERSION, compose_cv
 from app.cv.hashing import canonical_sha256
+from app.cv.layout_qa import LayoutQA
 from app.cv.loaders import validate_catalog_against_facts
 from app.cv.models import (
     ApplicationPacket,
@@ -34,10 +35,12 @@ class CVPreparationService:
         taxonomy_resolver: TaxonomyResolver,
         id_factory: Callable[[], str] | None = None,
         renderer: ATSRenderer | None = None,
+        layout_qa: LayoutQA | None = None,
     ) -> None:
         self.taxonomy_resolver = taxonomy_resolver
         self.id_factory = id_factory or (lambda: str(uuid4()))
         self.renderer = renderer or ATSRenderer()
+        self.layout_qa = layout_qa or LayoutQA()
 
     def prepare(
         self,
@@ -125,6 +128,47 @@ class CVPreparationService:
                 "BLOCKED_RENDER",
                 code="render_failed",
                 message="CV PDF rendering failed",
+                warnings=validation.warnings,
+            )
+
+        metrics = getattr(self.renderer, "layout_metrics", None)
+        if metrics is None:
+            _remove_partial_pdf(output_path)
+            return _blocked(
+                "BLOCKED_RENDER",
+                code="layout_metrics_missing",
+                message="CV renderer did not produce layout metrics",
+                warnings=validation.warnings,
+            )
+
+        try:
+            layout_result = self.layout_qa.evaluate(
+                artifact,
+                metrics,
+                expected_nonempty=bool(document.claims),
+            )
+        except (OSError, ValueError):
+            _remove_partial_pdf(output_path)
+            return _blocked(
+                "BLOCKED_RENDER",
+                code="layout_qa_failed",
+                message="CV layout quality check failed",
+                warnings=validation.warnings,
+            )
+
+        combined_warnings = [*validation.warnings, *layout_result.warnings]
+        if not layout_result.valid:
+            _remove_partial_pdf(output_path)
+            errors = layout_result.errors or [
+                ValidationIssue(
+                    code="layout_qa_failed",
+                    message="CV layout quality check failed",
+                )
+            ]
+            return PreparationResult(
+                status="BLOCKED_RENDER",
+                errors=errors,
+                warnings=combined_warnings,
             )
 
         opportunity_snapshot_hash = canonical_sha256(
@@ -163,7 +207,7 @@ class CVPreparationService:
         return PreparationResult(
             status="PREPARED",
             packet=final_packet,
-            warnings=validation.warnings,
+            warnings=combined_warnings,
         )
 
 
@@ -195,10 +239,17 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict:
     }
 
 
-def _blocked(status: str, *, code: str, message: str) -> PreparationResult:
+def _blocked(
+    status: str,
+    *,
+    code: str,
+    message: str,
+    warnings: list[ValidationIssue] | None = None,
+) -> PreparationResult:
     return PreparationResult(
         status=status,
         errors=[ValidationIssue(code=code, message=message)],
+        warnings=warnings or [],
     )
 
 
