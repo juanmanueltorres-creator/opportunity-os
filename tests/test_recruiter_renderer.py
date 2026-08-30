@@ -1,5 +1,8 @@
+import json
 from pathlib import Path
 
+import pymupdf
+import pytest
 from pypdf import PdfReader
 
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
@@ -9,6 +12,8 @@ from app.cv.recruiter_models import (
     TechnologyGroup,
 )
 from app.cv.recruiter_policy import load_recruiter_policy
+from app.cv.recruiter_qa import RecruiterQualityQA
+from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 
 
 def _source_document() -> CVDocumentModel:
@@ -116,6 +121,15 @@ def _recruiter_document() -> RecruiterDocumentModel:
     )
 
 
+def _load_golden_fixture(name: str) -> tuple[RecruiterDocumentModel, CVDocumentModel]:
+    path = Path("tests/fixtures") / f"{name}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return (
+        RecruiterDocumentModel.model_validate(payload["recruiter_document"]),
+        CVDocumentModel.model_validate(payload["source_document"]),
+    )
+
+
 def test_rendercv_runtime_is_importable():
     import rendercv
     import typst
@@ -125,8 +139,6 @@ def test_rendercv_runtime_is_importable():
 
 
 def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
-    from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
-
     result = RenderCVTypstRenderer().render(
         recruiter_document=_recruiter_document(),
         source_document=_source_document(),
@@ -142,8 +154,6 @@ def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
 
 
 def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
-    from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
-
     renderer = RenderCVTypstRenderer()
     policy = load_recruiter_policy("config/recruiter_policy.yaml")
     source_document = _source_document()
@@ -164,3 +174,60 @@ def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
 
     assert (tmp_path / "a.pdf").read_bytes() == (tmp_path / "b.pdf").read_bytes()
     assert first.artifact.sha256 == second.artifact.sha256
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ["recruiter_software", "recruiter_tech_operations"],
+)
+def test_golden_recruiter_profiles_are_exactly_one_page(fixture_name, tmp_path):
+    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    recruiter_document, source_document = _load_golden_fixture(fixture_name)
+    render_result = RenderCVTypstRenderer().render(
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        output_path=tmp_path / f"{fixture_name}.pdf",
+        policy=policy,
+    )
+    qa_result = RecruiterQualityQA().evaluate(
+        render_result=render_result,
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        policy=policy,
+    )
+
+    assert qa_result.valid
+    assert qa_result.page_count == 1
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ["recruiter_software", "recruiter_tech_operations"],
+)
+def test_golden_skill_groups_survive_two_extractors(fixture_name, tmp_path):
+    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    recruiter_document, source_document = _load_golden_fixture(fixture_name)
+    output = tmp_path / f"{fixture_name}.pdf"
+    RenderCVTypstRenderer().render(
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        output_path=output,
+        policy=policy,
+    )
+
+    pypdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(output).pages)
+    document = pymupdf.open(output)
+    try:
+        pymupdf_text = "\n".join(page.get_text() for page in document)
+    finally:
+        document.close()
+
+    claims_by_id = {claim.claim_id: claim.text for claim in source_document.claims}
+    for group in recruiter_document.technology_groups:
+        label = policy.skill_groups[group.label_id].labels[recruiter_document.language]
+        assert label in pypdf_text
+        assert label in pymupdf_text
+        for claim_id in group.skill_claim_ids:
+            skill = claims_by_id[claim_id]
+            assert skill in pypdf_text
+            assert skill in pymupdf_text
