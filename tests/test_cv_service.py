@@ -12,17 +12,19 @@ from app.cv.models import (
     CVPolicy,
     EvidenceCatalogSnapshot,
     EvidenceModule,
-    LayoutQAResult,
     MasterFact,
     MasterFactsSnapshot,
     RenderedCVArtifact,
     ValidationIssue,
     ValidationResult,
 )
-from app.cv.recruiter_models import RecruiterRenderMetrics, RecruiterRenderResult
+from app.cv.recruiter_models import (
+    RecruiterQAResult,
+    RecruiterRenderMetrics,
+    RecruiterRenderResult,
+)
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
-from app.cv.renderer import ATSRenderer
 from app.cv.service import CVPreparationService
 from app.models.domain import Opportunity
 from app.radar.models import (
@@ -197,8 +199,6 @@ def _inputs(*, project_value: str = "Geo platform project", minimum: bool = True
 
 def _service(
     application_id: str = "app-1",
-    renderer=None,
-    layout_qa=None,
     recruiter_policy=None,
     recruiter_renderer=None,
     recruiter_qa=None,
@@ -206,8 +206,6 @@ def _service(
     kwargs = {
         "taxonomy_resolver": _resolver(),
         "id_factory": lambda: application_id,
-        "renderer": renderer,
-        "layout_qa": layout_qa,
     }
     if recruiter_policy is not None:
         kwargs["recruiter_policy"] = recruiter_policy
@@ -291,7 +289,7 @@ def test_validation_failure_does_not_call_renderer(monkeypatch, tmp_path: Path) 
             raise AssertionError("renderer must not run after validation failure")
 
     monkeypatch.setattr("app.cv.service.validate_cv", invalid_validation)
-    result = _service(renderer=RendererMustNotRun()).prepare(
+    result = _service(recruiter_renderer=RendererMustNotRun()).prepare(
         assessment=_assessment(),
         master_facts=master,
         evidence_catalog=catalog,
@@ -305,17 +303,19 @@ def test_validation_failure_does_not_call_renderer(monkeypatch, tmp_path: Path) 
     assert list(tmp_path.rglob("*.pdf")) == []
 
 
-def test_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: Path) -> None:
+def test_recruiter_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: Path) -> None:
     master, catalog, policy = _inputs()
 
-    class BrokenRenderer(ATSRenderer):
-        def render(self, document, validation, output_path):
+    class BrokenRecruiterRenderer:
+        renderer_version = "rendercv-typst-v1"
+
+        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"partial")
-            raise OSError("fictional renderer failure")
+            raise OSError("fictional recruiter renderer failure")
 
-    result = _service(renderer=BrokenRenderer()).prepare(
+    result = _service(recruiter_renderer=BrokenRecruiterRenderer()).prepare(
         assessment=_assessment(),
         master_facts=master,
         evidence_catalog=catalog,
@@ -329,24 +329,23 @@ def test_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: Path) -> No
     assert list(tmp_path.rglob("*.pdf")) == []
 
 
-def test_hard_layout_failure_blocks_packet_and_removes_pdf(tmp_path: Path) -> None:
+def test_hard_recruiter_qa_failure_blocks_packet_and_removes_pdf(tmp_path: Path) -> None:
     master, catalog, policy = _inputs()
 
-    class FailingLayoutQA:
-        def evaluate(self, artifact, metrics, *, expected_nonempty=True):
-            return LayoutQAResult(
+    class FailingRecruiterQA:
+        def evaluate(self, render_result, recruiter_document, source_document, recruiter_policy):
+            return RecruiterQAResult(
                 valid=False,
-                page_count=metrics.page_count,
+                page_count=1,
                 errors=[
                     ValidationIssue(
-                        code="layout_page_count_exceeded",
-                        message="fictional hard layout failure",
+                        code="recruiter_page_size_invalid",
+                        message="fictional hard recruiter QA failure",
                     )
                 ],
-                used_height_ratio=0.75,
             )
 
-    result = _service(layout_qa=FailingLayoutQA()).prepare(
+    result = _service(recruiter_qa=FailingRecruiterQA()).prepare(
         assessment=_assessment(),
         master_facts=master,
         evidence_catalog=catalog,
@@ -357,28 +356,27 @@ def test_hard_layout_failure_blocks_packet_and_removes_pdf(tmp_path: Path) -> No
 
     assert result.status == "BLOCKED_RENDER"
     assert result.packet is None
-    assert "layout_page_count_exceeded" in {error.code for error in result.errors}
+    assert "recruiter_page_size_invalid" in {error.code for error in result.errors}
     assert list(tmp_path.rglob("*.pdf")) == []
 
 
-def test_layout_warning_is_returned_without_blocking_packet(tmp_path: Path) -> None:
+def test_recruiter_qa_warning_is_returned_without_blocking_packet(tmp_path: Path) -> None:
     master, catalog, policy = _inputs()
 
-    class WarningLayoutQA:
-        def evaluate(self, artifact, metrics, *, expected_nonempty=True):
-            return LayoutQAResult(
+    class WarningRecruiterQA:
+        def evaluate(self, render_result, recruiter_document, source_document, recruiter_policy):
+            return RecruiterQAResult(
                 valid=True,
-                page_count=metrics.page_count,
+                page_count=1,
                 warnings=[
                     ValidationIssue(
-                        code="layout_low_utilization",
-                        message="fictional layout warning",
+                        code="recruiter_aesthetic_warning",
+                        message="fictional recruiter QA warning",
                     )
                 ],
-                used_height_ratio=0.50,
             )
 
-    result = _service(layout_qa=WarningLayoutQA()).prepare(
+    result = _service(recruiter_qa=WarningRecruiterQA()).prepare(
         assessment=_assessment(),
         master_facts=master,
         evidence_catalog=catalog,
@@ -389,7 +387,7 @@ def test_layout_warning_is_returned_without_blocking_packet(tmp_path: Path) -> N
 
     assert result.status == "PREPARED"
     assert result.packet is not None
-    assert "layout_low_utilization" in {warning.code for warning in result.warnings}
+    assert "recruiter_aesthetic_warning" in {warning.code for warning in result.warnings}
 
 
 def test_packet_hash_excludes_id_time_and_path(tmp_path: Path) -> None:
@@ -442,13 +440,96 @@ def test_semantic_fact_change_changes_packet_hash(tmp_path: Path) -> None:
     assert first.packet.packet_sha256 != second.packet.packet_sha256
 
 
+def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_document(
+    tmp_path: Path,
+) -> None:
+    master, catalog, policy = _inputs()
+    default_policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    groups = dict(default_policy.skill_groups)
+    groups["software_data"] = groups["software_data"].model_copy(
+        update={
+            "members": [
+                member
+                for member in groups["software_data"].members
+                if member != "PostGIS"
+            ]
+        }
+    )
+    groups["geospatial"] = groups["geospatial"].model_copy(
+        update={"members": [*groups["geospatial"].members, "PostGIS"]}
+    )
+    alternate_policy = default_policy.model_copy(update={"skill_groups": groups})
+
+    class ConstantRecruiterRenderer:
+        renderer_version = "rendercv-typst-v1"
+
+        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
+            path = Path(output_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = b"constant fictional recruiter pdf"
+            path.write_bytes(payload)
+            return RecruiterRenderResult(
+                artifact=RenderedCVArtifact(
+                    path=str(path),
+                    sha256=hashlib.sha256(payload).hexdigest(),
+                    renderer_version=self.renderer_version,
+                ),
+                metrics=RecruiterRenderMetrics(
+                    body_font_size=9.4,
+                    headline_line_count=1,
+                    overflow_detected=False,
+                ),
+            )
+
+    class PassingRecruiterQA:
+        def evaluate(self, render_result, recruiter_document, source_document, recruiter_policy):
+            return RecruiterQAResult(
+                valid=True,
+                page_count=1,
+                extracted_text="fictional recruiter output",
+            )
+
+    first = _service(
+        "app-a",
+        recruiter_policy=default_policy,
+        recruiter_renderer=ConstantRecruiterRenderer(),
+        recruiter_qa=PassingRecruiterQA(),
+    ).prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path / "a",
+        now=NOW,
+    )
+    second = _service(
+        "app-b",
+        recruiter_policy=alternate_policy,
+        recruiter_renderer=ConstantRecruiterRenderer(),
+        recruiter_qa=PassingRecruiterQA(),
+    ).prepare(
+        assessment=_assessment(),
+        master_facts=master,
+        evidence_catalog=catalog,
+        policy=policy,
+        output_root=tmp_path / "b",
+        now=NOW,
+    )
+
+    assert first.packet is not None and second.packet is not None
+    assert first.packet.cv_document == second.packet.cv_document
+    assert first.packet.cv_sha256 == second.packet.cv_sha256
+    assert first.packet.recruiter_document != second.packet.recruiter_document
+    assert first.packet.packet_sha256 != second.packet.packet_sha256
+
+
 def test_prepare_blocks_when_recruiter_output_is_two_pages(tmp_path: Path) -> None:
     master, catalog, policy = _inputs()
 
     class TwoPageRecruiterRenderer:
         renderer_version = "rendercv-typst-v1"
 
-        def render(self, recruiter_document, source_document, output_path, policy):
+        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             document = pymupdf.open()
