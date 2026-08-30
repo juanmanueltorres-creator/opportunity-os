@@ -6,6 +6,7 @@
       {"claim_id": "sw:name", "section": "headline", "kind": "identity", "text": "Alex Rivera"},
       {"claim_id": "sw:role", "section": "headline", "kind": "headline", "text": "Software and Geospatial Developer"},
       {"claim_id": "sw:email", "section": "headline", "kind": "contact", "text": "alex.rivera@example.test"},
+      {"claim_id": "sw:phone", "section": "headline", "kind": "contact", "text": "+1 555 010 2000"},
       {"claim_id": "sw:summary", "section": "summary", "kind": "summary", "text": "Builds practical software products that connect APIs, spatial data, and clear browser workflows."},
       {"claim_id": "sw:python", "section": "skills", "kind": "skill", "text": "Python"},
       {"claim_id": "sw:fastapi", "section": "skills", "kind": "skill", "text": "FastAPI"},
@@ -23,6 +24,9 @@
       {"claim_id": "sw:experience-1-bullet", "section": "experience", "kind": "bullet", "text": "Delivered API-backed mapping workflows and validation tooling."},
       {"claim_id": "sw:experience-2", "section": "experience", "kind": "organization", "text": "Atlas Cooperative | Technical Assistant | 2022-2024"},
       {"claim_id": "sw:experience-2-bullet", "section": "experience", "kind": "bullet", "text": "Prepared structured datasets and repeatable technical checks."},
+      {"claim_id": "sw:experience-3", "section": "experience", "kind": "organization", "text": "Terra Byte Studio | Developer | 2021-2022"},
+      {"claim_id": "sw:experience-4", "section": "experience", "kind": "organization", "text": "Civic Map Lab | Data Assistant | 2020-2021"},
+      {"claim_id": "sw:experience-5", "section": "experience", "kind": "organization", "text": "Example County | GIS Intern | 2019-2020"},
       {"claim_id": "sw:education", "section": "education", "kind": "education", "text": "BSc Applied Computing - Example State University"},
       {"claim_id": "sw:language", "section": "languages", "kind": "language", "text": "English - Professional"},
       {"claim_id": "sw:github", "section": "links", "kind": "link", "text": "github.com/alex-rivera-example"}
@@ -32,6 +36,7 @@
       "sw:name": {"fact_ids": ["sw:name"]},
       "sw:role": {"fact_ids": ["sw:role"]},
       "sw:email": {"fact_ids": ["sw:email"]},
+      "sw:phone": {"fact_ids": ["sw:phone"]},
       "sw:summary": {"fact_ids": ["sw:summary"]},
       "sw:python": {"fact_ids": ["sw:python"]},
       "sw:fastapi": {"fact_ids": ["sw:fastapi"]},
@@ -49,6 +54,9 @@
       "sw:experience-1-bullet": {"fact_ids": ["sw:experience-1"]},
       "sw:experience-2": {"fact_ids": ["sw:experience-2"]},
       "sw:experience-2-bullet": {"fact_ids": ["sw:experience-2"]},
+      "sw:experience-3": {"fact_ids": ["sw:experience-3"]},
+      "sw:experience-4": {"fact_ids": ["sw:experience-4"]},
+      "sw:experience-5": {"fact_ids": ["sw:experience-5"]},
       "sw:education": {"fact_ids": ["sw:education"]},
       "sw:language": {"fact_ids": ["sw:language"]},
       "sw:github": {"fact_ids": ["sw:github"]}
@@ -60,7 +68,7 @@
     "language": "en",
     "identity_claim_id": "sw:name",
     "headline_claim_id": "sw:role",
-    "contact_claim_ids": ["sw:email"],
+    "contact_claim_ids": ["sw:email", "sw:phone"],
     "profile_claim_ids": ["sw:summary"],
     "technology_groups": [
       {"label_id": "software_data", "skill_claim_ids": ["sw:python", "sw:fastapi", "sw:postgresql", "sw:postgis"]},
@@ -70,7 +78,10 @@
     "selected_project_claim_ids": ["sw:project-1", "sw:project-2", "sw:project-3", "sw:project-4"],
     "experience_entries": [
       {"primary_claim_id": "sw:experience-1", "bullet_claim_ids": ["sw:experience-1-bullet"]},
-      {"primary_claim_id": "sw:experience-2", "bullet_claim_ids": ["sw:experience-2-bullet"]}
+      {"primary_claim_id": "sw:experience-2", "bullet_claim_ids": ["sw:experience-2-bullet"]},
+      {"primary_claim_id": "sw:experience-3", "bullet_claim_ids": []},
+      {"primary_claim_id": "sw:experience-4", "bullet_claim_ids": []},
+      {"primary_claim_id": "sw:experience-5", "bullet_claim_ids": []}
     ],
     "education_claim_ids": ["sw:education"],
     "language_claim_ids": ["sw:language"],
