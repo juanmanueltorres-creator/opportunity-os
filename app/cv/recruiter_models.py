@@ -58,10 +58,12 @@ class RecruiterDocumentModel(StrictCVModel):
         ordered.extend(self.profile_claim_ids)
         for group in self.technology_groups:
             ordered.extend(group.skill_claim_ids)
-        ordered.extend(self.selected_project_claim_ids)
-        for entry in self.project_entries:
-            ordered.append(entry.primary_claim_id)
-            ordered.extend(entry.bullet_claim_ids)
+        if self.project_entries:
+            for entry in self.project_entries:
+                ordered.append(entry.primary_claim_id)
+                ordered.extend(entry.bullet_claim_ids)
+        else:
+            ordered.extend(self.selected_project_claim_ids)
         for entry in self.experience_entries:
             ordered.append(entry.primary_claim_id)
             ordered.extend(entry.bullet_claim_ids)
