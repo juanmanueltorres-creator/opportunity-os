@@ -23,6 +23,11 @@ class TechnologyGroup(StrictCVModel):
         return self
 
 
+class RecruiterProjectEntry(StrictCVModel):
+    primary_claim_id: str = Field(min_length=1)
+    bullet_claim_ids: list[str] = Field(default_factory=list, max_length=1)
+
+
 class RecruiterExperienceEntry(StrictCVModel):
     primary_claim_id: str = Field(min_length=1)
     bullet_claim_ids: list[str] = Field(default_factory=list, max_length=1)
@@ -38,6 +43,7 @@ class RecruiterDocumentModel(StrictCVModel):
     profile_claim_ids: list[str] = Field(default_factory=list, max_length=3)
     technology_groups: list[TechnologyGroup] = Field(default_factory=list, max_length=4)
     selected_project_claim_ids: list[str] = Field(default_factory=list, max_length=4)
+    project_entries: list[RecruiterProjectEntry] = Field(default_factory=list, max_length=4)
     experience_entries: list[RecruiterExperienceEntry] = Field(
         default_factory=list,
         max_length=5,
@@ -53,6 +59,9 @@ class RecruiterDocumentModel(StrictCVModel):
         for group in self.technology_groups:
             ordered.extend(group.skill_claim_ids)
         ordered.extend(self.selected_project_claim_ids)
+        for entry in self.project_entries:
+            ordered.append(entry.primary_claim_id)
+            ordered.extend(entry.bullet_claim_ids)
         for entry in self.experience_entries:
             ordered.append(entry.primary_claim_id)
             ordered.extend(entry.bullet_claim_ids)
