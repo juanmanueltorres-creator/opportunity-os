@@ -46,6 +46,7 @@ def test_layout_qa_policy_thresholds_are_frozen() -> None:
 
     assert "LOW_UTILIZATION = 0.58" in source
     assert "HIGH_UTILIZATION = 0.96" in source
+    assert "TINY_TRAILING_PAGE_MAX_TOTAL_UTILIZATION = 1.20" in source
     assert "MAX_PAGES = 2" in source
     assert "MIN_BODY_FONT = 9.0" in source
 
