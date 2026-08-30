@@ -17,6 +17,8 @@ _A4_WIDTH_POINTS = 595.276
 _A4_HEIGHT_POINTS = 841.89
 _PAGE_TOLERANCE_POINTS = 3.0
 _MAX_HEADLINE_LINES = 2
+_MIN_SUBSTANTIVE_CLAIMS = 8
+_MIN_CONTENT_BOTTOM_RATIO = 0.42
 
 
 class RecruiterQualityQA:
@@ -110,6 +112,18 @@ class RecruiterQualityQA:
                     )
                 )
 
+            if (
+                page_count == 1
+                and len(recruiter_document.all_claim_ids()) >= _MIN_SUBSTANTIVE_CLAIMS
+                and _content_bottom_ratio(document[0]) < _MIN_CONTENT_BOTTOM_RATIO
+            ):
+                errors.append(
+                    _issue(
+                        "recruiter_content_underfilled",
+                        "Recruiter PDF leaves an excessive unused lower page region.",
+                    )
+                )
+
             if extracted_text:
                 order_issue = _validate_claim_order(
                     extracted_text=extracted_text,
@@ -128,6 +142,18 @@ class RecruiterQualityQA:
             )
         finally:
             document.close()
+
+
+def _content_bottom_ratio(page: pymupdf.Page) -> float:
+    text_blocks = [
+        block
+        for block in page.get_text("blocks")
+        if len(block) >= 5 and str(block[4]).strip()
+    ]
+    if not text_blocks or page.rect.height <= 0:
+        return 0.0
+    content_bottom = max(float(block[3]) for block in text_blocks)
+    return max(0.0, min(1.0, content_bottom / float(page.rect.height)))
 
 
 def _validate_claim_order(
