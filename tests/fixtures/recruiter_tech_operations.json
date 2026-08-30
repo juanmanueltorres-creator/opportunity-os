@@ -15,9 +15,12 @@
       {"claim_id": "to:inventory", "section": "skills", "kind": "skill", "text": "inventory"},
       {"claim_id": "to:purchasing", "section": "skills", "kind": "skill", "text": "purchasing"},
       {"claim_id": "to:kpi", "section": "skills", "kind": "skill", "text": "KPI"},
-      {"claim_id": "to:project-1", "section": "projects", "kind": "project", "text": "Ops Console - dashboard for reviewing workload and process status."},
-      {"claim_id": "to:project-2", "section": "projects", "kind": "project", "text": "Stock Flow - small workflow for validating inventory movements."},
-      {"claim_id": "to:project-3", "section": "projects", "kind": "project", "text": "Route Sandbox - deterministic simulator for delivery planning scenarios."},
+      {"claim_id": "to:project-1", "section": "projects", "kind": "project", "text": "Ops Console"},
+      {"claim_id": "to:project-1-bullet", "section": "projects", "kind": "bullet", "text": "Dashboard for reviewing workload and process status."},
+      {"claim_id": "to:project-2", "section": "projects", "kind": "project", "text": "Stock Flow"},
+      {"claim_id": "to:project-2-bullet", "section": "projects", "kind": "bullet", "text": "Workflow for validating inventory movements."},
+      {"claim_id": "to:project-3", "section": "projects", "kind": "project", "text": "Route Sandbox"},
+      {"claim_id": "to:project-3-bullet", "section": "projects", "kind": "bullet", "text": "Deterministic simulator for delivery planning scenarios."},
       {"claim_id": "to:experience-1", "section": "experience", "kind": "organization", "text": "Example Distribution | Operations Analyst | 2024-Present"},
       {"claim_id": "to:experience-1-bullet", "section": "experience", "kind": "bullet", "text": "Tracked workflow indicators and standardized recurring operational checks."},
       {"claim_id": "to:experience-2", "section": "experience", "kind": "organization", "text": "Corner Market Group | Operations Coordinator | 2021-2024"},
@@ -41,8 +44,11 @@
       "to:purchasing": {"fact_ids": ["to:purchasing"]},
       "to:kpi": {"fact_ids": ["to:kpi"]},
       "to:project-1": {"fact_ids": ["to:project-1"]},
+      "to:project-1-bullet": {"fact_ids": ["to:project-1"]},
       "to:project-2": {"fact_ids": ["to:project-2"]},
+      "to:project-2-bullet": {"fact_ids": ["to:project-2"]},
       "to:project-3": {"fact_ids": ["to:project-3"]},
+      "to:project-3-bullet": {"fact_ids": ["to:project-3"]},
       "to:experience-1": {"fact_ids": ["to:experience-1"]},
       "to:experience-1-bullet": {"fact_ids": ["to:experience-1"]},
       "to:experience-2": {"fact_ids": ["to:experience-2"]},
@@ -65,6 +71,11 @@
       {"label_id": "operations_systems", "skill_claim_ids": ["to:process", "to:inventory", "to:purchasing", "to:kpi"]}
     ],
     "selected_project_claim_ids": ["to:project-1", "to:project-2", "to:project-3"],
+    "project_entries": [
+      {"primary_claim_id": "to:project-1", "bullet_claim_ids": ["to:project-1-bullet"]},
+      {"primary_claim_id": "to:project-2", "bullet_claim_ids": ["to:project-2-bullet"]},
+      {"primary_claim_id": "to:project-3", "bullet_claim_ids": ["to:project-3-bullet"]}
+    ],
     "experience_entries": [
       {"primary_claim_id": "to:experience-1", "bullet_claim_ids": ["to:experience-1-bullet"]},
       {"primary_claim_id": "to:experience-2", "bullet_claim_ids": ["to:experience-2-bullet"]}
