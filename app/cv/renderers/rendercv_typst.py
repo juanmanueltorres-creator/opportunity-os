@@ -23,6 +23,14 @@ RENDERER_VERSION = "rendercv-typst-v1"
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_DESIGN_PATH = _PROJECT_ROOT / "config" / "rendercv_one_page.yaml"
 _FONTAWESOME_STUB_PATH = _PROJECT_ROOT / "config" / "typst_fontawesome_stub"
+_EMAIL_PATTERN = re.compile(
+    r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}",
+    re.IGNORECASE,
+)
+_WEB_URL_PATTERN = re.compile(
+    r"(?P<url>https?://[^\s|]+|(?:www\.)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/[^\s|]*)?)"
+)
+_TRAILING_URL_PUNCTUATION = ".,);]}>"
 _SECTION_LABELS = {
     "en": {
         "profile": "Profile",
@@ -93,6 +101,11 @@ class RenderCVTypstRenderer:
                 if not output.is_file():
                     raise ValueError("RenderCV/Typst render failed")
 
+            _insert_clickable_links(
+                output_path=output,
+                recruiter_document=recruiter_document,
+                source_document=source_document,
+            )
             metrics = _measure_pdf(
                 output_path=output,
                 headline_text=_claim_text(
@@ -274,6 +287,66 @@ def _claim_text(source_document: CVDocumentModel, claim_id: str) -> str:
         return claim_by_id[claim_id].text
     except KeyError as exc:
         raise ValueError("RenderCV/Typst render failed") from exc
+
+
+def _insert_clickable_links(
+    *,
+    output_path: Path,
+    recruiter_document: RecruiterDocumentModel,
+    source_document: CVDocumentModel,
+) -> None:
+    targets: list[tuple[str, str]] = []
+    for claim_id in (
+        *recruiter_document.contact_claim_ids,
+        *recruiter_document.link_claim_ids,
+    ):
+        target = _claim_link_target(_claim_text(source_document, claim_id))
+        if target is not None and target not in targets:
+            targets.append(target)
+
+    if not targets:
+        return
+
+    document = fitz.open(output_path)
+    try:
+        for page in document:
+            for visible_text, uri in targets:
+                for rectangle in page.search_for(visible_text):
+                    page.insert_link(
+                        {
+                            "kind": fitz.LINK_URI,
+                            "from": rectangle,
+                            "uri": uri,
+                        }
+                    )
+        document.save(
+            output_path,
+            incremental=True,
+            encryption=fitz.PDF_ENCRYPT_KEEP,
+            no_new_id=True,
+        )
+    finally:
+        document.close()
+
+
+def _claim_link_target(text: str) -> tuple[str, str] | None:
+    value = text.strip()
+    email_match = _EMAIL_PATTERN.search(value)
+    if email_match is not None:
+        email = email_match.group(0)
+        return email, f"mailto:{email}"
+
+    match = _WEB_URL_PATTERN.search(value)
+    if match is None:
+        return None
+
+    visible_url = match.group("url").rstrip(_TRAILING_URL_PUNCTUATION)
+    if not visible_url:
+        return None
+    uri = visible_url
+    if not uri.casefold().startswith(("http://", "https://")):
+        uri = f"https://{uri}"
+    return visible_url, uri
 
 
 def _escape_markdown(text: str) -> str:

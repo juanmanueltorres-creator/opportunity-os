@@ -59,3 +59,14 @@ jobs:
             printf 'Forbidden private/generated files are tracked:\n%s\n' "$forbidden"
             exit 1
           fi
+
+      - name: Render recruiter visual previews
+        run: python scripts/render_recruiter_previews.py
+
+      - name: Upload recruiter visual previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: recruiter-previews
+          path: artifacts/ci/recruiter-preview/*.pdf
+          if-no-files-found: error
+          retention-days: 7
