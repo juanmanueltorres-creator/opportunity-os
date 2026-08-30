@@ -139,3 +139,28 @@ def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
     assert "Alex Example" in (reader.pages[0].extract_text() or "")
     assert Path(result.artifact.path).exists()
     assert result.metrics.body_font_size >= 9.0
+
+
+def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
+    from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
+
+    renderer = RenderCVTypstRenderer()
+    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    source_document = _source_document()
+    recruiter_document = _recruiter_document()
+
+    first = renderer.render(
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        output_path=tmp_path / "a.pdf",
+        policy=policy,
+    )
+    second = renderer.render(
+        recruiter_document=recruiter_document,
+        source_document=source_document,
+        output_path=tmp_path / "b.pdf",
+        policy=policy,
+    )
+
+    assert (tmp_path / "a.pdf").read_bytes() == (tmp_path / "b.pdf").read_bytes()
+    assert first.artifact.sha256 == second.artifact.sha256
