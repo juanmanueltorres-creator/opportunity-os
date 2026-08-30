@@ -24,7 +24,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_DESIGN_PATH = _PROJECT_ROOT / "config" / "rendercv_one_page.yaml"
 _FONTAWESOME_STUB_PATH = _PROJECT_ROOT / "config" / "typst_fontawesome_stub"
 _EMAIL_PATTERN = re.compile(
-    r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$",
+    r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}",
     re.IGNORECASE,
 )
 _WEB_URL_PATTERN = re.compile(
@@ -101,6 +101,11 @@ class RenderCVTypstRenderer:
                 if not output.is_file():
                     raise ValueError("RenderCV/Typst render failed")
 
+            _insert_clickable_links(
+                output_path=output,
+                recruiter_document=recruiter_document,
+                source_document=source_document,
+            )
             metrics = _measure_pdf(
                 output_path=output,
                 headline_text=_claim_text(
@@ -183,7 +188,7 @@ def _build_rendercv_payload(
         {
             "fontawesome_icon": "envelope",
             "placeholder": claim_text(claim_id),
-            "url": _infer_claim_uri(_claim_text(source_document, claim_id)),
+            "url": None,
         }
         for claim_id in recruiter_document.contact_claim_ids
     ]
@@ -257,7 +262,7 @@ def _build_rendercv_payload(
 
     if recruiter_document.link_claim_ids:
         sections[labels["links"]] = [
-            _render_link_claim(source_document, claim_id)
+            claim_text(claim_id)
             for claim_id in recruiter_document.link_claim_ids
         ]
 
@@ -284,30 +289,59 @@ def _claim_text(source_document: CVDocumentModel, claim_id: str) -> str:
         raise ValueError("RenderCV/Typst render failed") from exc
 
 
-def _render_link_claim(source_document: CVDocumentModel, claim_id: str) -> str:
-    raw_text = _claim_text(source_document, claim_id)
-    visible_text = _escape_markdown(raw_text)
-    uri = _infer_claim_uri(raw_text)
-    if uri is None:
-        return visible_text
-    return f"[{visible_text}]({uri})"
+def _insert_clickable_links(
+    *,
+    output_path: Path,
+    recruiter_document: RecruiterDocumentModel,
+    source_document: CVDocumentModel,
+) -> None:
+    targets: list[tuple[str, str]] = []
+    for claim_id in (
+        *recruiter_document.contact_claim_ids,
+        *recruiter_document.link_claim_ids,
+    ):
+        target = _claim_link_target(_claim_text(source_document, claim_id))
+        if target is not None and target not in targets:
+            targets.append(target)
+
+    if not targets:
+        return
+
+    document = fitz.open(output_path)
+    try:
+        for page in document:
+            for visible_text, uri in targets:
+                for rectangle in page.search_for(visible_text):
+                    page.insert_link(
+                        {
+                            "kind": fitz.LINK_URI,
+                            "from": rectangle,
+                            "uri": uri,
+                        }
+                    )
+        document.saveIncr()
+    finally:
+        document.close()
 
 
-def _infer_claim_uri(text: str) -> str | None:
+def _claim_link_target(text: str) -> tuple[str, str] | None:
     value = text.strip()
-    if _EMAIL_PATTERN.fullmatch(value):
-        return f"mailto:{value}"
+    email_match = _EMAIL_PATTERN.search(value)
+    if email_match is not None:
+        email = email_match.group(0)
+        return email, f"mailto:{email}"
 
     match = _WEB_URL_PATTERN.search(value)
     if match is None:
         return None
 
-    url = match.group("url").rstrip(_TRAILING_URL_PUNCTUATION)
-    if not url:
+    visible_url = match.group("url").rstrip(_TRAILING_URL_PUNCTUATION)
+    if not visible_url:
         return None
-    if not url.casefold().startswith(("http://", "https://")):
-        url = f"https://{url}"
-    return url
+    uri = visible_url
+    if not uri.casefold().startswith(("http://", "https://")):
+        uri = f"https://{uri}"
+    return visible_url, uri
 
 
 def _escape_markdown(text: str) -> str:
