@@ -25,6 +25,7 @@ class RecruiterPolicy(StrictCVModel):
     max_pages: int = Field(gt=0)
     min_body_font_pt: float = Field(ge=9.0)
     preferred_body_font_pt: float = Field(gt=0)
+    min_text_height_ratio: float = Field(default=0.50, gt=0.0, le=1.0)
     max_projects: int = Field(ge=1, le=4)
     max_experience_entries: int = Field(ge=1, le=5)
     max_experience_bullets: int = Field(ge=0, le=1)
