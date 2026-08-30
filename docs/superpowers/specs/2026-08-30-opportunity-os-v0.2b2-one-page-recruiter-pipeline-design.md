@@ -1,7 +1,7 @@
 # Opportunity OS V0.2B2 — One-Page Recruiter CV Pipeline
 
 Date: 2026-08-30
-Status: approved-design
+Status: review-required
 Base: `main` at `8b1de63037f03a2dfb65cf0d400a787211bd4094`
 Supersedes: V0.2B1 layout ceiling and recruiter-quality acceptance rules where they conflict with this spec.
 
@@ -22,9 +22,15 @@ private MasterFacts + EvidenceCatalog
         ↓
 EvidenceSelector
         ↓
-RecruiterDocumentComposer
+CVComposer
         ↓
 ClaimValidator
+        ↓
+validated CVDocumentModel
+        ↓
+RecruiterDocumentComposer
+        ↓
+RecruiterDocumentValidator
         ↓
 RecruiterDocumentModel
         ↓
@@ -160,34 +166,50 @@ Only these layers may decide whether candidate-specific content is true and usab
 MasterFacts
 EvidenceCatalog
 EvidenceSelector
+CVComposer
 ClaimValidator
 ```
 
-The recruiter composer may select, group, order and omit already-authorized content. It may not invent facts, infer unsupported target requirements, promote projects to employment, alter dates, create metrics, or silently merge tracks.
+`ClaimValidator` remains the hard semantic gate and runs before any recruiter-specific grouping or layout logic.
+
+The recruiter composer may select, group, order and omit only claims from a `CVDocumentModel` that has already passed `ClaimValidator`. It may not invent facts, infer unsupported target requirements, promote projects to employment, alter dates, create metrics, silently merge tracks, or introduce candidate-specific wording that did not pass semantic validation.
 
 ### 6.2 RecruiterDocumentComposer
 
-Introduce a dedicated recruiter-facing composition layer between evidence selection and rendering.
+Introduce a dedicated recruiter-facing composition layer after semantic validation and before rendering.
 
 It is responsible for:
 
-- target-specific headline selection from approved claims/facts;
-- summary selection within a strict line/character budget;
-- grouping verified skill claims into compact labeled rows;
-- choosing a maximum of four target-relevant projects;
-- compacting included experience to a role line plus zero/one approved bullet;
+- choosing a validated target-specific headline claim;
+- selecting validated summary claims within a strict line/character budget;
+- grouping validated skill claims into compact labeled rows;
+- choosing a maximum of four target-relevant validated project claims;
+- compacting included validated experience claims to a role line plus zero/one approved bullet;
 - ordering sections according to the recruiter profile;
-- dropping lower-relevance optional content before layout is allowed to reduce typography.
+- dropping lower-relevance optional validated claims before layout is allowed to reduce typography.
 
-It does not render PDF bytes.
+It consumes the validated `CVDocumentModel`, `ValidationResult`, evidence-selection metadata and deterministic recruiter policy. It does not read private MasterFacts/EvidenceCatalog directly and does not render PDF bytes.
 
-### 6.3 Renderer
+### 6.3 RecruiterDocumentValidator
 
-The renderer receives only a validated `RecruiterDocumentModel`.
+A focused structural validator checks that recruiter composition did not create new candidate-specific semantics.
 
-It is responsible for deterministic one-page typesetting and link annotations. It may not rewrite visible text.
+It must verify at least:
 
-### 6.4 RecruiterQualityQA
+- every candidate-specific visible token resolves to one or more claim IDs from the validated source `CVDocumentModel`;
+- every referenced claim ID is in `ValidationResult.validated_claim_ids`;
+- candidate-specific token text is identical to an allowed source claim text or a deterministic concatenation of source claim texts with repository-owned separators;
+- repository-owned section/group labels are from an allowlisted recruiter policy and do not imply unsupported candidate skills;
+- project/experience caps and bullet caps are respected;
+- no cross-track or unvalidated claim can enter the recruiter document.
+
+### 6.4 Renderer
+
+The renderer receives only a recruiter document that passed `RecruiterDocumentValidator`.
+
+It is responsible for deterministic one-page typesetting and verified contact/link annotations. It may not rewrite visible candidate-specific text.
+
+### 6.5 RecruiterQualityQA
 
 Quality QA runs after render and before `ApplicationPacket` creation.
 
@@ -203,27 +225,27 @@ Required conceptual shape:
 RecruiterDocumentModel
 - document_version
 - language
-- identity
-- headline
-- contact_items[]
-- profile_lines[]
+- source_cv_document_version
+- identity_claim_id
+- headline_claim_id
+- contact_claim_ids[]
+- profile_claim_ids[]
 - technology_groups[]
-  - label
-  - claim_ids[]
+  - label_id
+  - skill_claim_ids[]
 - selected_projects[]
-  - title_claim_id
-  - summary_claim_id
+  - project_claim_ids[]
 - experience_entries[]
-  - role_claim_ids[]
+  - claim_ids[]
   - bullet_claim_ids[]  # max 1 visible bullet per included role
-- education_items[]
-- language_items[]
-- provenance_map
+- education_claim_ids[]
+- language_claim_ids[]
+- link_claim_ids[]
 ```
 
-Every visible string maps back to one or more validated claim/fact/evidence IDs.
+Candidate-specific strings are resolved from validated source claims. The recruiter model primarily carries grouping/order references, not a second independent source of candidate truth.
 
-Grouping metadata such as the labels `Software & Data`, `Operations & Systems`, or `Geospatial` is controlled by repository configuration and is not candidate evidence. A group label must not imply a skill that is absent from its member claims.
+Grouping metadata such as `Software & Data`, `Operations & Systems`, or `Geospatial` is controlled by repository configuration and is not candidate evidence. A group label must not imply a skill that is absent from its member claims.
 
 ## 8. Skill grouping contract
 
@@ -231,7 +253,7 @@ Atomic skill-per-paragraph output is forbidden in the recruiter profile.
 
 Renderer-facing skills must be grouped before rendering.
 
-Example shape:
+Example presentation shape:
 
 ```text
 Software & Data: Python · FastAPI · SQL · PostgreSQL/PostGIS · React · TypeScript
@@ -241,7 +263,7 @@ Geospatial: MapLibre · Leaflet · CesiumJS · QGIS · spatial data
 
 Constraints:
 
-- each visible skill token requires verified provenance;
+- each visible skill token resolves to a validated skill claim;
 - default maximum visible groups: 4;
 - default maximum visible skill tokens: 24;
 - no bars, stars, percentages, rankings or icons;
@@ -275,21 +297,23 @@ V0.2B2 must not solve overflow by repeatedly shrinking fonts.
 The fit order is:
 
 ```text
-1. select target-relevant evidence
-2. apply section/item budgets
-3. render at fixed recruiter typography
-4. if overflow: remove lowest-relevance optional content using deterministic priority rules
-5. re-render
-6. if still not exactly one page: BLOCKED_RENDER / recruiter_one_page_failed
+1. select and semantically validate target-relevant evidence/claims
+2. compose recruiter document using section/item budgets
+3. validate recruiter document references
+4. render at fixed recruiter typography
+5. if overflow: remove lowest-relevance optional validated claims using deterministic priority rules
+6. revalidate recruiter document references
+7. re-render
+8. if still not exactly one page: BLOCKED_RENDER / recruiter_one_page_failed
 ```
 
 Items that may be removed first:
 
 1. optional links duplicated elsewhere;
-2. lower-relevance skill tokens;
+2. lower-relevance skill claims;
 3. lower-relevance project #4, then #3 if policy allows at least two projects;
 4. lower-relevance experience entries that are not required for truthful chronology/context;
-5. optional training items.
+5. optional training claims.
 
 Mandatory identity/contact and policy-required sections may not be silently removed.
 
@@ -330,14 +354,18 @@ Forbidden:
 Preferred implementation boundary:
 
 ```text
-RecruiterDocumentModel
+validated CVDocumentModel
+        ↓
+RecruiterDocumentComposer
+        ↓
+validated RecruiterDocumentModel
         ↓
 RecruiterRenderer protocol
         ↓
 RenderCVTypstAdapter
 ```
 
-The adapter may map the validated Opportunity OS document into a private temporary RenderCV-compatible input/theme and invoke the local render engine.
+The adapter may map the validated Opportunity OS recruiter document into a private temporary RenderCV-compatible input/theme and invoke the local render engine.
 
 Important constraints:
 
@@ -346,7 +374,7 @@ Important constraints:
 - candidate private snapshots remain gitignored;
 - generated CVs/ApplicationPackets remain private/generated artifacts;
 - no network access is required at render time;
-- the adapter cannot bypass `ClaimValidator`;
+- the adapter cannot bypass either `ClaimValidator` or `RecruiterDocumentValidator`;
 - engine failure maps to `BLOCKED_RENDER`.
 
 If dependency feasibility or deterministic packaging makes RenderCV unsuitable, the implementation may retain ReportLab behind the same `RecruiterRenderer` interface, but it must satisfy every recruiter-quality acceptance rule in this spec. The interface must prevent the semantic layer from depending on one renderer implementation.
@@ -368,7 +396,7 @@ no semantic images/logos/charts/tables/skill widgets
 skills represented as grouped recruiter rows
 project_count <= 4
 experience visible bullets <= 1 per included role
-all visible candidate-specific strings have provenance
+all candidate-specific visible tokens resolve to validated source claims
 ```
 
 A failure maps to `BLOCKED_RENDER` with a bounded code identifying the failed gate.
@@ -445,12 +473,14 @@ The command must:
 2. load a real opportunity/radar assessment or build the supported canonical input form;
 3. resolve the application track;
 4. select evidence;
-5. compose recruiter document;
-6. validate provenance/claims;
-7. render one-page PDF;
-8. run RecruiterQualityQA;
-9. write an `ApplicationPacket` only when all gates pass;
-10. print a concise machine/operator-readable result containing status, application ID, output path, CV hash, packet hash and unresolved gaps.
+5. compose canonical `CVDocumentModel`;
+6. run `ClaimValidator`;
+7. compose recruiter document from validated claims only;
+8. run `RecruiterDocumentValidator`;
+9. render one-page PDF;
+10. run `RecruiterQualityQA`;
+11. write an `ApplicationPacket` only when all gates pass;
+12. print a concise machine/operator-readable result containing status, application ID, output path, CV hash, packet hash and unresolved gaps.
 
 The command never sends email or submits an ATS form.
 
@@ -527,7 +557,7 @@ No new repository is created for CV rendering.
 
 `ApplicationPacket` remains the authority for a successfully prepared application artifact.
 
-V0.2B2 adds recruiter-renderer/document version fields only if needed to make the output reproducible. Existing semantic hashes must continue to change when visible validated candidate content or renderer semantics change.
+V0.2B2 adds recruiter-renderer/document version fields only if needed to make the output reproducible. Existing semantic hashes must continue to change when visible validated candidate content, recruiter grouping/order or renderer semantics change.
 
 A recruiter-quality failure produces no successful packet.
 
@@ -553,6 +583,7 @@ recruiter_headline_overflow
 recruiter_content_overflow
 recruiter_render_failed
 recruiter_reading_order_failed
+recruiter_unvalidated_claim_reference
 ```
 
 Errors remain under blocked preparation states already understood by the system unless implementation reveals a compelling compatibility reason to add a new public preparation status.
@@ -569,18 +600,19 @@ Required regression cases:
 2. one-page golden software fixture passes;
 3. one-page tech+operations fixture passes;
 4. atomic skills cannot reach renderer as individual recruiter paragraphs;
-5. more than four selected projects is reduced deterministically or blocked;
-6. more than one visible bullet per experience entry is reduced deterministically or blocked;
-7. font cannot fall below 9 pt to force a fit;
-8. unsupported target skills remain unresolved gaps;
-9. renderer receives only validated recruiter model;
-10. fixed semantic input produces deterministic recruiter document ordering;
-11. fixed render input produces deterministic output/hash within the supported engine contract;
-12. extraction ground truth survives PDF generation;
-13. page two causes hard failure and no packet;
-14. fresh CLI invocation produces the same result without chat-specific state;
-15. agent runbook command matches the executable CLI contract;
-16. private/generated-file guard stays green.
+5. recruiter composer rejects/unreferences claims not present in the validated source document;
+6. more than four selected projects is reduced deterministically or blocked;
+7. more than one visible bullet per experience entry is reduced deterministically or blocked;
+8. font cannot fall below 9 pt to force a fit;
+9. unsupported target skills remain unresolved gaps;
+10. renderer receives only a structurally validated recruiter model;
+11. fixed semantic input produces deterministic recruiter document ordering;
+12. fixed render input produces deterministic output/hash within the supported engine contract;
+13. extraction ground truth survives PDF generation;
+14. page two causes hard failure and no packet;
+15. fresh CLI invocation produces the same result without chat-specific state;
+16. agent runbook command matches the executable CLI contract;
+17. private/generated-file guard stays green.
 
 ## 23. Likely files
 
@@ -590,6 +622,7 @@ New/focused modules should prefer clear responsibilities:
 app/cv/recruiter_models.py
 app/cv/recruiter_composer.py
 app/cv/recruiter_policy.py
+app/cv/recruiter_validator.py
 app/cv/recruiter_qa.py
 app/cv/renderers/base.py
 app/cv/renderers/rendercv_typst.py
@@ -603,7 +636,6 @@ Existing integration points likely touched:
 ```text
 app/cv/service.py
 app/cv/models.py
-app/cv/validator.py
 app/cv/layout_qa.py or replacement/delegation
 pyproject.toml / dependency lock
 README.md
@@ -613,6 +645,7 @@ Tests likely include:
 
 ```text
 tests/test_recruiter_composer.py
+tests/test_recruiter_validator.py
 tests/test_recruiter_qa.py
 tests/test_recruiter_renderer.py
 tests/test_application_prepare_cli.py
@@ -630,7 +663,7 @@ V0.2B2 is complete only when:
 1. recruiter-facing canonical CV output is exactly one A4 page;
 2. the one-page rule is a hard gate, never a warning;
 3. skills render as compact categorized rows, not one paragraph per skill;
-4. target-specific headline/profile/projects are selected from verified content only;
+4. target-specific headline/profile/projects are selected from semantically validated claims only;
 5. projects are capped at four;
 6. experience is compact and evidence-backed;
 7. typography stays at or above the minimum body font;
@@ -664,11 +697,12 @@ V0.2B2 does not include:
 
 ```text
 EVIDENCE DECIDES WHAT WE MAY SAY.
-RECRUITER COMPOSER DECIDES WHAT TO SHOW.
+CLAIM VALIDATOR DECIDES WHAT IS SEMANTICALLY SAFE.
+RECRUITER COMPOSER DECIDES WHAT VALIDATED CONTENT TO SHOW.
 THEME DECIDES HOW IT FITS.
 QA DECIDES WHETHER IT IS GOOD ENOUGH TO BECOME PREPARED.
 
-PREPARED == VALID EVIDENCE + EXACTLY ONE RECRUITER-QUALITY PAGE
+PREPARED == VALID EVIDENCE + VALID CLAIMS + EXACTLY ONE RECRUITER-QUALITY PAGE
 PREPARED != APPROVED
 PREPARED != SENT
 ```
