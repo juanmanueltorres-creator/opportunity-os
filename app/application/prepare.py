@@ -122,11 +122,18 @@ def _pdf_page_count(path: str | Path) -> int:
         document.close()
 
 
+def _packet_path(result: PreparationResult) -> Path:
+    packet = result.packet
+    if packet is None:
+        raise ValueError("prepared_result_missing_packet")
+    return Path(packet.cv_pdf_path).with_name("application_packet.json")
+
+
 def _write_packet(result: PreparationResult) -> Path:
     packet = result.packet
     if packet is None:
         raise ValueError("prepared_result_missing_packet")
-    destination = Path(packet.cv_pdf_path).with_name("application_packet.json")
+    destination = _packet_path(result)
     destination.write_text(
         json.dumps(
             packet.model_dump(mode="json"),
@@ -138,6 +145,20 @@ def _write_packet(result: PreparationResult) -> Path:
         encoding="utf-8",
     )
     return destination
+
+
+def _cleanup_prepared_artifacts(result: PreparationResult) -> None:
+    packet = result.packet
+    if packet is None:
+        return
+
+    for path in (_packet_path(result), Path(packet.cv_pdf_path)):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            # The CLI is already returning ERROR. Cleanup is best-effort so the
+            # original artifact failure is not replaced by a second exception.
+            pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -181,6 +202,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         page_count = _pdf_page_count(result.packet.cv_pdf_path)
         _write_packet(result)
     except (OSError, ValueError):
+        _cleanup_prepared_artifacts(result)
         _print(_error_payload("application_artifact_write_failed"))
         return 2
 
