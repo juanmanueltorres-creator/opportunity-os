@@ -1,0 +1,79 @@
+{
+  "source_document": {
+    "document_version": "cvdoc-v1",
+    "language": "en",
+    "claims": [
+      {"claim_id": "sw:name", "section": "headline", "kind": "identity", "text": "Alex Rivera"},
+      {"claim_id": "sw:role", "section": "headline", "kind": "headline", "text": "Software and Geospatial Developer"},
+      {"claim_id": "sw:email", "section": "headline", "kind": "contact", "text": "alex.rivera@example.test"},
+      {"claim_id": "sw:summary", "section": "summary", "kind": "summary", "text": "Builds practical software products that connect APIs, spatial data, and clear browser workflows."},
+      {"claim_id": "sw:python", "section": "skills", "kind": "skill", "text": "Python"},
+      {"claim_id": "sw:fastapi", "section": "skills", "kind": "skill", "text": "FastAPI"},
+      {"claim_id": "sw:postgresql", "section": "skills", "kind": "skill", "text": "PostgreSQL"},
+      {"claim_id": "sw:postgis", "section": "skills", "kind": "skill", "text": "PostGIS"},
+      {"claim_id": "sw:react", "section": "skills", "kind": "skill", "text": "React"},
+      {"claim_id": "sw:typescript", "section": "skills", "kind": "skill", "text": "TypeScript"},
+      {"claim_id": "sw:maplibre", "section": "skills", "kind": "skill", "text": "MapLibre"},
+      {"claim_id": "sw:leaflet", "section": "skills", "kind": "skill", "text": "Leaflet"},
+      {"claim_id": "sw:project-1", "section": "projects", "kind": "project", "text": "GeoAtlas - browser map for reviewing public spatial layers."},
+      {"claim_id": "sw:project-2", "section": "projects", "kind": "project", "text": "Route Lens - map workflow for comparing delivery scenarios."},
+      {"claim_id": "sw:project-3", "section": "projects", "kind": "project", "text": "Data API - FastAPI service for validated location records."},
+      {"claim_id": "sw:project-4", "section": "projects", "kind": "project", "text": "Raster Watch - compact dashboard for spatial change review."},
+      {"claim_id": "sw:experience-1", "section": "experience", "kind": "organization", "text": "Northwind Labs | Software Developer | 2024-Present"},
+      {"claim_id": "sw:experience-1-bullet", "section": "experience", "kind": "bullet", "text": "Delivered API-backed mapping workflows and validation tooling."},
+      {"claim_id": "sw:experience-2", "section": "experience", "kind": "organization", "text": "Atlas Cooperative | Technical Assistant | 2022-2024"},
+      {"claim_id": "sw:experience-2-bullet", "section": "experience", "kind": "bullet", "text": "Prepared structured datasets and repeatable technical checks."},
+      {"claim_id": "sw:education", "section": "education", "kind": "education", "text": "BSc Applied Computing - Example State University"},
+      {"claim_id": "sw:language", "section": "languages", "kind": "language", "text": "English - Professional"},
+      {"claim_id": "sw:github", "section": "links", "kind": "link", "text": "github.com/alex-rivera-example"}
+    ],
+    "entries": [],
+    "provenance_map": {
+      "sw:name": {"fact_ids": ["sw:name"]},
+      "sw:role": {"fact_ids": ["sw:role"]},
+      "sw:email": {"fact_ids": ["sw:email"]},
+      "sw:summary": {"fact_ids": ["sw:summary"]},
+      "sw:python": {"fact_ids": ["sw:python"]},
+      "sw:fastapi": {"fact_ids": ["sw:fastapi"]},
+      "sw:postgresql": {"fact_ids": ["sw:postgresql"]},
+      "sw:postgis": {"fact_ids": ["sw:postgis"]},
+      "sw:react": {"fact_ids": ["sw:react"]},
+      "sw:typescript": {"fact_ids": ["sw:typescript"]},
+      "sw:maplibre": {"fact_ids": ["sw:maplibre"]},
+      "sw:leaflet": {"fact_ids": ["sw:leaflet"]},
+      "sw:project-1": {"fact_ids": ["sw:project-1"]},
+      "sw:project-2": {"fact_ids": ["sw:project-2"]},
+      "sw:project-3": {"fact_ids": ["sw:project-3"]},
+      "sw:project-4": {"fact_ids": ["sw:project-4"]},
+      "sw:experience-1": {"fact_ids": ["sw:experience-1"]},
+      "sw:experience-1-bullet": {"fact_ids": ["sw:experience-1"]},
+      "sw:experience-2": {"fact_ids": ["sw:experience-2"]},
+      "sw:experience-2-bullet": {"fact_ids": ["sw:experience-2"]},
+      "sw:education": {"fact_ids": ["sw:education"]},
+      "sw:language": {"fact_ids": ["sw:language"]},
+      "sw:github": {"fact_ids": ["sw:github"]}
+    }
+  },
+  "recruiter_document": {
+    "document_version": "recruiter-doc-v1",
+    "source_cv_document_version": "cvdoc-v1",
+    "language": "en",
+    "identity_claim_id": "sw:name",
+    "headline_claim_id": "sw:role",
+    "contact_claim_ids": ["sw:email"],
+    "profile_claim_ids": ["sw:summary"],
+    "technology_groups": [
+      {"label_id": "software_data", "skill_claim_ids": ["sw:python", "sw:fastapi", "sw:postgresql", "sw:postgis"]},
+      {"label_id": "frontend_web", "skill_claim_ids": ["sw:react", "sw:typescript"]},
+      {"label_id": "geospatial", "skill_claim_ids": ["sw:maplibre", "sw:leaflet"]}
+    ],
+    "selected_project_claim_ids": ["sw:project-1", "sw:project-2", "sw:project-3", "sw:project-4"],
+    "experience_entries": [
+      {"primary_claim_id": "sw:experience-1", "bullet_claim_ids": ["sw:experience-1-bullet"]},
+      {"primary_claim_id": "sw:experience-2", "bullet_claim_ids": ["sw:experience-2-bullet"]}
+    ],
+    "education_claim_ids": ["sw:education"],
+    "language_claim_ids": ["sw:language"],
+    "link_claim_ids": ["sw:github"]
+  }
+}
