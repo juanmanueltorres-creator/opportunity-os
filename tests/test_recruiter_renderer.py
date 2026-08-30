@@ -13,7 +13,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
-from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
+from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer, _build_rendercv_payload
 
 
 def _source_document() -> CVDocumentModel:
@@ -136,6 +136,18 @@ def test_rendercv_runtime_is_importable():
 
     assert rendercv is not None
     assert typst is not None
+
+
+def test_rendercv_payload_does_not_require_external_fontawesome_package():
+    payload = _build_rendercv_payload(
+        recruiter_document=_recruiter_document(),
+        source_document=_source_document(),
+        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+    )
+
+    connections = payload["cv"]["custom_connections"]
+    assert connections
+    assert all("fontawesome_icon" not in connection for connection in connections)
 
 
 def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
