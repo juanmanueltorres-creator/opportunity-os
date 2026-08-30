@@ -282,7 +282,7 @@ Confidence no es fit. La falta de información baja confianza; no se transforma 
 
 La **CV Factory** tampoco debería poder escribir algo que el candidato no pueda defender después.
 
-V0.2B1 mantiene el renderer histórico `ats-pdf-v2` y su `Layout QA` como contratos testeados. V0.2B2 agrega la salida recruiter canónica de una sola página sin ampliar la autoridad semántica:
+V0.2B1 mantiene el renderer histórico `ats-pdf-v2`, **A4, one-column y texto seleccionable**, y su `Layout QA` como contratos testeados. V0.2B2 agrega la salida recruiter canónica de una sola página sin ampliar la autoridad semántica:
 
 ```text
 RadarAssessment
