@@ -11,6 +11,7 @@ from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
     RecruiterExperienceEntry,
+    RecruiterProjectEntry,
     TechnologyGroup,
 )
 from app.cv.recruiter_policy import load_recruiter_policy
@@ -46,6 +47,12 @@ def _source_document() -> CVDocumentModel:
             section="projects",
             kind="project",
             text="Mapping Console",
+        ),
+        CVClaim(
+            claim_id="approved:project-1-bullet",
+            section="projects",
+            kind="bullet",
+            text="Auditable spatial workflows with deterministic map state.",
         ),
         CVClaim(
             claim_id="fact:project-2",
@@ -187,6 +194,32 @@ def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
     assert "Alex Example" in (reader.pages[0].extract_text() or "")
     assert Path(result.artifact.path).exists()
     assert result.metrics.body_font_size >= 9.0
+
+
+def test_rendercv_renderer_includes_approved_project_description(tmp_path):
+    recruiter_document = _recruiter_document().model_copy(
+        update={
+            "project_entries": [
+                RecruiterProjectEntry(
+                    primary_claim_id="fact:project-1",
+                    bullet_claim_ids=["approved:project-1-bullet"],
+                ),
+                RecruiterProjectEntry(primary_claim_id="fact:project-2"),
+            ]
+        }
+    )
+    result = RenderCVTypstRenderer().render(
+        recruiter_document=recruiter_document,
+        source_document=_source_document(),
+        output_path=tmp_path / "cv-project-description.pdf",
+        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+    )
+
+    text = "\n".join(
+        page.extract_text() or "" for page in PdfReader(result.artifact.path).pages
+    )
+    assert "Mapping Console" in text
+    assert "Auditable spatial workflows with deterministic map state." in text
 
 
 def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
