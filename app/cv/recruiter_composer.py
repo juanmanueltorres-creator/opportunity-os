@@ -419,7 +419,17 @@ def _reduce_once(
         return document.model_copy(update={"technology_groups": groups})
 
     # 3. Project #4 then #3, while keeping two when at least two exist.
-    if len(document.selected_project_claim_ids) > 2:
+    if document.project_entries and len(document.project_entries) > 2:
+        remaining_entries = document.project_entries[:-1]
+        return document.model_copy(
+            update={
+                "project_entries": remaining_entries,
+                "selected_project_claim_ids": [
+                    entry.primary_claim_id for entry in remaining_entries
+                ],
+            }
+        )
+    if not document.project_entries and len(document.selected_project_claim_ids) > 2:
         return document.model_copy(
             update={
                 "selected_project_claim_ids": document.selected_project_claim_ids[:-1]
