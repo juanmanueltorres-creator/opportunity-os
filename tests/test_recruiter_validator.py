@@ -7,6 +7,7 @@ from app.cv.models import (
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
     RecruiterExperienceEntry,
+    RecruiterProjectEntry,
     TechnologyGroup,
 )
 from app.cv.recruiter_policy import load_recruiter_policy
@@ -235,5 +236,31 @@ def test_recruiter_validator_enforces_dynamic_policy_caps():
 
     assert not result.valid
     assert "recruiter_project_cap_exceeded" in {
+        issue.code for issue in result.errors
+    }
+
+
+def test_recruiter_validator_rejects_wrong_kind_in_project_entry():
+    source = _source_document()
+    recruiter = _recruiter_document().model_copy(
+        update={
+            "project_entries": [
+                RecruiterProjectEntry(
+                    primary_claim_id="fact:project",
+                    bullet_claim_ids=["fact:education"],
+                )
+            ]
+        }
+    )
+
+    result = validate_recruiter_document(
+        recruiter_document=recruiter,
+        source_document=source,
+        source_validation=_source_validation(source),
+        policy=_policy(),
+    )
+
+    assert not result.valid
+    assert "recruiter_claim_role_mismatch" in {
         issue.code for issue in result.errors
     }
