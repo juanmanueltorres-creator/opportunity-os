@@ -2,6 +2,7 @@ version: recruiter-policy-v1
 max_pages: 1
 min_body_font_pt: 9.0
 preferred_body_font_pt: 9.4
+min_text_height_ratio: 0.50
 max_projects: 4
 max_experience_entries: 5
 max_experience_bullets: 1
