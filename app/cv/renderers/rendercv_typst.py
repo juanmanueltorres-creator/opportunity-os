@@ -76,37 +76,21 @@ class RenderCVTypstRenderer:
             ) as temporary_directory:
                 temporary_path = Path(temporary_directory)
                 input_path = temporary_path / "cv.yaml"
-                input_path.write_text(
-                    yaml.safe_dump(
-                        payload,
-                        allow_unicode=True,
-                        sort_keys=False,
-                    ),
-                    encoding="utf-8",
+                input_yaml = yaml.safe_dump(
+                    payload,
+                    allow_unicode=True,
+                    sort_keys=False,
                 )
+                input_path.write_text(input_yaml, encoding="utf-8")
 
-                command = [
-                    "rendercv",
-                    "render",
-                    str(input_path),
-                    "--design",
-                    str(design),
-                    "--pdf-path",
-                    str(output),
-                    "--dont-generate-markdown",
-                    "--dont-generate-html",
-                    "--dont-generate-png",
-                    "--quiet",
-                ]
-                completed = subprocess.run(
-                    command,
-                    cwd=temporary_path,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    shell=False,
+                _render_pdf_in_process(
+                    input_yaml=input_yaml,
+                    input_path=input_path,
+                    design_path=design,
+                    temporary_path=temporary_path,
+                    output_path=output,
                 )
-                if completed.returncode != 0 or not output.is_file():
+                if not output.is_file():
                     raise ValueError("RenderCV/Typst render failed")
 
             metrics = _measure_pdf(
@@ -127,6 +111,36 @@ class RenderCVTypstRenderer:
             raise
         except Exception as exc:
             raise ValueError("RenderCV/Typst render failed") from exc
+
+
+def _render_pdf_in_process(
+    *,
+    input_yaml: str,
+    input_path: Path,
+    design_path: Path,
+    temporary_path: Path,
+    output_path: Path,
+) -> None:
+    from rendercv.renderer.pdf_png import generate_pdf
+    from rendercv.renderer.typst import generate_typst
+    from rendercv.schema.rendercv_model_builder import build_rendercv_dictionary_and_model
+
+    _prepare_rendercv_offline_package_path()
+    _, rendercv_model = build_rendercv_dictionary_and_model(
+        input_yaml,
+        input_file_path=input_path,
+        design_yaml_file=design_path.read_text(encoding="utf-8"),
+        output_folder=temporary_path,
+        typst_path=temporary_path / "cv.typ",
+        pdf_path=output_path,
+        dont_generate_markdown=True,
+        dont_generate_html=True,
+        dont_generate_png=True,
+    )
+    typst_path = generate_typst(rendercv_model)
+    generated_pdf = generate_pdf(rendercv_model, typst_path)
+    if generated_pdf is None or not output_path.is_file():
+        raise ValueError("RenderCV/Typst render failed")
 
 
 def _prepare_rendercv_offline_package_path() -> Path:
