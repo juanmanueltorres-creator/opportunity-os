@@ -206,7 +206,18 @@ def _build_rendercv_payload(
             )
         sections[labels["technology"]] = technology_entries
 
-    if recruiter_document.selected_project_claim_ids:
+    if recruiter_document.project_entries:
+        sections[labels["projects"]] = [
+            {
+                "name": claim_text(entry.primary_claim_id),
+                "highlights": [
+                    claim_text(claim_id) for claim_id in entry.bullet_claim_ids
+                ]
+                or None,
+            }
+            for entry in recruiter_document.project_entries
+        ]
+    elif recruiter_document.selected_project_claim_ids:
         sections[labels["projects"]] = [
             claim_text(claim_id)
             for claim_id in recruiter_document.selected_project_claim_ids
