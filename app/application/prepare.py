@@ -30,12 +30,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--evidence-catalog", required=True)
     parser.add_argument("--recruiter-policy", required=True)
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--language", choices=("es", "en"), default="en")
     return parser
 
 
-def _cv_policy() -> CVPolicy:
+def _cv_policy(language: str = "en") -> CVPolicy:
     return CVPolicy(
-        language="en",
+        language=language,
         required_identity_kinds=["identity", "contact"],
         required_sections=["projects", "skills"],
     )
@@ -186,7 +187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             assessment=assessment,
             master_facts=master_facts,
             evidence_catalog=evidence_catalog,
-            policy=_cv_policy(),
+            policy=_cv_policy(args.language),
             output_root=args.output_root,
             now=datetime.now(timezone.utc),
         )
