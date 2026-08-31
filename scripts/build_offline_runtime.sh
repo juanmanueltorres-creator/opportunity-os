@@ -7,7 +7,10 @@ ACTUAL_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 OUTPUT_DIR="${2:-$REPO_ROOT/artifacts/ci/offline-runtime}"
 BUNDLE_ROOT="$OUTPUT_DIR/opportunity-os-runtime"
 WHEELHOUSE="$BUNDLE_ROOT/wheelhouse"
-ARCHIVE_PATH="$OUTPUT_DIR/opportunity-os-runtime-linux-x86_64-py312.zip"
+PYTHON_MINOR="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+PYTHON_TAG="py${PYTHON_MINOR/./}"
+ARCHIVE_BASENAME="opportunity-os-runtime-linux-x86_64-$PYTHON_TAG"
+ARCHIVE_PATH="$OUTPUT_DIR/$ARCHIVE_BASENAME.zip"
 
 if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
   printf 'Runtime bundle SHA mismatch: expected %s, checked out %s\n' "$EXPECTED_SHA" "$ACTUAL_SHA" >&2
@@ -17,8 +20,9 @@ fi
 python - <<'PY'
 import platform
 import sys
-if sys.version_info[:2] != (3, 12):
-    raise SystemExit(f"offline runtime build requires Python 3.12, got {sys.version.split()[0]}")
+version = f"{sys.version_info.major}.{sys.version_info.minor}"
+if version not in {"3.12", "3.13"}:
+    raise SystemExit(f"offline runtime build requires Python 3.12 or 3.13, got {sys.version.split()[0]}")
 if platform.system().lower() != "linux" or platform.machine().lower() not in {"x86_64", "amd64"}:
     raise SystemExit("offline runtime build requires Linux x86_64")
 PY
@@ -84,12 +88,12 @@ manifest = build_runtime_manifest(
 write_sha256sums(bundle, bundle / "SHA256SUMS")
 PY
 
-python - "$OUTPUT_DIR" <<'PY'
+python - "$OUTPUT_DIR" "$ARCHIVE_BASENAME" <<'PY'
 import shutil
 import sys
 from pathlib import Path
 output = Path(sys.argv[1]).resolve()
-archive_base = output / "opportunity-os-runtime-linux-x86_64-py312"
+archive_base = output / sys.argv[2]
 archive = Path(shutil.make_archive(str(archive_base), "zip", root_dir=output, base_dir="opportunity-os-runtime"))
 print(archive)
 PY
