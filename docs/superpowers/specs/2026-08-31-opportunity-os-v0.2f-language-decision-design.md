@@ -32,13 +32,14 @@ The fix must be deterministic, auditable, fail closed on clear inconsistencies, 
 - No change to job scoring, eligibility, contact resolution, approval semantics, Gmail send semantics, or recruiter PDF layout policy.
 - No rule of the form `foreign company => English`.
 - No use of a job requirement such as `English required` as sufficient evidence that recruiter outreach itself must be English.
+- Recruiter/contact geography does not change language after `ApplicationPacket` creation. Contact resolution happens after the CV packet is prepared; allowing it to switch language would require invalidating and re-rendering a previously prepared packet. Exceptional cases use the explicit language override before preparation.
 
 ## Domain model
 
 Add the following types to the Radar domain because the decision is derived from opportunity context before document composition:
 
 ```python
-OutputLanguage = Literal["es", "en"]
+CommunicationLanguage = Literal["es", "en"]
 LanguageDecisionBasis = Literal[
     "explicit_override",
     "posting_language",
@@ -47,7 +48,7 @@ LanguageDecisionBasis = Literal[
 ]
 
 class LanguageDecision(StrictRadarModel):
-    language: OutputLanguage
+    language: CommunicationLanguage
     basis: LanguageDecisionBasis
     confidence: float = Field(ge=0, le=1)
     source_field: str = Field(min_length=1)
@@ -80,6 +81,39 @@ The resolver uses this exact precedence:
 
 The nationality of the company is never a signal by itself.
 
+### Normalization
+
+Text-language and market matching use the standard library only:
+
+1. Unicode NFKD normalization;
+2. remove combining marks/diacritics;
+3. case-fold;
+4. tokenize contiguous alphabetic sequences;
+5. ignore punctuation and digits.
+
+### Frozen lexical markers
+
+The detector counts token occurrences from these exact frozen marker sets:
+
+```python
+SPANISH_MARKERS = {
+    "el", "la", "los", "las", "un", "una", "de", "del", "para", "con",
+    "sin", "que", "y", "en", "por", "como", "experiencia", "requisitos",
+    "responsabilidades", "equipo", "trabajo", "desarrollo", "buscamos",
+    "conocimientos", "deseable", "excluyente", "modalidad", "puesto",
+    "posicion", "habilidades", "tareas", "nosotros", "sera", "tenemos",
+}
+
+ENGLISH_MARKERS = {
+    "the", "an", "of", "to", "for", "with", "without", "that", "and", "in",
+    "by", "as", "experience", "requirements", "responsibilities", "team", "work",
+    "development", "skills", "preferred", "required", "role", "position", "you",
+    "we", "will", "looking", "knowledge", "responsible",
+}
+```
+
+Technical tokens such as `Python`, `SQL`, `React`, `FastAPI`, `API`, `backend`, `frontend`, `remote`, and company/product names are not marker tokens and therefore do not count as language evidence.
+
 ### 1. Explicit override
 
 When `override` is `es` or `en`:
@@ -87,25 +121,24 @@ When `override` is `es` or `en`:
 - select it directly;
 - `basis = "explicit_override"`;
 - `confidence = 1.0`;
-- `source_field = "cli.language"`.
+- `source_field = "cli.language"`;
+- `source_text = override`.
 
 ### 2. Posting-language signal
 
-The posting signal is computed from `Opportunity.title + Opportunity.description`.
-
-Use a deterministic lexical detector with two small frozen vocabularies containing common non-technical Spanish and English recruiting words. Technical tokens such as `Python`, `SQL`, `React`, `FastAPI`, `API`, `backend`, and company/product names do not count as language evidence.
+The posting signal is computed from `Opportunity.title + "\n" + Opportunity.description`.
 
 A posting is confidently classified only when:
 
-- one language has at least 3 marker hits; and
-- its marker-hit count exceeds the other language by at least 2.
+- one language has at least 3 marker-token occurrences; and
+- its marker count exceeds the other language by at least 2.
 
 When classified from posting text:
 
 - `basis = "posting_language"`;
 - `confidence = 0.95`;
 - `source_field = "opportunity.title+description"`;
-- `source_text` contains a compact normalized excerpt of the posting evidence.
+- `source_text` is the first 200 characters of whitespace-normalized posting text.
 
 If the threshold is not met, the posting is considered ambiguous and resolution continues.
 
@@ -117,14 +150,23 @@ If the posting text is ambiguous, inspect, in order:
 2. `assessment.enrichment.region.value` when present;
 3. `assessment.opportunity.location`.
 
-A normalized match against a frozen Spanish-speaking market set selects Spanish. The set includes Argentina, Bolivia, Chile, Colombia, Costa Rica, Cuba, Ecuador, El Salvador, Spain/España, Guatemala, Honduras, Mexico/México, Nicaragua, Panama/Panamá, Paraguay, Peru/Perú, Dominican Republic/República Dominicana, Uruguay, and Venezuela.
+A normalized whole-word/phrase match against this exact frozen Spanish-speaking market set selects Spanish:
+
+```python
+SPANISH_SPEAKING_MARKETS = {
+    "argentina", "bolivia", "chile", "colombia", "costa rica", "cuba", "ecuador",
+    "el salvador", "spain", "espana", "guatemala", "honduras", "mexico",
+    "nicaragua", "panama", "paraguay", "peru", "dominican republic",
+    "republica dominicana", "uruguay", "venezuela",
+}
+```
 
 When selected from market/location:
 
 - `basis = "market_location"`;
 - `confidence = 0.80`;
-- `source_field` identifies the field that matched;
-- `source_text` stores the matched market/location value.
+- `source_field` is exactly one of `enrichment.country`, `enrichment.region`, or `opportunity.location`;
+- `source_text` stores the complete matched field value.
 
 Generic `LATAM`, `Latin America`, or `Remote` alone does not force Spanish because such roles may operate in English.
 
@@ -135,20 +177,21 @@ When neither posting text nor market/location resolves the language:
 - select English;
 - `basis = "international_remote_fallback"`;
 - `confidence = 0.60`;
-- `source_field = "fallback"`.
+- `source_field = "fallback"`;
+- `source_text = None`.
 
 This is intentionally conservative and deterministic.
 
 ## Text-language detector for draft safety
 
-The same lexical primitives are exposed through:
+The same lexical normalization, marker sets, and confidence threshold are exposed through:
 
 ```python
-def detect_text_language(text: str) -> OutputLanguage | None:
+def detect_text_language(text: str) -> CommunicationLanguage | None:
     ...
 ```
 
-It returns `None` when evidence is ambiguous.
+It returns `None` when neither language meets `>= 3` marker hits plus a `>= 2` lead over the other language.
 
 This detector is used only as a safety check. It does not translate or rewrite copy.
 
@@ -167,9 +210,9 @@ Behavior:
 - `auto` => `resolve_output_language(assessment)`;
 - `es|en` => `resolve_output_language(assessment, override=<value>)`.
 
-Remove the current hardcoded `CVPolicy(language="en")` behavior. The CV policy still owns structural requirements, but the output language comes from the resolved `LanguageDecision`.
+Remove the current hardcoded `CVPolicy(language="en")` behavior. The CV policy still owns structural requirements; the output language comes from the resolved `LanguageDecision`.
 
-The CLI JSON response for `PREPARED` adds:
+The CLI JSON response adds these keys for every normal preparation result, including blocked preparation results:
 
 ```json
 {
@@ -178,7 +221,7 @@ The CLI JSON response for `PREPARED` adds:
 }
 ```
 
-Blocked/error payloads use `null` for these fields when no decision is available.
+Only CLI errors that happen before language resolution use `null` for these fields.
 
 ## CV preparation contract
 
@@ -214,13 +257,13 @@ The packet therefore becomes the canonical source of language truth after `PREPA
 
 ## Outreach contract
 
-`OutreachPreparationService` continues to build `OutreachBrief.language`, but it now copies from:
+`OutreachPreparationService` builds `OutreachBrief.language` from:
 
 ```python
 application_packet.language_decision.language
 ```
 
-and validates that:
+Before building the brief it validates:
 
 ```python
 application_packet.cv_document.language
@@ -231,7 +274,7 @@ A mismatch returns `BLOCKED_INVALID_PACKET` with `packet_language_mismatch`.
 
 ## Draft contract
 
-Add required `language: Literal["es", "en"]` to `DraftSnapshot`.
+Add required `language: Literal["es", "en"]` to newly created `DraftSnapshot` values.
 
 Change `OutreachService.register_draft(...)` to require:
 
@@ -248,14 +291,17 @@ Before persisting the draft:
 
 This catches a Spanish Canals-style draft even if a caller incorrectly labels it `en`, while avoiding false failures on very short or highly technical copy.
 
+`build_draft_snapshot(...)` receives the already validated language and stores it on the snapshot.
+
 Include `language` in `draft_semantic_payload(...)`. A language change must change `draft_sha256` and therefore invalidate any prior approval, preserving the existing safety semantics.
 
 ## Backward compatibility
 
 - Existing `RadarAssessment` JSON does not need a new required field; language is resolved at application preparation time.
 - Existing CV composer callers can continue using `policy.language` when they do not pass an explicit `language`; canonical application preparation always passes the decision explicitly.
-- `ApplicationPacket` and `DraftSnapshot` are intentionally strengthened contracts. Tests and fixtures that construct these models must provide the new field.
-- Stored old snapshots are not mutated. New runtime output uses the strengthened schema.
+- `ApplicationPacket` is intentionally strengthened: newly created or reloaded V0.2F packets require `language_decision`.
+- `DraftSnapshot` is intentionally strengthened for V0.2F creation. Existing persisted rows are not rewritten by migration code. No current repository read API loads historical draft snapshots, so this change does not silently reinterpret old draft language.
+- New runtime output uses the strengthened contracts.
 
 ## Failure behavior
 
@@ -279,12 +325,12 @@ Non-failure ambiguity:
 Add deterministic cases for:
 
 1. English US/international posting similar to Canals => `en`, `posting_language`;
-2. Spanish Córdoba/Argentina posting => `es`, `posting_language` or `market_location` depending on text;
-3. ambiguous technical posting located in Argentina => `es`, `market_location`;
-4. ambiguous remote international posting => `en`, `international_remote_fallback`;
-5. explicit `--language es` overrides English posting;
-6. explicit `--language en` overrides Spanish posting;
-7. `English required` inside an otherwise Spanish posting does not by itself switch the communication language to English.
+2. clearly Spanish Córdoba/Argentina posting => `es`, `posting_language`;
+3. marker-ambiguous technical posting located in Argentina => `es`, `market_location`;
+4. marker-ambiguous remote international posting => `en`, `international_remote_fallback`;
+5. explicit `--language es` overrides an English posting => `es`, `explicit_override`;
+6. explicit `--language en` overrides a Spanish posting => `en`, `explicit_override`;
+7. the phrase `English required` inside an otherwise clearly Spanish posting remains `es`, `posting_language`.
 
 ### CV/service tests
 
@@ -308,6 +354,7 @@ Add deterministic cases for:
 - default `--language auto` selects expected language;
 - `--language es` and `--language en` override auto;
 - CLI JSON exposes `language` and `language_basis`;
+- blocked preparation after successful language resolution still exposes both values;
 - invalid language value is rejected by argparse.
 
 ### Offline runtime acceptance
