@@ -31,6 +31,7 @@ from app.radar.models import (
     ConfidenceAssessment,
     DerivedValue,
     EligibilityResult,
+    LanguageDecision,
     OpportunityEnrichment,
     RadarAssessment,
     Requirement,
@@ -38,6 +39,13 @@ from app.radar.models import (
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
+LANGUAGE_DECISION = LanguageDecision(
+    language="en",
+    basis="explicit_override",
+    confidence=1.0,
+    source_field="test.language",
+    source_text="English recruiter fixture",
+)
 
 
 def _resolver() -> TaxonomyResolver:
@@ -225,6 +233,7 @@ def test_prepare_returns_packet_only_after_validation_and_render(tmp_path: Path)
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "PREPARED"
@@ -245,6 +254,7 @@ def test_missing_minimum_evidence_writes_no_pdf(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_MISSING_FACTS"
@@ -261,6 +271,7 @@ def test_track_unavailable_writes_no_pdf(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_TRACK_UNAVAILABLE"
@@ -296,6 +307,7 @@ def test_validation_failure_does_not_call_renderer(monkeypatch, tmp_path: Path) 
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_VALIDATION"
@@ -322,6 +334,7 @@ def test_recruiter_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: P
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_RENDER"
@@ -352,6 +365,7 @@ def test_hard_recruiter_qa_failure_blocks_packet_and_removes_pdf(tmp_path: Path)
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_RENDER"
@@ -383,6 +397,7 @@ def test_recruiter_qa_warning_is_returned_without_blocking_packet(tmp_path: Path
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "PREPARED"
@@ -399,6 +414,7 @@ def test_packet_hash_excludes_id_time_and_path(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path / "a",
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
     second = _service("app-b").prepare(
         assessment=_assessment(),
@@ -407,6 +423,7 @@ def test_packet_hash_excludes_id_time_and_path(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path / "b",
         now=NOW + timedelta(hours=1),
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert first.packet is not None
@@ -425,6 +442,7 @@ def test_semantic_fact_change_changes_packet_hash(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path / "a",
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
     second = _service("app-b").prepare(
         assessment=_assessment(),
@@ -433,6 +451,7 @@ def test_semantic_fact_change_changes_packet_hash(tmp_path: Path) -> None:
         policy=policy,
         output_root=tmp_path / "b",
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert first.packet is not None
@@ -501,6 +520,7 @@ def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_docume
         policy=policy,
         output_root=tmp_path / "a",
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
     second = _service(
         "app-b",
@@ -514,6 +534,7 @@ def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_docume
         policy=policy,
         output_root=tmp_path / "b",
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert first.packet is not None and second.packet is not None
@@ -567,6 +588,7 @@ def test_prepare_blocks_when_recruiter_output_is_two_pages(tmp_path: Path) -> No
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "BLOCKED_RENDER"
@@ -584,6 +606,7 @@ def test_prepared_packet_contains_semantic_and_recruiter_documents(tmp_path: Pat
         policy=policy,
         output_root=tmp_path,
         now=NOW,
+        language_decision=LANGUAGE_DECISION,
     )
 
     assert result.status == "PREPARED"
@@ -604,6 +627,7 @@ def test_prepare_rejects_naive_now_before_any_output(tmp_path: Path) -> None:
             policy=policy,
             output_root=tmp_path,
             now=datetime(2026, 8, 28, 12, 0),
+            language_decision=LANGUAGE_DECISION,
         )
     assert list(tmp_path.rglob("*.pdf")) == []
 
@@ -623,6 +647,7 @@ def test_service_validates_catalog_references_before_preparation(tmp_path: Path)
             policy=policy,
             output_root=tmp_path,
             now=NOW,
+            language_decision=LANGUAGE_DECISION,
         )
 
     assert list(tmp_path.rglob("*.pdf")) == []
