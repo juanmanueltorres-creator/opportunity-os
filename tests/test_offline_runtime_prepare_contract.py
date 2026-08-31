@@ -22,6 +22,16 @@ def test_offline_verifier_executes_canonical_prepare_to_prepared_packet() -> Non
     assert "renderer_version" in text
 
 
+def test_offline_verifier_enforces_language_decision_contract() -> None:
+    text = Path("scripts/verify_offline_runtime.py").read_text(encoding="utf-8")
+
+    assert 'result.get("language")' in text
+    assert 'result.get("language_basis")' in text
+    assert 'packet.get("language_decision")' in text
+    assert 'packet.get("cv_document")' in text
+    assert "offline application language mismatch" in text
+
+
 def test_recruiter_renderer_uses_non_deprecated_pymupdf_import() -> None:
     text = Path("app/cv/renderers/rendercv_typst.py").read_text(encoding="utf-8")
 
