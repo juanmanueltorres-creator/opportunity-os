@@ -4,9 +4,9 @@
 
 **Goal:** Build and verify a SHA-bound offline runtime artifact that can install Opportunity OS and execute the canonical RenderCV/Typst recruiter pipeline without package-network access.
 
-**Architecture:** Keep application semantics unchanged. Add build/verification scripts that assemble a source subset, wheelhouse and bundled Typst executable, then validate the artifact in a second clean CI job using `PIP_NO_INDEX=1`. The runtime is immutable infrastructure keyed to the exact git SHA; private candidate inputs remain external.
+**Architecture:** Keep application semantics unchanged. Add build/verification scripts that assemble a public source subset plus a complete wheelhouse containing the prebuilt Opportunity OS wheel and the platform-specific typst-py compiler wheel, then validate the artifact in a second clean CI job using `PIP_NO_INDEX=1`. The runtime is immutable infrastructure keyed to the exact git SHA; private candidate inputs remain external.
 
-**Tech Stack:** Python 3.12, Bash, pip/wheel, RenderCV 2.x, Typst, PyMuPDF, GitHub Actions.
+**Tech Stack:** Python 3.12, Bash, pip/wheel, RenderCV 2.x, typst-py, PyMuPDF, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-08-30-opportunity-os-offline-runtime-bundle-design.md`
 
@@ -17,6 +17,7 @@
 - Runtime artifact target is Linux x86_64.
 - Runtime manifest is bound to the exact git SHA.
 - Offline bootstrap must use `PIP_NO_INDEX=1` and bundled wheels only.
+- The Typst compiler runtime is the `typst` Python wheel actually used by RenderCV 2.8; do not introduce an unrelated external CLI compiler path.
 - Private/local inputs and real generated CVs must never enter the artifact.
 - Existing application/evidence/outreach semantics remain unchanged.
 
@@ -33,11 +34,11 @@
 - Produces: `validate_bundle_source_paths(paths: Iterable[Path]) -> None`
 - Produces: `write_sha256sums(root: Path, output_path: Path) -> None`
 
-- [ ] **Step 1: Write failing tests** asserting the manifest contains schema/git/python/platform/RenderCV/Typst/PyMuPDF/renderer fields and that `.env`, `*.local.yaml`, `artifacts/applications/**`, PDF/DOCX and local SQLite paths are rejected.
-- [ ] **Step 2: Run** `python -m pytest tests/test_runtime_bundle.py -v` and confirm RED because the module does not exist.
-- [ ] **Step 3: Implement minimal deterministic manifest/checksum/privacy helpers** using stdlib plus installed package metadata.
-- [ ] **Step 4: Run** `python -m pytest tests/test_runtime_bundle.py -v` and confirm GREEN.
-- [ ] **Step 5: Commit** `feat: add runtime bundle manifest contract`.
+- [x] **Step 1: Write failing tests** asserting the manifest contains schema/git/python/platform/RenderCV/Typst/PyMuPDF/renderer fields and that `.env`, `*.local.yaml`, `artifacts/applications/**`, PDF/DOCX and local SQLite paths are rejected.
+- [x] **Step 2: Run** `python -m pytest tests/test_runtime_bundle.py -v` and confirm RED because the module does not exist.
+- [x] **Step 3: Implement minimal deterministic manifest/checksum/privacy helpers** using stdlib plus installed package metadata.
+- [x] **Step 4: Run** the full CI suite and confirm GREEN after fixing dotfile normalization.
+- [x] **Step 5: Commit** the runtime manifest contract.
 
 ### Task 2: Build the offline bundle
 
@@ -48,12 +49,12 @@
 
 **Interfaces:**
 - Consumes Task 1 privacy/manifest helpers.
-- Produces bundle root with `source/`, `wheelhouse/`, `bin/typst`, `runtime_manifest.json`, `SHA256SUMS`, `bootstrap_offline.sh`.
+- Produces bundle root with `source/`, `wheelhouse/`, `runtime_manifest.json`, `SHA256SUMS`, `bootstrap_offline.sh` and the ZIP artifact.
 
-- [ ] **Step 1: Add RED tests** for source allow-listing and the required bundle layout.
+- [ ] **Step 1: Add RED tests** for source allow-listing, required fictional fixture inclusion, project-wheel/typst-wheel discovery and required bundle layout.
 - [ ] **Step 2: Run targeted tests** and confirm failure.
-- [ ] **Step 3: Implement source copying** for `app/`, `config/`, selected `scripts/`, `pyproject.toml`; refuse forbidden paths.
-- [ ] **Step 4: Implement build shell script** that builds the project wheel, downloads all Linux/Python dependencies into `wheelhouse`, locates the installed Typst executable, copies it to `bin/typst`, writes manifest/checksums and archives the runtime.
+- [ ] **Step 3: Implement source copying** for `app/`, `config/`, public `data/`, selected `scripts/`, `pyproject.toml`, and only the two recruiter fictional fixtures required for smoke verification; refuse forbidden paths.
+- [ ] **Step 4: Implement build shell script** that builds the project wheel from the exact SHA, resolves/downloads all binary-compatible dependencies into `wheelhouse`, requires a Linux x86_64 typst-py wheel, writes manifest/checksums and archives the runtime.
 - [ ] **Step 5: Run targeted tests** and confirm GREEN.
 - [ ] **Step 6: Commit** `feat: build hermetic offline runtime bundle`.
 
@@ -65,15 +66,16 @@
 - Modify: `tests/test_runtime_bundle.py`
 
 **Interfaces:**
-- `bootstrap_offline_runtime.sh [bundle-root]` verifies checksums, creates `.venv`, installs from wheelhouse with no index, checks versions and invokes `verify_offline_runtime.py`.
+- `bootstrap_offline_runtime.sh [bundle-root] [expected-git-sha?]` verifies checksums, creates `.venv`, installs the project wheel from wheelhouse with no index, checks installed versions and invokes `verify_offline_runtime.py`.
 - `verify_offline_runtime.py` renders fictional recruiter fixtures through `RenderCVTypstRenderer` and `RecruiterQualityQA` and checks A4/text/URI annotations.
 
 - [ ] **Step 1: Add RED tests** for checksum verification failure, SHA mismatch and bootstrap flags (`PIP_NO_INDEX=1`, `--no-index`, `--find-links`).
 - [ ] **Step 2: Run targeted tests** and confirm RED.
-- [ ] **Step 3: Implement bootstrap** with strict `set -euo pipefail`, Python 3.12 check, checksum validation, manifest SHA check, isolated venv, no-index install and bundled `bin/` PATH.
-- [ ] **Step 4: Implement fictional recruiter verification** by reusing existing recruiter fixtures and canonical QA; assert exactly one A4 page, selectable text and at least email/web URI annotations.
-- [ ] **Step 5: Run targeted tests** and confirm GREEN.
-- [ ] **Step 6: Commit** `feat: verify recruiter pipeline from offline runtime`.
+- [ ] **Step 3: Implement bootstrap** with strict `set -euo pipefail`, Python 3.12 check, checksum validation, manifest SHA check, isolated venv and local-wheel-only installation.
+- [ ] **Step 4: Verify installed `rendercv`, `typst`, `PyMuPDF` and Opportunity OS versions against the manifest.**
+- [ ] **Step 5: Implement fictional recruiter verification** by reusing the two bundled public recruiter fixtures and canonical QA; assert exactly one A4 page, selectable text and email/web URI annotations.
+- [ ] **Step 6: Run targeted tests** and confirm GREEN.
+- [ ] **Step 7: Commit** `feat: verify recruiter pipeline from offline runtime`.
 
 ### Task 4: Two-stage GitHub Actions acceptance
 
@@ -86,7 +88,7 @@
 
 - [ ] **Step 1: Add build job** after normal pytest checks, invoking `scripts/build_offline_runtime.sh "$GITHUB_SHA"` and uploading the ZIP with 90-day retention.
 - [ ] **Step 2: Add dependent clean verification job** using a fresh runner, downloading/unpacking the artifact and running `bootstrap_offline.sh` with `PIP_NO_INDEX=1`.
-- [ ] **Step 3: Ensure no online install commands exist in verification job**; setup-python is allowed only to provide Python 3.12.
+- [ ] **Step 3: Ensure no online package-install commands exist in verification job**; setup-python is allowed only to provide Python 3.12.
 - [ ] **Step 4: Push and inspect CI**; if bundle/bootstrap fails, fix the implementation rather than weakening the acceptance contract.
 - [ ] **Step 5: Commit** `ci: verify offline recruiter runtime bundle`.
 
