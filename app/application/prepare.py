@@ -13,6 +13,7 @@ from app.cv.loaders import load_evidence_catalog, load_master_facts
 from app.cv.models import CVPolicy, PreparationResult, ValidationIssue
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.service import CVPreparationService
+from app.radar.language import resolve_output_language
 from app.radar.models import RadarAssessment
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
 
@@ -30,12 +31,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--evidence-catalog", required=True)
     parser.add_argument("--recruiter-policy", required=True)
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--language", choices=("auto", "es", "en"), default="auto")
     return parser
 
 
-def _cv_policy() -> CVPolicy:
+def _cv_policy(language: str = "en") -> CVPolicy:
     return CVPolicy(
-        language="en",
+        language=language,
         required_identity_kinds=["identity", "contact"],
         required_sections=["projects", "skills"],
     )
@@ -89,6 +91,8 @@ def _result_payload(
         "page_count": page_count,
         "cv_sha256": packet.cv_sha256 if packet is not None else None,
         "packet_sha256": packet.packet_sha256 if packet is not None else None,
+        "language": packet.language_decision.language if packet is not None else None,
+        "language_basis": packet.language_decision.basis if packet is not None else None,
         "unresolved_gaps": list(packet.unresolved_gaps) if packet is not None else [],
         "errors": [_issue_payload(issue) for issue in result.errors],
         "warnings": [_issue_payload(issue) for issue in result.warnings],
@@ -103,6 +107,8 @@ def _error_payload(error: str) -> dict:
         "page_count": None,
         "cv_sha256": None,
         "packet_sha256": None,
+        "language": None,
+        "language_basis": None,
         "unresolved_gaps": [],
         "error": error,
         "errors": [],
@@ -156,8 +162,6 @@ def _cleanup_prepared_artifacts(result: PreparationResult) -> None:
         try:
             path.unlink(missing_ok=True)
         except OSError:
-            # The CLI is already returning ERROR. Cleanup is best-effort so the
-            # original artifact failure is not replaced by a second exception.
             pass
 
 
@@ -169,6 +173,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError:
         _print(_error_payload("invalid_radar_assessment"))
         return 2
+
+    language_override = None if args.language == "auto" else args.language
+    language_decision = resolve_output_language(
+        assessment,
+        override=language_override,
+    )
 
     try:
         master_facts, evidence_catalog, recruiter_policy, resolver = _load_inputs(args)
@@ -186,9 +196,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             assessment=assessment,
             master_facts=master_facts,
             evidence_catalog=evidence_catalog,
-            policy=_cv_policy(),
+            policy=_cv_policy(language_decision.language),
             output_root=args.output_root,
             now=datetime.now(timezone.utc),
+            language_decision=language_decision,
         )
     except ValueError:
         _print(_error_payload("invalid_private_cv_input"))
