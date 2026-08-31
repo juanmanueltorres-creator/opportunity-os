@@ -95,6 +95,13 @@ def _wheel_version(path: Path, prefix: str) -> str:
     return version
 
 
+def _is_ephemeral_python_cache(path: Path) -> bool:
+    return "__pycache__" in {part.casefold() for part in path.parts} or path.suffix.casefold() in {
+        ".pyc",
+        ".pyo",
+    }
+
+
 def copy_runtime_source(*, repository_root: Path, destination: Path) -> list[Path]:
     if destination.exists():
         shutil.rmtree(destination)
@@ -107,6 +114,8 @@ def copy_runtime_source(*, repository_root: Path, destination: Path) -> list[Pat
             continue
         for source in sorted(path for path in source_dir.rglob("*") if path.is_file()):
             relative = source.relative_to(repository_root)
+            if _is_ephemeral_python_cache(relative):
+                continue
             validate_bundle_source_paths([relative])
             target = destination / relative
             target.parent.mkdir(parents=True, exist_ok=True)
