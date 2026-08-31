@@ -313,6 +313,14 @@ class ApplicationPacket(StrictCVModel):
     def created_at_must_be_aware(cls, value: datetime) -> datetime:
         return _require_aware(value, field_name="created_at")
 
+    @model_validator(mode="after")
+    def validate_language_contract(self) -> "ApplicationPacket":
+        if self.language_decision.language != self.cv_document.language:
+            raise ValueError(
+                "packet language decision must match CV document language"
+            )
+        return self
+
 
 class PreparationResult(StrictCVModel):
     status: PreparationStatus
