@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Callable
+from typing import Callable, Literal
 from uuid import uuid4
 
 from app.outreach.hashing import draft_sha256
@@ -29,6 +29,7 @@ def build_draft_snapshot(
     reply_message_id: str | None,
     verification_basis: DraftVerificationBasis,
     now: datetime,
+    language: Literal["es", "en"] = "en",
     id_factory: Callable[[], str] = lambda: str(uuid4()),
 ) -> DraftSnapshot:
     body_canonical = body.replace("\r\n", "\n").replace("\r", "\n")
@@ -45,6 +46,7 @@ def build_draft_snapshot(
         bcc=list(bcc),
         subject=subject,
         body_canonical=body_canonical,
+        language=language,
         attachments=list(attachments),
         cv_sha256=cv_sha256,
         content_type=content_type,
