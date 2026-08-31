@@ -71,18 +71,10 @@ class CVPreparationService:
         policy: CVPolicy,
         output_root: str | Path,
         now: datetime,
-        language_decision: LanguageDecision | None = None,
+        language_decision: LanguageDecision,
     ) -> PreparationResult:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("now must be timezone-aware")
-
-        decision = language_decision or LanguageDecision(
-            language=policy.language,
-            basis="explicit_override",
-            confidence=1.0,
-            source_field="cv_policy.language",
-            source_text=policy.language,
-        )
 
         validate_catalog_against_facts(evidence_catalog, master_facts)
 
@@ -133,7 +125,7 @@ class CVPreparationService:
             master_facts=master_facts,
             evidence_catalog=evidence_catalog,
             policy=policy,
-            language=decision.language,
+            language=language_decision.language,
         )
         validation = validate_cv(
             document=document,
@@ -328,7 +320,7 @@ class CVPreparationService:
             selected_fact_ids=selection.selected_fact_ids,
             selected_evidence_ids=selection.selected_evidence_ids,
             unresolved_gaps=selection.unsupported_requirements,
-            language_decision=decision,
+            language_decision=language_decision,
             cv_document=document,
             recruiter_document=final_recruiter_document,
             cv_pdf_path=artifact.path,
