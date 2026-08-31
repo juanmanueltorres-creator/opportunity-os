@@ -241,8 +241,14 @@ def _group_skills(
             member_to_group.setdefault(_normalize(member), group_id)
 
     grouped: OrderedDict[str, list[str]] = OrderedDict()
+    seen_skill_texts: set[str] = set()
     for claim in skills:
-        group_id = member_to_group.get(_normalize(claim.text))
+        normalized_text = _normalize(claim.text)
+        if normalized_text in seen_skill_texts:
+            continue
+        seen_skill_texts.add(normalized_text)
+
+        group_id = member_to_group.get(normalized_text)
         if group_id is None and "additional" in policy.skill_groups:
             group_id = "additional"
         if group_id is None:
