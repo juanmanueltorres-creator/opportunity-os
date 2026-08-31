@@ -12,7 +12,7 @@ from app.cv.models import (
     ValidationResult,
 )
 
-_NUMBER_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?%?(?![A-Za-z0-9])")
+_NUMBER_RE = re.compile(r"(?<![A-Za-z])(?!(?:2|3)[Dd]\b)\d+(?:[.,]\d+)?%?")
 _EXACT_FACT_KINDS = {"organization", "title", "date"}
 
 
@@ -66,7 +66,7 @@ def validate_cv(
                 )
                 claim_has_error = True
                 continue
-            referenced_facts.append(fact)
+n            referenced_facts.append(fact)
             if not fact.verified:
                 errors.append(
                     ValidationIssue(
