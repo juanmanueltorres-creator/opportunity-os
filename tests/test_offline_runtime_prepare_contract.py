@@ -20,3 +20,10 @@ def test_offline_verifier_executes_canonical_prepare_to_prepared_packet() -> Non
     assert '"PREPARED"' in text or "'PREPARED'" in text
     assert "application_packet.json" in text
     assert "renderer_version" in text
+
+
+def test_recruiter_renderer_uses_non_deprecated_pymupdf_import() -> None:
+    text = Path("app/cv/renderers/rendercv_typst.py").read_text(encoding="utf-8")
+
+    assert "import pymupdf as fitz" in text
+    assert "\nimport fitz\n" not in text
