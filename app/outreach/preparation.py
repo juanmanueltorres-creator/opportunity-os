@@ -178,10 +178,10 @@ def application_packet_error(
         return "packet_version_mismatch"
     if dict(packet.taxonomy_versions) != dict(assessment.taxonomy_versions):
         return "packet_version_mismatch"
-    if packet.renderer_version not in _OUTREACH_ALLOWED_RENDERER_VERSIONS:
-        return "cv_renderer_not_allowed"
     if packet.language_decision.language != packet.cv_document.language:
         return "packet_language_mismatch"
+    if packet.renderer_version not in _OUTREACH_ALLOWED_RENDERER_VERSIONS:
+        return "cv_renderer_not_allowed"
     return None
 
 
