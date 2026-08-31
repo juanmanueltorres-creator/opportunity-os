@@ -160,3 +160,31 @@ def test_manifest_is_json_serializable(tmp_path: Path) -> None:
         built_at="2026-08-30T23:00:00Z",
     )
     json.dumps(manifest, sort_keys=True)
+
+
+def test_offline_bootstrap_is_checksum_sha_and_no_index_bound() -> None:
+    text = Path("scripts/bootstrap_offline_runtime.sh").read_text(encoding="utf-8")
+
+    assert "set -euo pipefail" in text
+    assert "sha256sum -c" in text
+    assert "runtime_manifest.json" in text
+    assert "EXPECTED_SHA" in text
+    assert "PIP_NO_INDEX=1" in text
+    assert "PIP_DISABLE_PIP_VERSION_CHECK=1" in text
+    assert "--no-index" in text
+    assert "--find-links" in text
+    assert "PYTHONPATH" in text
+
+
+def test_offline_verifier_checks_canonical_render_a4_text_and_links() -> None:
+    text = Path("scripts/verify_offline_runtime.py").read_text(encoding="utf-8")
+
+    assert "render_previews" in text
+    assert "pymupdf" in text
+    assert "page_count" in text
+    assert "595" in text
+    assert "842" in text
+    assert "get_text" in text
+    assert "get_links" in text
+    assert "mailto:" in text
+    assert "https://" in text
