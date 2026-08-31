@@ -66,7 +66,7 @@ def validate_cv(
                 )
                 claim_has_error = True
                 continue
-n            referenced_facts.append(fact)
+            referenced_facts.append(fact)
             if not fact.verified:
                 errors.append(
                     ValidationIssue(
