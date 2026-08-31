@@ -48,11 +48,7 @@ def verify_recruiter_pdf(path: Path) -> None:
         if not extracted_text:
             raise RuntimeError(f"offline recruiter smoke has no selectable text: {path}")
 
-        uris = {
-            str(link.get("uri"))
-            for link in page.get_links()
-            if link.get("uri")
-        }
+        uris = {str(link.get("uri")) for link in page.get_links() if link.get("uri")}
         if not any(uri.startswith("mailto:") for uri in uris):
             raise RuntimeError(f"offline recruiter smoke has no mailto: URI: {path}")
         if not any(uri.startswith("https://") for uri in uris):
@@ -252,7 +248,10 @@ def verify_canonical_prepare(*, source_root: Path, output_dir: Path) -> Path:
     try:
         result = json.loads(completed.stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("canonical prepare did not emit valid JSON") from exc
+        raise RuntimeError(
+            "canonical prepare did not emit valid JSON: "
+            f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+        ) from exc
 
     if result.get("status") != "PREPARED":
         raise RuntimeError(f"canonical prepare did not reach PREPARED: {result!r}")
