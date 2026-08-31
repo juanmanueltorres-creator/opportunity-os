@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import uuid4
 
 from app.cv.models import ApplicationPacket
@@ -34,6 +35,7 @@ from app.outreach.send import (
     create_send_request,
     record_successful_send,
 )
+from app.radar.language import detect_text_language
 from app.radar.models import RadarAssessment
 
 
@@ -156,6 +158,7 @@ class OutreachService:
         content_type: str,
         verification_basis: DraftVerificationBasis,
         now: datetime,
+        language: Literal["es", "en"] | None = None,
         reply_message_id: str | None = None,
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
@@ -163,6 +166,15 @@ class OutreachService:
         email = brief.contact_resolution.email
         if email is None:
             raise ValueError("draft registration requires actionable email")
+
+        declared_language = language or brief.language
+        if declared_language != brief.language:
+            raise ValueError("draft_language_mismatch")
+
+        detected_language = detect_text_language(f"{subject}\n{body}")
+        if detected_language is not None and detected_language != brief.language:
+            raise ValueError("draft_text_language_mismatch")
+
         draft = build_draft_snapshot(
             opportunity_id=brief.opportunity_id,
             brief_sha256_value=brief.brief_sha256,
@@ -185,6 +197,7 @@ class OutreachService:
             reply_message_id=reply_message_id,
             verification_basis=verification_basis,
             now=now,
+            language=declared_language,
         )
         saved = self.repository.save_draft_snapshot(draft)
         history = self.repository.list_events(brief.opportunity_id)
