@@ -62,9 +62,9 @@ bash opportunity-os-runtime/bootstrap_offline.sh \
   <exact-opportunity-os-git-sha>
 ```
 
-The bootstrap is fail-closed. Before installing anything it verifies `SHA256SUMS`, the manifest SHA, the Python minor, the bundled source hash, and the project/typst wheel hashes. It then creates a clean virtual environment with `PIP_NO_INDEX=1`, installs only from the bundled wheelhouse, verifies Opportunity OS/RenderCV/typst-py/PyMuPDF/renderer versions, and renders fictional recruiter fixtures through the canonical renderer and `RecruiterQualityQA`.
+The bootstrap is fail-closed. Before installing anything it verifies `SHA256SUMS`, the manifest SHA, the Python minor, the bundled source hash, and the project/typst wheel hashes. It then creates a clean virtual environment with `PIP_NO_INDEX=1`, installs only from the bundled wheelhouse, verifies Opportunity OS/RenderCV/typst-py/PyMuPDF/renderer versions, renders the fictional recruiter previews, and executes a fully fictional `python -m app.application.prepare` through the same `CVPreparationService` path used for real applications. The smoke run must reach `PREPARED`, write `application_packet.json` with `renderer_version=rendercv-typst-v1`, and produce exactly one A4 PDF with extractable text and real `mailto:`/`https://` URI annotations.
 
-A successful bootstrap proves that the artifact can execute the canonical recruiter renderer without package-index access. It does not contain candidate facts, evidence, real CVs, opportunities, Gmail state, Apollo data, or approval/send authority.
+A successful bootstrap therefore proves that the artifact can install the production dependency set and execute the canonical preparation path through `ApplicationPacket` without package-index access. It does not contain candidate facts, evidence, real CVs, opportunities, Gmail state, Apollo data, or approval/send authority.
 
 After bootstrap succeeds, materialize the authorized private inputs separately and run the canonical preparation command with the bundle's `.venv` Python and SHA-bound source tree. Private inputs never become part of the reusable runtime artifact.
 
