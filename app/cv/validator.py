@@ -12,7 +12,7 @@ from app.cv.models import (
     ValidationResult,
 )
 
-_NUMBER_RE = re.compile(r"(?<![A-Za-z])\d+(?:[.,]\d+)?%?")
+_NUMBER_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?%?(?![A-Za-z0-9])")
 _EXACT_FACT_KINDS = {"organization", "title", "date"}
 
 
