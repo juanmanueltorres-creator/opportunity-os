@@ -45,7 +45,8 @@ def _sha256_tree(root: Path) -> str:
 
 
 def _normalise(path: Path) -> str:
-    return path.as_posix().lstrip("./")
+    value = path.as_posix()
+    return value[2:] if value.startswith("./") else value
 
 
 def validate_bundle_source_paths(paths: Iterable[Path]) -> None:
