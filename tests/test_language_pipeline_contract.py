@@ -190,3 +190,21 @@ def test_register_draft_rejects_confident_text_language_mismatch() -> None:
             verification_basis="CREATED_EXACT",
             now=NOW,
         )
+
+
+def test_register_draft_allows_ambiguous_technical_text_when_declared_language_matches() -> None:
+    service = OutreachService(repository=_NoopRepository())
+
+    draft = service.register_draft(
+        brief=_brief("en"),
+        provider_draft_id="draft-technical",
+        subject="Python / SQL / FastAPI",
+        body="PostGIS, React, REST API, Docker, Git.",
+        language="en",
+        content_type="text/plain",
+        verification_basis="CREATED_EXACT",
+        now=NOW,
+    )
+
+    assert draft.language == "en"
+    assert draft.body_canonical == "PostGIS, React, REST API, Docker, Git."
