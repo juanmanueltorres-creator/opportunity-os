@@ -28,13 +28,53 @@ RadarAssessment
 
 ## Prerequisites
 
-Use Python 3.12+ and install the project with the same dependency set used by CI:
+With package-index access, use Python 3.12+ and install the project with the same dependency set used by CI:
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
 The recruiter path requires RenderCV/Typst plus PyMuPDF and PyPDF extraction support. Do not create a separate ad-hoc rendering environment.
+
+## Offline runtime artifact
+
+When the shell cannot reach PyPI/GitHub for package installation, do not reconstruct the recruiter renderer manually. Use a SHA-bound offline runtime artifact produced by this repository's CI.
+
+The first runtime format supports Linux x86_64 on Python 3.12 and 3.13. Determine both values before selecting an artifact:
+
+```bash
+python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
+# Obtain the exact Opportunity OS repository SHA through the available GitHub/repository channel.
+```
+
+Select the artifact matching the interpreter minor:
+
+```text
+opportunity-os-runtime-linux-x86_64-py312.zip
+opportunity-os-runtime-linux-x86_64-py313.zip
+```
+
+The artifact is valid only for the exact git SHA stored in its `runtime_manifest.json`. Unpack it, then invoke its bootstrap with the SHA you intend to execute:
+
+```bash
+bash opportunity-os-runtime/bootstrap_offline.sh \
+  opportunity-os-runtime \
+  <exact-opportunity-os-git-sha>
+```
+
+The bootstrap is fail-closed. Before installing anything it verifies `SHA256SUMS`, the manifest SHA, the Python minor, the bundled source hash, and the project/typst wheel hashes. It then creates a clean virtual environment with `PIP_NO_INDEX=1`, installs only from the bundled wheelhouse, verifies Opportunity OS/RenderCV/typst-py/PyMuPDF/renderer versions, and renders fictional recruiter fixtures through the canonical renderer and `RecruiterQualityQA`.
+
+A successful bootstrap proves that the artifact can execute the canonical recruiter renderer without package-index access. It does not contain candidate facts, evidence, real CVs, opportunities, Gmail state, Apollo data, or approval/send authority.
+
+After bootstrap succeeds, materialize the authorized private inputs separately and run the canonical preparation command with the bundle's `.venv` Python and SHA-bound source tree. Private inputs never become part of the reusable runtime artifact.
+
+If no artifact matches both the current Python minor and the exact target git SHA, stop fail-closed. Do not:
+
+- hand-build a recruiter PDF with ReportLab/HTML/another renderer;
+- reuse an older `ats-pdf` `ApplicationPacket` as if it came from the current renderer;
+- switch silently to an obsolete renderer;
+- edit a PDF after a blocked canonical preparation and call it `PREPARED`;
+- fabricate a successful `ApplicationPacket`.
 
 ## Required private inputs
 
@@ -58,7 +98,7 @@ Do not hand-author a replacement assessment merely to make CV preparation pass. 
 
 ## Canonical command
 
-Run exactly one preparation command from the repository root:
+Run exactly one preparation command from the repository root (or the SHA-bound bundled `source/` root when using an offline runtime):
 
 ```bash
 python -m app.application.prepare \
@@ -116,7 +156,7 @@ For example, if Power BI, SAP, a B2B platform, a license, a degree, years of exp
 
 Private snapshots and generated application artifacts are intentionally excluded from Git. Public tests may contain only fictional fixtures. Before committing, verify that no `*.local.yaml`, private assessment, generated PDF, private packet, real email address, phone number, or candidate-specific snapshot has entered the repository.
 
-The public repo contains the deterministic machinery, policy, examples, tests, and documentation. Real candidate state stays local.
+The public repo contains the deterministic machinery, policy, examples, tests, documentation and reusable runtime machinery. Real candidate state stays local.
 
 ## Preparation is not outreach authority
 
