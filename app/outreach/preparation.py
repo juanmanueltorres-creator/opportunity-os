@@ -106,7 +106,7 @@ class OutreachPreparationService:
             unresolved_gaps=gaps,
             allowed_claims=allowed_claims,
             forbidden_claims=forbidden_claims,
-            language=application_packet.cv_document.language,
+            language=application_packet.language_decision.language,
             tone_policy=policy.tone_policy,
             call_to_action_policy=policy.call_to_action_policy,
             cv_pdf_path=str(cv_path),
@@ -177,6 +177,8 @@ def application_packet_error(
         return "packet_version_mismatch"
     if dict(packet.taxonomy_versions) != dict(assessment.taxonomy_versions):
         return "packet_version_mismatch"
+    if packet.language_decision.language != packet.cv_document.language:
+        return "packet_language_mismatch"
     return None
 
 
