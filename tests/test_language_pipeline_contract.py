@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from app.application.prepare import _parser
 from app.cv.hashing import canonical_sha256
 from app.cv.models import ApplicationPacket
+from app.cv.service import CVPreparationService
 from app.models.domain import Opportunity
 from app.outreach.hashing import draft_semantic_payload
 from app.outreach.models import DraftSnapshot
@@ -52,9 +54,21 @@ def test_application_packet_language_decision_is_required() -> None:
     assert field.is_required()
 
 
+def test_cv_preparation_requires_explicit_language_decision_argument() -> None:
+    parameter = inspect.signature(CVPreparationService.prepare).parameters[
+        "language_decision"
+    ]
+    assert parameter.default is inspect.Parameter.empty
+
+
 def test_draft_snapshot_language_is_required() -> None:
     field = DraftSnapshot.model_fields["language"]
     assert field.is_required()
+
+
+def test_register_draft_requires_explicit_language_argument() -> None:
+    parameter = inspect.signature(OutreachService.register_draft).parameters["language"]
+    assert parameter.default is inspect.Parameter.empty
 
 
 def test_draft_semantic_hash_payload_includes_language() -> None:
