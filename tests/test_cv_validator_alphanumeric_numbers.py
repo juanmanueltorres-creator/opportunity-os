@@ -17,7 +17,7 @@ from app.cv.validator import validate_cv
 NOW = datetime(2026, 8, 31, 2, 55, tzinfo=timezone.utc)
 
 
-def test_alphanumeric_3d_token_is_not_treated_as_numeric_metric() -> None:
+def _validation_result_for_claim(text: str, claim_id: str):
     fact = MasterFact(
         id="skill-cesium",
         kind="skill",
@@ -51,10 +51,10 @@ def test_alphanumeric_3d_token_is_not_treated_as_numeric_metric() -> None:
         selected_evidence_ids=[module.id],
     )
     claim = CVClaim(
-        claim_id="cesium-3d",
+        claim_id=claim_id,
         section="projects",
         kind="bullet",
-        text="Built Cesium 3D views for geospatial decision support.",
+        text=text,
     )
     document = CVDocumentModel(
         document_version="cvdoc-v1",
@@ -74,8 +74,7 @@ def test_alphanumeric_3d_token_is_not_treated_as_numeric_metric() -> None:
             )
         },
     )
-
-    result = validate_cv(
+    return validate_cv(
         document=document,
         master_facts=facts,
         evidence_catalog=catalog,
@@ -83,5 +82,22 @@ def test_alphanumeric_3d_token_is_not_treated_as_numeric_metric() -> None:
         selection=selection,
     )
 
+
+def test_alphanumeric_3d_token_is_not_treated_as_numeric_metric() -> None:
+    result = _validation_result_for_claim(
+        "Built Cesium 3D views for geospatial decision support.",
+        "cesium-3d",
+    )
+
     assert result.valid
     assert not any(issue.code == "unsupported_metric" for issue in result.errors)
+
+
+def test_numeric_value_with_attached_unit_still_requires_fact_support() -> None:
+    result = _validation_result_for_claim(
+        "Reduced rendering latency to 10ms.",
+        "unsupported-latency",
+    )
+
+    assert not result.valid
+    assert any(issue.code == "unsupported_metric" for issue in result.errors)
