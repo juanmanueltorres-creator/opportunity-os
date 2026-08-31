@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import fitz
+import pymupdf as fitz
 import yaml
 
 from app.cv.models import CVDocumentModel, RenderedCVArtifact
