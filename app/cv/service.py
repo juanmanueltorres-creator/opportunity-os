@@ -6,6 +6,7 @@ from typing import Callable
 from uuid import uuid4
 
 from app.cv.composer import COMPOSER_VERSION, compose_cv
+from app.cv.filename import build_cv_filename
 from app.cv.hashing import canonical_sha256
 from app.cv.layout_qa import LayoutQA
 from app.cv.loaders import validate_catalog_against_facts
@@ -170,7 +171,18 @@ class CVPreparationService:
             )
 
         application_id = self.id_factory()
-        output_path = Path(output_root) / application_id / "cv.pdf"
+        candidate_name = next(
+            claim.text for claim in document.claims if claim.kind == "identity"
+        )
+        output_path = (
+            Path(output_root)
+            / application_id
+            / build_cv_filename(
+                candidate_name,
+                assessment.opportunity.title,
+                assessment.opportunity.company,
+            )
+        )
         final_recruiter_document = recruiter_document
         final_recruiter_validation = recruiter_validation
         final_render_result = None
