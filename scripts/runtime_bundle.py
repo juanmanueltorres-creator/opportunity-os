@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.metadata
 import platform
 import shutil
 import sys
@@ -81,6 +80,17 @@ def find_runtime_wheel(wheelhouse: Path, prefix: str) -> Path:
     return matches[0]
 
 
+def _wheel_version(path: Path, prefix: str) -> str:
+    name = path.name
+    if not name.casefold().startswith(prefix.casefold()) or not name.endswith(".whl"):
+        raise ValueError(f"unexpected wheel filename for {prefix!r}: {name}")
+    remainder = name[len(prefix) :]
+    version = remainder.split("-", 1)[0]
+    if not version:
+        raise ValueError(f"wheel filename has no version: {name}")
+    return version
+
+
 def copy_runtime_source(*, repository_root: Path, destination: Path) -> list[Path]:
     if destination.exists():
         shutil.rmtree(destination)
@@ -136,7 +146,9 @@ def build_runtime_manifest(*, root: Path, git_sha: str, built_at: str) -> dict[s
     source_root = root / "source"
     wheelhouse = root / "wheelhouse"
     project_wheel = find_runtime_wheel(wheelhouse, "opportunity_os-")
+    rendercv_wheel = find_runtime_wheel(wheelhouse, "rendercv-")
     typst_wheel = find_runtime_wheel(wheelhouse, "typst-")
+    pymupdf_wheel = find_runtime_wheel(wheelhouse, "pymupdf-")
     typst_name = typst_wheel.name.casefold()
     if "manylinux" not in typst_name or "x86_64" not in typst_name:
         raise ValueError("typst runtime wheel must target Linux x86_64")
@@ -146,10 +158,10 @@ def build_runtime_manifest(*, root: Path, git_sha: str, built_at: str) -> dict[s
         "git_sha": git_sha.lower(),
         "python": _TARGET_PYTHON,
         "platform": _TARGET_PLATFORM,
-        "opportunity_os_version": importlib.metadata.version("opportunity-os"),
-        "rendercv_version": importlib.metadata.version("rendercv"),
-        "typst_version": importlib.metadata.version("typst"),
-        "pymupdf_version": importlib.metadata.version("PyMuPDF"),
+        "opportunity_os_version": _wheel_version(project_wheel, "opportunity_os-"),
+        "rendercv_version": _wheel_version(rendercv_wheel, "rendercv-"),
+        "typst_version": _wheel_version(typst_wheel, "typst-"),
+        "pymupdf_version": _wheel_version(pymupdf_wheel, "pymupdf-"),
         "renderer_version": RENDERER_VERSION,
         "project_wheel": project_wheel.name,
         "project_wheel_sha256": _sha256_file(project_wheel),
