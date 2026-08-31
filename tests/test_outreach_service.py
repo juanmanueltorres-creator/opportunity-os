@@ -12,7 +12,12 @@ from app.outreach.repository import SQLiteOutreachRepository
 from app.outreach.send import mark_send_attempted
 from app.outreach.service import OutreachService
 from app.radar.extractor import RuleBasedRequirementExtractor
-from app.radar.models import ConfidenceAssessment, EligibilityResult, RadarAssessment
+from app.radar.models import (
+    ConfidenceAssessment,
+    EligibilityResult,
+    LanguageDecision,
+    RadarAssessment,
+)
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
@@ -122,6 +127,13 @@ def _packet(tmp_path) -> ApplicationPacket:
         selected_fact_ids=["fact-postgis"],
         selected_evidence_ids=["evidence-geo"],
         unresolved_gaps=[],
+        language_decision=LanguageDecision(
+            language="en",
+            basis="posting_language",
+            confidence=0.95,
+            source_field="opportunity.title+description",
+            source_text="Send your CV to careers@example.test.",
+        ),
         cv_document=document,
         recruiter_document=recruiter_document,
         cv_pdf_path=str(cv_path),
@@ -159,6 +171,7 @@ def test_direct_email_application_flow_requires_approval_and_separate_send(tmp_p
         provider_draft_id="draft-reviewed",
         subject="Application — GIS Developer",
         body="Hello\n\nPlease find my CV attached.",
+        language="en",
         content_type="text/plain",
         verification_basis="CREATED_EXACT",
         now=NOW + timedelta(minutes=1),
@@ -257,6 +270,7 @@ def test_recreated_exact_draft_can_use_same_approval_hash(tmp_path) -> None:
         provider_draft_id="draft-reviewed",
         subject="Application — GIS Developer",
         body="Hello\n\nPlease find my CV attached.",
+        language="en",
         content_type="text/plain",
         verification_basis="CREATED_EXACT",
         now=NOW + timedelta(minutes=1),
@@ -272,6 +286,7 @@ def test_recreated_exact_draft_can_use_same_approval_hash(tmp_path) -> None:
         provider_draft_id="draft-send-copy",
         subject="Application — GIS Developer",
         body="Hello\n\nPlease find my CV attached.",
+        language="en",
         content_type="text/plain",
         verification_basis="RECREATED_EXACT",
         now=NOW + timedelta(minutes=3),
