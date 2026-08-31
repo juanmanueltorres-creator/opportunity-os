@@ -158,7 +158,7 @@ class OutreachService:
         content_type: str,
         verification_basis: DraftVerificationBasis,
         now: datetime,
-        language: Literal["es", "en"] | None = None,
+        language: Literal["es", "en"],
         reply_message_id: str | None = None,
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
@@ -167,8 +167,7 @@ class OutreachService:
         if email is None:
             raise ValueError("draft registration requires actionable email")
 
-        declared_language = language or brief.language
-        if declared_language != brief.language:
+        if language != brief.language:
             raise ValueError("draft_language_mismatch")
 
         detected_language = detect_text_language(f"{subject}\n{body}")
@@ -197,7 +196,7 @@ class OutreachService:
             reply_message_id=reply_message_id,
             verification_basis=verification_basis,
             now=now,
-            language=declared_language,
+            language=language,
         )
         saved = self.repository.save_draft_snapshot(draft)
         history = self.repository.list_events(brief.opportunity_id)
