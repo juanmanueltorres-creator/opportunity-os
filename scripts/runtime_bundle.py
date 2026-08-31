@@ -10,7 +10,7 @@ from typing import Iterable
 from app.cv.renderers.rendercv_typst import RENDERER_VERSION
 
 _SCHEMA_VERSION = "offline-runtime-v1"
-_TARGET_PYTHON = "3.12"
+_SUPPORTED_PYTHON = {"3.12", "3.13"}
 _TARGET_PLATFORM = "linux-x86_64"
 _FIXTURE_NAMES = (
     "recruiter_software.json",
@@ -50,6 +50,10 @@ def _sha256_tree(root: Path) -> str:
 def _normalise(path: Path) -> str:
     value = path.as_posix()
     return value[2:] if value.startswith("./") else value
+
+
+def runtime_python_version() -> str:
+    return f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def validate_bundle_source_paths(paths: Iterable[Path]) -> None:
@@ -135,8 +139,12 @@ def copy_runtime_source(*, repository_root: Path, destination: Path) -> list[Pat
 def build_runtime_manifest(*, root: Path, git_sha: str, built_at: str) -> dict[str, object]:
     if len(git_sha) != 40 or any(char not in "0123456789abcdefABCDEF" for char in git_sha):
         raise ValueError("git_sha must be a 40-character hexadecimal commit SHA")
-    if f"{sys.version_info.major}.{sys.version_info.minor}" != _TARGET_PYTHON:
-        raise ValueError(f"runtime bundle must be built with Python {_TARGET_PYTHON}")
+    python_version = runtime_python_version()
+    if python_version not in _SUPPORTED_PYTHON:
+        raise ValueError(
+            "runtime bundle must be built with a supported Python version: "
+            + ", ".join(sorted(_SUPPORTED_PYTHON))
+        )
     if platform.system().casefold() != "linux" or platform.machine().casefold() not in {
         "x86_64",
         "amd64",
@@ -156,7 +164,7 @@ def build_runtime_manifest(*, root: Path, git_sha: str, built_at: str) -> dict[s
     return {
         "schema_version": _SCHEMA_VERSION,
         "git_sha": git_sha.lower(),
-        "python": _TARGET_PYTHON,
+        "python": python_version,
         "platform": _TARGET_PLATFORM,
         "opportunity_os_version": _wheel_version(project_wheel, "opportunity_os-"),
         "rendercv_version": _wheel_version(rendercv_wheel, "rendercv-"),
