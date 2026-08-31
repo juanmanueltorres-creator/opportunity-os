@@ -15,6 +15,7 @@ def draft_semantic_payload(snapshot: DraftSnapshot) -> dict:
         "bcc": sorted(address.casefold().strip() for address in snapshot.bcc),
         "subject": snapshot.subject,
         "body_canonical": snapshot.body_canonical,
+        "language": snapshot.language,
         "attachments": sorted(
             [
                 attachment.model_dump(mode="json")

@@ -26,6 +26,8 @@ _A4_HEIGHT_POINTS = 841.89
 _A4_HEIGHT_ROUNDED_POINTS = 842
 _PAGE_TOLERANCE_POINTS = 3.0
 _EXPECTED_RENDERER_VERSION = "rendercv-typst-v1"
+_EXPECTED_LANGUAGE = "es"
+_EXPECTED_LANGUAGE_BASIS = "market_location"
 _NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
 
@@ -141,7 +143,7 @@ facts:
   - id: identity-name
     kind: identity
     value: Alex Example
-    display_values: {en: Alex Example}
+    display_values: {en: Alex Example, es: Alex Example}
     track_ids: [tech]
     verified: true
     verification_method: manual_confirmation
@@ -149,7 +151,7 @@ facts:
   - id: contact-email
     kind: contact
     value: alex@example.test
-    display_values: {en: alex@example.test}
+    display_values: {en: alex@example.test, es: alex@example.test}
     track_ids: [tech]
     verified: true
     verification_method: manual_confirmation
@@ -157,7 +159,7 @@ facts:
   - id: link-github
     kind: link
     value: https://github.com/example
-    display_values: {en: https://github.com/example}
+    display_values: {en: https://github.com/example, es: https://github.com/example}
     track_ids: [tech]
     verified: true
     verification_method: manual_confirmation
@@ -165,7 +167,7 @@ facts:
   - id: role-primary
     kind: role
     value: GIS Developer
-    display_values: {en: GIS Developer}
+    display_values: {en: GIS Developer, es: Desarrollador GIS}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -174,7 +176,7 @@ facts:
   - id: skill-postgis
     kind: skill
     value: PostGIS
-    display_values: {en: PostGIS}
+    display_values: {en: PostGIS, es: PostGIS}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -183,7 +185,7 @@ facts:
   - id: project-geo
     kind: project
     value: Geo platform project
-    display_values: {en: Geo platform project}
+    display_values: {en: Geo platform project, es: Proyecto de plataforma geoespacial}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -257,6 +259,16 @@ def verify_canonical_prepare(*, source_root: Path, output_dir: Path) -> Path:
         raise RuntimeError(f"canonical prepare did not reach PREPARED: {result!r}")
     if result.get("page_count") != 1:
         raise RuntimeError(f"canonical PREPARED output is not one page: {result!r}")
+    if result.get("language") != _EXPECTED_LANGUAGE:
+        raise RuntimeError(
+            "offline application language mismatch: "
+            f"expected {_EXPECTED_LANGUAGE!r}, got {result.get('language')!r}"
+        )
+    if result.get("language_basis") != _EXPECTED_LANGUAGE_BASIS:
+        raise RuntimeError(
+            "offline application language mismatch: "
+            f"expected basis {_EXPECTED_LANGUAGE_BASIS!r}, got {result.get('language_basis')!r}"
+        )
 
     pdf_path = Path(str(result.get("cv_pdf_path", "")))
     if not pdf_path.is_file():
@@ -272,6 +284,29 @@ def verify_canonical_prepare(*, source_root: Path, output_dir: Path) -> Path:
         raise RuntimeError(
             "application packet renderer mismatch: "
             f"expected {_EXPECTED_RENDERER_VERSION}, got {packet.get('renderer_version')!r}"
+        )
+
+    language_decision = packet.get("language_decision")
+    cv_document = packet.get("cv_document")
+    if not isinstance(language_decision, dict) or not isinstance(cv_document, dict):
+        raise RuntimeError("offline application language mismatch: packet language metadata missing")
+    packet_language = language_decision.get("language")
+    packet_basis = language_decision.get("basis")
+    cv_language = cv_document.get("language")
+    if not (
+        packet_language
+        == cv_language
+        == result.get("language")
+        == _EXPECTED_LANGUAGE
+    ):
+        raise RuntimeError(
+            "offline application language mismatch: "
+            f"packet={packet_language!r} cv={cv_language!r} cli={result.get('language')!r}"
+        )
+    if packet_basis != result.get("language_basis") or packet_basis != _EXPECTED_LANGUAGE_BASIS:
+        raise RuntimeError(
+            "offline application language mismatch: "
+            f"packet_basis={packet_basis!r} cli_basis={result.get('language_basis')!r}"
         )
 
     verify_recruiter_pdf(pdf_path)

@@ -59,10 +59,25 @@ FreshnessQuality = Literal[
 DiscoveryOrigin = Literal["targeted", "adjacent", "wildcard"]
 Tier = Literal["HIGH", "MEDIUM", "STRETCH", "DISCARD"]
 DiagnosticStatus = Literal["ok", "warning", "error"]
+OutputLanguage = Literal["es", "en"]
+LanguageDecisionBasis = Literal[
+    "explicit_override",
+    "posting_language",
+    "market_location",
+    "international_remote_fallback",
+]
 
 
 class StrictRadarModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class LanguageDecision(StrictRadarModel):
+    language: OutputLanguage
+    basis: LanguageDecisionBasis
+    confidence: float = Field(ge=0, le=1)
+    source_field: str = Field(min_length=1)
+    source_text: str | None = None
 
 
 def _require_aware_datetime(value: datetime) -> datetime:

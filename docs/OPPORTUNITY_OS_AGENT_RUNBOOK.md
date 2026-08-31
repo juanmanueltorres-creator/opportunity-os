@@ -8,12 +8,13 @@ Private candidate snapshots and generated artifacts never enter the public repo.
 
 ## Purpose
 
-This runbook is the authoritative fresh-context path for preparing a recruiter-facing CV with Opportunity OS V0.2B2. The preparation command is intentionally fail-closed: it consumes an already serialized `RadarAssessment`, verified private facts, verified private evidence, and the checked-in recruiter policy. It does not infer a missing track, score, intent, requirement, employer, skill, metric, or application state.
+This runbook is the authoritative fresh-context path for preparing a recruiter-facing CV with Opportunity OS V0.2B2+. The preparation command is intentionally fail-closed: it consumes an already serialized `RadarAssessment`, verified private facts, verified private evidence, and the checked-in recruiter policy. It does not infer a missing track, score, intent, requirement, employer, skill, metric, or application state.
 
 The canonical preparation flow is:
 
 ```text
 RadarAssessment
+-> LanguageDecision
 -> EvidenceSelector
 -> CVComposer
 -> ClaimValidator
@@ -62,7 +63,7 @@ bash opportunity-os-runtime/bootstrap_offline.sh \
   <exact-opportunity-os-git-sha>
 ```
 
-The bootstrap is fail-closed. Before installing anything it verifies `SHA256SUMS`, the manifest SHA, the Python minor, the bundled source hash, and the project/typst wheel hashes. It then creates a clean virtual environment with `PIP_NO_INDEX=1`, installs only from the bundled wheelhouse, verifies Opportunity OS/RenderCV/typst-py/PyMuPDF/renderer versions, renders the fictional recruiter previews, and executes a fully fictional `python -m app.application.prepare` through the same `CVPreparationService` path used for real applications. The smoke run must reach `PREPARED`, write `application_packet.json` with `renderer_version=rendercv-typst-v1`, and produce exactly one A4 PDF with extractable text and real `mailto:`/`https://` URI annotations.
+The bootstrap is fail-closed. Before installing anything it verifies `SHA256SUMS`, the manifest SHA, the Python minor, the bundled source hash, and the project/typst wheel hashes. It then creates a clean virtual environment with `PIP_NO_INDEX=1`, installs only from the bundled wheelhouse, verifies Opportunity OS/RenderCV/typst-py/PyMuPDF/renderer versions, renders the fictional recruiter previews, and executes a fully fictional `python -m app.application.prepare` through the same `CVPreparationService` path used for real applications. The smoke run must reach `PREPARED`, write `application_packet.json` with `renderer_version=rendercv-typst-v1`, preserve the resolved `LanguageDecision` so `packet.language_decision.language == packet.cv_document.language`, expose `language` and `language_basis` in CLI output, and produce exactly one A4 PDF with extractable text and real `mailto:`/`https://` URI annotations.
 
 A successful bootstrap therefore proves that the artifact can install the production dependency set and execute the canonical preparation path through `ApplicationPacket` without package-index access. It does not contain candidate facts, evidence, real CVs, opportunities, Gmail state, Apollo data, or approval/send authority.
 
@@ -106,10 +107,13 @@ python -m app.application.prepare \
   --master-facts profile/master_facts.local.yaml \
   --evidence-catalog profile/evidence_catalog.local.yaml \
   --recruiter-policy config/recruiter_policy.yaml \
+  --language auto \
   --output-root artifacts/applications
 ```
 
-On success, the command prints a JSON result with `status=PREPARED`, the application ID, final PDF path, page count, CV SHA-256, packet SHA-256, unresolved gaps, and warnings. It writes `application_packet.json` beside the generated PDF only after preparation succeeds.
+`--language auto` is the default, so it may be omitted. Use `--language es` or `--language en` only as an explicit, auditable override when the opportunity context requires it.
+
+On success, the command prints a JSON result with `status=PREPARED`, the application ID, final PDF path, page count, CV SHA-256, packet SHA-256, resolved `language`, `language_basis`, unresolved gaps, and warnings. It writes `application_packet.json` beside the generated PDF only after preparation succeeds.
 
 The generated files remain local under:
 
@@ -117,6 +121,33 @@ The generated files remain local under:
 artifacts/applications/<application_id>/cv.pdf
 artifacts/applications/<application_id>/application_packet.json
 ```
+
+## Language decision contract
+
+Application language is part of the canonical packet contract, not an informal drafting preference.
+
+Automatic resolution uses this exact precedence:
+
+```text
+1. explicit --language es|en override
+2. confidently dominant posting language
+3. Spanish-speaking market/location fallback
+4. international/remote fallback to English
+```
+
+Company nationality is not a language signal. A foreign company hiring in Argentina can still resolve to Spanish. Conversely, an international remote role can resolve to English. A requirement such as `English required` is a candidate requirement; by itself it does not mean recruiter outreach must be English.
+
+The resolved `LanguageDecision` records the selected language, decision basis, confidence, source field, and compact source evidence. After `PREPARED`, `ApplicationPacket.language_decision` is the canonical source of truth and must match `cv_document.language`.
+
+Downstream outreach inherits this language. Draft registration must not silently diverge:
+
+- declared draft language must equal `OutreachBrief.language`;
+- a deterministic conservative lexical safety check inspects subject plus body;
+- confidently detected text in another language fails closed before the draft snapshot is registered;
+- ambiguous/very technical text does not fail solely because the detector is uncertain;
+- `DraftSnapshot.language` participates in `draft_sha256`, so changing language invalidates any approval bound to an older draft hash.
+
+Do not translate candidate claims ad hoc to force a language. Use verified `display_values` and approved `text_by_language` evidence. Missing language variants fall through the existing evidence-safe composer behavior; they do not authorize invented claims.
 
 ## Fail-closed statuses
 

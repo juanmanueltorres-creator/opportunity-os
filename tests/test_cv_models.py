@@ -24,6 +24,7 @@ from app.cv.models import (
     ValidationResult,
 )
 from app.cv.recruiter_models import RecruiterDocumentModel, TechnologyGroup
+from app.radar.models import LanguageDecision
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
@@ -43,42 +44,16 @@ def verified_fact(*, fact_id: str = "skill-python", value: str = "Python") -> Ma
 
 def sample_document() -> CVDocumentModel:
     claims = [
-        CVClaim(
-            claim_id="claim-name",
-            section="headline",
-            kind="identity",
-            text="Alex Example",
-        ),
-        CVClaim(
-            claim_id="claim-role",
-            section="headline",
-            kind="headline",
-            text="Software Developer",
-        ),
-        CVClaim(
-            claim_id="claim-email",
-            section="headline",
-            kind="contact",
-            text="alex@example.test",
-        ),
-        CVClaim(
-            claim_id="claim-python",
-            section="skills",
-            kind="skill",
-            text="Python",
-        ),
+        CVClaim(claim_id="claim-name", section="headline", kind="identity", text="Alex Example"),
+        CVClaim(claim_id="claim-role", section="headline", kind="headline", text="Software Developer"),
+        CVClaim(claim_id="claim-email", section="headline", kind="contact", text="alex@example.test"),
+        CVClaim(claim_id="claim-python", section="skills", kind="skill", text="Python"),
     ]
     return CVDocumentModel(
         document_version="cvdoc-v1",
         language="en",
         claims=claims,
-        entries=[
-            CVEntry(
-                entry_id="skills-main",
-                section="skills",
-                claim_ids=["claim-python"],
-            )
-        ],
+        entries=[CVEntry(entry_id="skills-main", section="skills", claim_ids=["claim-python"])],
         provenance_map={
             "claim-name": ClaimProvenance(fact_ids=["identity-name"]),
             "claim-role": ClaimProvenance(fact_ids=["role-primary"]),
@@ -99,12 +74,7 @@ def sample_recruiter_document() -> RecruiterDocumentModel:
         identity_claim_id="claim-name",
         headline_claim_id="claim-role",
         contact_claim_ids=["claim-email"],
-        technology_groups=[
-            TechnologyGroup(
-                label_id="software_data",
-                skill_claim_ids=["claim-python"],
-            )
-        ],
+        technology_groups=[TechnologyGroup(label_id="software_data", skill_claim_ids=["claim-python"])],
     )
 
 
@@ -132,6 +102,13 @@ def sample_packet() -> ApplicationPacket:
         selected_fact_ids=["skill-python"],
         selected_evidence_ids=["module-tech"],
         unresolved_gaps=["Kubernetes"],
+        language_decision=LanguageDecision(
+            language="en",
+            basis="posting_language",
+            confidence=0.95,
+            source_field="opportunity.title+description",
+            source_text="English software developer posting",
+        ),
         cv_document=sample_document(),
         recruiter_document=sample_recruiter_document(),
         cv_pdf_path="artifacts/applications/application-1/cv.pdf",
@@ -143,13 +120,7 @@ def sample_packet() -> ApplicationPacket:
 
 def test_verified_fact_requires_verification_metadata() -> None:
     with pytest.raises(ValidationError):
-        MasterFact(
-            id="skill-postgis",
-            kind="skill",
-            value="PostGIS",
-            track_ids=["tech"],
-            verified=True,
-        )
+        MasterFact(id="skill-postgis", kind="skill", value="PostGIS", track_ids=["tech"], verified=True)
 
 
 def test_manual_confirmation_allows_self_attested_contact_without_source_ref() -> None:
@@ -162,7 +133,6 @@ def test_manual_confirmation_allows_self_attested_contact_without_source_ref() -
         verification_method="manual_confirmation",
         verified_at=NOW,
     )
-
     assert fact.source_ref is None
 
 
@@ -194,22 +164,12 @@ def test_verified_fact_rejects_naive_timestamp() -> None:
 
 def test_cv_models_forbid_unknown_fields() -> None:
     with pytest.raises(ValidationError):
-        MasterFact(
-            id="contact-name",
-            kind="identity",
-            value="Alex Example",
-            verified=False,
-            invented_field="not allowed",
-        )
+        MasterFact(id="contact-name", kind="identity", value="Alex Example", verified=False, invented_field="not allowed")
 
 
 def test_snapshot_contracts_hold_canonical_content_fingerprints() -> None:
     fact = verified_fact()
-    facts = MasterFactsSnapshot(
-        schema_version="v1",
-        content_sha256="a" * 64,
-        facts=[fact],
-    )
+    facts = MasterFactsSnapshot(schema_version="v1", content_sha256="a" * 64, facts=[fact])
     claim = ApprovedClaim(
         id="approved-python",
         section="skills",
@@ -228,12 +188,7 @@ def test_snapshot_contracts_hold_canonical_content_fingerprints() -> None:
         source_refs=["https://example.test/evidence"],
         verified=True,
     )
-    catalog = EvidenceCatalogSnapshot(
-        schema_version="v1",
-        content_sha256="b" * 64,
-        modules=[module],
-    )
-
+    catalog = EvidenceCatalogSnapshot(schema_version="v1", content_sha256="b" * 64, modules=[module])
     assert facts.facts[0].id == "skill-python"
     assert catalog.modules[0].claims[0].id == "approved-python"
 
@@ -255,7 +210,6 @@ def test_selection_contract_records_support_and_unresolved_requirements() -> Non
         unsupported_requirements=["Kubernetes"],
         selection_explanations=["Python is directly verified"],
     )
-
     assert selection.requirement_support["Python"].support_level == "EXACT_VERIFIED"
     assert selection.unsupported_requirements == ["Kubernetes"]
 
@@ -263,19 +217,11 @@ def test_selection_contract_records_support_and_unresolved_requirements() -> Non
 def test_cv_document_requires_provenance_for_each_visible_claim() -> None:
     document = sample_document()
     assert document.provenance_map["claim-python"].fact_ids == ["skill-python"]
-
     with pytest.raises(ValidationError):
         CVDocumentModel(
             document_version="cvdoc-v1",
             language="en",
-            claims=[
-                CVClaim(
-                    claim_id="orphan",
-                    section="summary",
-                    kind="summary",
-                    text="Unprovenanced claim",
-                )
-            ],
+            claims=[CVClaim(claim_id="orphan", section="summary", kind="summary", text="Unprovenanced claim")],
             entries=[],
             provenance_map={},
         )
@@ -305,7 +251,7 @@ def test_application_packet_is_prepared_only_and_requires_aware_timestamp() -> N
     packet = sample_packet()
     assert packet.status == "PREPARED"
     assert packet.recruiter_document.document_version == "recruiter-doc-v1"
-
+    assert packet.language_decision.language == packet.cv_document.language
     payload = packet.model_dump()
     payload["created_at"] = datetime(2026, 8, 28, 12, 0)
     with pytest.raises(ValidationError):
@@ -315,7 +261,6 @@ def test_application_packet_is_prepared_only_and_requires_aware_timestamp() -> N
 def test_prepared_result_requires_packet() -> None:
     with pytest.raises(ValidationError):
         PreparationResult(status="PREPARED")
-
     result = PreparationResult(status="PREPARED", packet=sample_packet())
     assert result.packet is not None
 
@@ -325,12 +270,7 @@ def test_blocked_preparation_result_cannot_contain_packet() -> None:
         PreparationResult(
             status="BLOCKED_VALIDATION",
             packet=sample_packet(),
-            errors=[
-                ValidationIssue(
-                    code="claim_validation_failed",
-                    message="blocked",
-                )
-            ],
+            errors=[ValidationIssue(code="claim_validation_failed", message="blocked")],
         )
 
 
@@ -350,6 +290,4 @@ def test_canonical_hash_ignores_mapping_key_order() -> None:
 
 
 def test_canonical_hash_preserves_visible_list_order() -> None:
-    assert canonical_sha256({"bullets": ["A", "B"]}) != canonical_sha256(
-        {"bullets": ["B", "A"]}
-    )
+    assert canonical_sha256({"bullets": ["A", "B"]}) != canonical_sha256({"bullets": ["B", "A"]})

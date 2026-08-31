@@ -19,7 +19,12 @@ from app.outreach.models import (
 )
 from app.outreach.preparation import OutreachPreparationService
 from app.radar.extractor import RuleBasedRequirementExtractor
-from app.radar.models import ConfidenceAssessment, EligibilityResult, RadarAssessment
+from app.radar.models import (
+    ConfidenceAssessment,
+    EligibilityResult,
+    LanguageDecision,
+    RadarAssessment,
+)
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
@@ -110,8 +115,6 @@ def _document() -> CVDocumentModel:
 
 
 def _recruiter_document() -> RecruiterDocumentModel:
-    # Outreach tests exercise packet consumption, not recruiter structural validation.
-    # Keep the fixture tied only to claims already present in the fictional source CV.
     return RecruiterDocumentModel(
         source_cv_document_version="cv-doc-v1",
         language="en",
@@ -133,7 +136,12 @@ def _write_cv(tmp_path, payload: bytes = b"fictional cv pdf bytes"):
     return path, hashlib.sha256(payload).hexdigest()
 
 
-def _packet(tmp_path, *, opportunity_id: str = "opp-1", cv_payload: bytes = b"fictional cv pdf bytes") -> ApplicationPacket:
+def _packet(
+    tmp_path,
+    *,
+    opportunity_id: str = "opp-1",
+    cv_payload: bytes = b"fictional cv pdf bytes",
+) -> ApplicationPacket:
     path, cv_hash = _write_cv(tmp_path, cv_payload)
     opportunity = _opportunity()
     return ApplicationPacket(
@@ -158,6 +166,13 @@ def _packet(tmp_path, *, opportunity_id: str = "opp-1", cv_payload: bytes = b"fi
         selected_fact_ids=["fact-name", "fact-postgis", "fact-project"],
         selected_evidence_ids=["evidence-geo"],
         unresolved_gaps=["PySpark"],
+        language_decision=LanguageDecision(
+            language="en",
+            basis="posting_language",
+            confidence=0.95,
+            source_field="opportunity.title+description",
+            source_text="GIS Developer Send your CV to careers@example.test.",
+        ),
         cv_document=_document(),
         recruiter_document=_recruiter_document(),
         cv_pdf_path=str(path),
@@ -203,6 +218,7 @@ def test_high_direct_email_prepares_outreach_brief(tmp_path) -> None:
     assert result.brief.company == "Example Labs"
     assert result.brief.contact_resolution.email == "careers@example.test"
     assert result.brief.cv_filename == "Alex_Example_CV.pdf"
+    assert result.brief.language == "en"
     assert len(result.brief.brief_sha256) == 64
 
 
@@ -231,6 +247,21 @@ def test_packet_opportunity_mismatch_blocks(tmp_path) -> None:
     result = _prepare(tmp_path, packet=_packet(tmp_path, opportunity_id="opp-other"))
     assert result.status == "BLOCKED_INVALID_PACKET"
     assert "packet_opportunity_mismatch" in result.errors
+
+
+def test_packet_language_mismatch_blocks(tmp_path) -> None:
+    packet = _packet(tmp_path).model_copy(
+        update={"language_decision": LanguageDecision(
+            language="es",
+            basis="explicit_override",
+            confidence=1.0,
+            source_field="cli.language",
+            source_text="es",
+        )}
+    )
+    result = _prepare(tmp_path, packet=packet)
+    assert result.status == "BLOCKED_INVALID_PACKET"
+    assert "packet_language_mismatch" in result.errors
 
 
 def test_missing_cv_file_blocks(tmp_path) -> None:

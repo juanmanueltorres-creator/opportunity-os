@@ -120,7 +120,7 @@ facts:
   - id: identity-name
     kind: identity
     value: Alex Example
-    display_values: {en: Alex Example}
+    display_values: {en: Alex Example, es: Alex Example}
     track_ids: [tech]
     verified: true
     verification_method: manual_confirmation
@@ -128,7 +128,7 @@ facts:
   - id: contact-email
     kind: contact
     value: alex@example.test
-    display_values: {en: alex@example.test}
+    display_values: {en: alex@example.test, es: alex@example.test}
     track_ids: [tech]
     verified: true
     verification_method: manual_confirmation
@@ -136,7 +136,7 @@ facts:
   - id: role-primary
     kind: role
     value: GIS Developer
-    display_values: {en: GIS Developer}
+    display_values: {en: GIS Developer, es: Desarrollador GIS}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -145,7 +145,7 @@ facts:
   - id: skill-postgis
     kind: skill
     value: PostGIS
-    display_values: {en: PostGIS}
+    display_values: {en: PostGIS, es: PostGIS}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -154,7 +154,7 @@ facts:
   - id: project-geo
     kind: project
     value: Geo platform project
-    display_values: {en: Geo platform project}
+    display_values: {en: Geo platform project, es: Proyecto de plataforma geoespacial}
     track_ids: [tech]
     verified: true
     verification_method: repository_evidence
@@ -198,8 +198,9 @@ def _args(
     catalog_path: Path,
     policy_path: Path,
     output_root: Path,
+    language: str | None = None,
 ) -> list[str]:
-    return [
+    args = [
         "--opportunity",
         str(opportunity_path),
         "--master-facts",
@@ -211,6 +212,9 @@ def _args(
         "--output-root",
         str(output_root),
     ]
+    if language is not None:
+        args.extend(["--language", language])
+    return args
 
 
 def test_cli_prepares_from_serialized_radar_assessment(
@@ -235,10 +239,86 @@ def test_cli_prepares_from_serialized_radar_assessment(
     assert exit_code == 0
     assert output["status"] == "PREPARED"
     assert output["page_count"] == 1
+    assert output["language"] == "es"
+    assert output["language_basis"] == "market_location"
     assert len(output["cv_sha256"]) == 64
     assert len(output["packet_sha256"]) == 64
-    assert Path(output["cv_pdf_path"]).is_file()
-    assert Path(output["cv_pdf_path"]).with_name("application_packet.json").is_file()
+    cv_path = Path(output["cv_pdf_path"])
+    packet_path = cv_path.with_name("application_packet.json")
+    assert cv_path.is_file()
+    assert packet_path.is_file()
+
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["language_decision"]["language"] == "es"
+    assert packet["language_decision"]["basis"] == "market_location"
+    assert packet["cv_document"]["language"] == "es"
+
+
+def test_cli_language_override_wins_and_changes_packet_hash(
+    assessment_path: Path,
+    master_path: Path,
+    catalog_path: Path,
+    policy_path: Path,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    auto_exit = main(
+        _args(
+            opportunity_path=assessment_path,
+            master_path=master_path,
+            catalog_path=catalog_path,
+            policy_path=policy_path,
+            output_root=tmp_path / "auto",
+        )
+    )
+    auto_output = json.loads(capsys.readouterr().out)
+
+    override_exit = main(
+        _args(
+            opportunity_path=assessment_path,
+            master_path=master_path,
+            catalog_path=catalog_path,
+            policy_path=policy_path,
+            output_root=tmp_path / "override",
+            language="en",
+        )
+    )
+    override_output = json.loads(capsys.readouterr().out)
+
+    assert auto_exit == 0
+    assert override_exit == 0
+    assert auto_output["language"] == "es"
+    assert override_output["language"] == "en"
+    assert override_output["language_basis"] == "explicit_override"
+    assert auto_output["packet_sha256"] != override_output["packet_sha256"]
+
+    packet_path = Path(override_output["cv_pdf_path"]).with_name("application_packet.json")
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["language_decision"]["language"] == "en"
+    assert packet["language_decision"]["basis"] == "explicit_override"
+    assert packet["cv_document"]["language"] == "en"
+
+
+def test_cli_rejects_unsupported_language_value(
+    assessment_path: Path,
+    master_path: Path,
+    catalog_path: Path,
+    policy_path: Path,
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(
+            _args(
+                opportunity_path=assessment_path,
+                master_path=master_path,
+                catalog_path=catalog_path,
+                policy_path=policy_path,
+                output_root=tmp_path / "applications",
+                language="fr",
+            )
+        )
+
+    assert exc.value.code == 2
 
 
 def test_cli_removes_recruiter_pdf_when_packet_write_fails(
