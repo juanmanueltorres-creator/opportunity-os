@@ -23,6 +23,10 @@ def _fake_runtime_root(root: Path) -> tuple[Path, Path]:
     wheelhouse.mkdir()
     project_wheel = wheelhouse / "opportunity_os-0.2.0rc1-py3-none-any.whl"
     project_wheel.write_bytes(b"project-wheel")
+    (wheelhouse / "rendercv-2.8-py3-none-any.whl").write_bytes(b"rendercv-wheel")
+    (wheelhouse / "pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl").write_bytes(
+        b"pymupdf-wheel"
+    )
     typst_wheel = wheelhouse / "typst-0.15.0-cp38-abi3-manylinux_2_17_x86_64.whl"
     typst_wheel.write_bytes(b"typst-wheel")
     return project_wheel, typst_wheel
@@ -42,10 +46,10 @@ def test_runtime_manifest_is_sha_bound_and_records_renderer_runtime(tmp_path: Pa
     assert manifest["python"] == "3.12"
     assert manifest["platform"] == "linux-x86_64"
     assert manifest["renderer_version"] == "rendercv-typst-v1"
-    assert manifest["opportunity_os_version"]
-    assert manifest["rendercv_version"]
-    assert manifest["typst_version"]
-    assert manifest["pymupdf_version"]
+    assert manifest["opportunity_os_version"] == "0.2.0rc1"
+    assert manifest["rendercv_version"] == "2.8"
+    assert manifest["typst_version"] == "0.15.0"
+    assert manifest["pymupdf_version"] == "1.28.2"
     assert manifest["project_wheel"] == project_wheel.name
     assert manifest["typst_wheel"] == typst_wheel.name
     assert manifest["project_wheel_sha256"] == hashlib.sha256(b"project-wheel").hexdigest()
