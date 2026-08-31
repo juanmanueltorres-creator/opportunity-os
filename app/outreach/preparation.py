@@ -25,6 +25,7 @@ _ACTIONABLE_EMAIL_STATUSES = {
     "VERIFIED_ENRICHED",
 }
 _EXCLUDED_EMAIL_EVIDENCE_KINDS = {"identity", "contact", "location", "link"}
+_OUTREACH_ALLOWED_RENDERER_VERSIONS = {"rendercv-typst-v1"}
 
 
 class OutreachPreparationService:
@@ -179,6 +180,8 @@ def application_packet_error(
         return "packet_version_mismatch"
     if packet.language_decision.language != packet.cv_document.language:
         return "packet_language_mismatch"
+    if packet.renderer_version not in _OUTREACH_ALLOWED_RENDERER_VERSIONS:
+        return "cv_renderer_not_allowed"
     return None
 
 

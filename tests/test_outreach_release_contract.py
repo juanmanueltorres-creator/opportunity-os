@@ -63,3 +63,12 @@ def test_v02c_spec_is_marked_approved() -> None:
         "docs/superpowers/specs/2026-08-28-opportunity-os-v0.2c-email-outreach-design.md"
     ).read_text(encoding="utf-8")
     assert "Status: approved" in text.splitlines()[:8]
+
+
+def test_attachment_contract_forbids_filename_based_cv_selection() -> None:
+    text = Path("docs/CV_ATTACHMENT_SELECTION.md").read_text(encoding="utf-8")
+    assert "Attachment selection contract" in text
+    assert "Never resolve a CV attachment by filename" in text
+    assert "OutreachBrief.cv_pdf_path" in text
+    assert "cv_sha256" in text
+    assert "rendercv-typst-v1" in text
