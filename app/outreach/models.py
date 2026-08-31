@@ -228,6 +228,7 @@ class DraftSnapshot(StrictOutreachModel):
     bcc: list[str] = Field(default_factory=list)
     subject: str = Field(min_length=1)
     body_canonical: str = Field(min_length=1)
+    language: Literal["es", "en"]
     attachments: list[DraftAttachment] = Field(min_length=1)
     cv_sha256: str = Field(min_length=64, max_length=64)
     content_type: Literal["text/plain", "text/markdown", "text/html"]
