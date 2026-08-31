@@ -31,7 +31,7 @@ from app.cv.track import (
     resolve_application_track,
 )
 from app.cv.validator import validate_cv
-from app.radar.models import RadarAssessment
+from app.radar.models import LanguageDecision, RadarAssessment
 from app.radar.taxonomy import TaxonomyResolver
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -55,8 +55,6 @@ class CVPreparationService:
     ) -> None:
         self.taxonomy_resolver = taxonomy_resolver
         self.id_factory = id_factory or (lambda: str(uuid4()))
-        # Retain the legacy constructor collaborators for source compatibility.
-        # V0.2B2 PREPARED artifacts are owned exclusively by the recruiter pipeline.
         self.renderer = renderer
         self.layout_qa = layout_qa
         self.recruiter_policy = recruiter_policy or load_recruiter_policy(
@@ -73,9 +71,18 @@ class CVPreparationService:
         policy: CVPolicy,
         output_root: str | Path,
         now: datetime,
+        language_decision: LanguageDecision | None = None,
     ) -> PreparationResult:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("now must be timezone-aware")
+
+        decision = language_decision or LanguageDecision(
+            language=policy.language,
+            basis="explicit_override",
+            confidence=1.0,
+            source_field="cv_policy.language",
+            source_text=policy.language,
+        )
 
         validate_catalog_against_facts(evidence_catalog, master_facts)
 
@@ -126,6 +133,7 @@ class CVPreparationService:
             master_facts=master_facts,
             evidence_catalog=evidence_catalog,
             policy=policy,
+            language=decision.language,
         )
         validation = validate_cv(
             document=document,
@@ -320,6 +328,7 @@ class CVPreparationService:
             selected_fact_ids=selection.selected_fact_ids,
             selected_evidence_ids=selection.selected_evidence_ids,
             unresolved_gaps=selection.unsupported_requirements,
+            language_decision=decision,
             cv_document=document,
             recruiter_document=final_recruiter_document,
             cv_pdf_path=artifact.path,
@@ -359,6 +368,7 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict:
         "selected_fact_ids": packet.selected_fact_ids,
         "selected_evidence_ids": packet.selected_evidence_ids,
         "unresolved_gaps": packet.unresolved_gaps,
+        "language_decision": packet.language_decision.model_dump(mode="json"),
         "cv_document": packet.cv_document.model_dump(mode="json"),
         "recruiter_document": packet.recruiter_document.model_dump(mode="json"),
         "cv_sha256": packet.cv_sha256,
