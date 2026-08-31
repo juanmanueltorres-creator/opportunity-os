@@ -89,7 +89,9 @@ ClaimValidator
       ↓
 RecruiterDocumentComposer
       ↓
-RenderCV / Typst
+RecruiterDocumentValidator
+      ↓
+RenderCV/Typst
       ↓
 RecruiterQualityQA
       ↓
@@ -354,6 +356,22 @@ Current verification includes:
 - offline runtime build and fresh-runner verification for Python 3.12 and 3.13.
 
 Recent production-path bugs — including a missing runtime PDF dependency, `3D` being misread as a numeric metric, language drift and legacy CV attachment selection — were turned into regression tests before their fixes were merged.
+
+---
+
+## Compatibility and operator contract
+
+The product-first README keeps the historical public contract explicit so release tests and operator automation do not depend on prose that disappeared during an editorial rewrite.
+
+- **V0.2B — CV Factory**: CV Factory does not send email and does not submit applications. It uses `profile/master_facts.local.yaml` and `profile/evidence_catalog.local.yaml`; the canonical recruiter output is `artifacts/applications/<application_id>/cv.pdf` inside an `ApplicationPacket`.
+- **V0.2B1 — ATS Polished Renderer + Layout QA**: the compatibility renderer remains `ats-pdf-v2`, uses a one-column ATS-safe layout, and unsupported target skills remain gaps.
+- **V0.2B2 — One-page Recruiter Pipeline**: the canonical flow includes `RadarAssessment → EvidenceSelector → CVComposer → ClaimValidator → RecruiterDocumentComposer → RecruiterDocumentValidator → RenderCV/Typst → RecruiterQualityQA → ApplicationPacket`. Canonical preparation starts with `python -m app.application.prepare`.
+- **V0.2C — Email Outreach Core**: Opportunity OS does not create Gmail drafts automatically. Approval is not a send command. `OutreachBrief`, `SendRequest`, and `SendReceipt` remain separate auditable contracts.
+- **V0.2D — Relationship Memory / Context Bridge**: relationship context includes `FOLLOW_UP` and derived `DORMANT` state. Configure it with `OPPORTUNITY_RELATIONSHIPS_PATH`. Read-only routes include `GET  /api/v1/relationships/context` and `GET  /api/v1/relationships/{account_id}/context`. Esta slice no importa automáticamente Gmail, Apollo ni el CRM.
+- **V0.2E — Operator Observation Bridge**: `Observe → preview → confirm → import local fact`. An imported observation is evidence about what happened; it is not authority to make something happen.
+- **Gmail Read Adapter V0.2E1**: it accepts a selected Gmail message/thread and produces an `OperatorObservation`; it does not create drafts, does not send, and does not import Relationship Memory.
+
+The safety boundary remains explicit: CV Factory does not send email and does not submit applications. Opportunity OS does not create Gmail drafts automatically. Approval is not a send command.
 
 ---
 
