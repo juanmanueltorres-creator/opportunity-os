@@ -70,3 +70,80 @@ jobs:
           path: artifacts/ci/recruiter-preview/*.pdf
           if-no-files-found: error
           retention-days: 7
+
+  build-offline-runtime:
+    needs: pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.12"
+            py-tag: py312
+          - python-version: "3.13"
+            py-tag: py313
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build-time project runtime
+        run: python -m pip install -e .
+
+      - name: Build SHA-bound offline runtime
+        run: bash scripts/build_offline_runtime.sh "$GITHUB_SHA"
+
+      - name: Upload offline runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: opportunity-os-runtime-linux-x86_64-${{ matrix.py-tag }}
+          path: artifacts/ci/offline-runtime/opportunity-os-runtime-linux-x86_64-${{ matrix.py-tag }}.zip
+          if-no-files-found: error
+          retention-days: 90
+
+  verify-offline-runtime:
+    needs: build-offline-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.12"
+            py-tag: py312
+          - python-version: "3.13"
+            py-tag: py313
+    env:
+      PIP_NO_INDEX: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download matching offline runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: opportunity-os-runtime-linux-x86_64-${{ matrix.py-tag }}
+          path: runtime-artifact
+
+      - name: Unpack offline runtime
+        run: |
+          mkdir runtime
+          unzip -q "runtime-artifact/opportunity-os-runtime-linux-x86_64-${{ matrix.py-tag }}.zip" -d runtime
+
+      - name: Bootstrap and verify without package indexes
+        run: |
+          bash runtime/opportunity-os-runtime/bootstrap_offline.sh \
+            runtime/opportunity-os-runtime \
+            "$GITHUB_SHA"
