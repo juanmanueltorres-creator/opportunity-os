@@ -99,13 +99,13 @@
 
 - [x] **Step 1: Add runtime-artifact section** covering Python-minor selection, exact git SHA binding, checksum verification, offline bootstrap and later private input materialization.
 - [x] **Step 2: State explicit prohibition** on manual recruiter PDF reconstruction, obsolete packet reuse and renderer fallback when no matching runtime exists.
-- [ ] **Step 3: Run final documentation/privacy checks and full suite on the final branch head.**
+- [x] **Step 3: Run final documentation/privacy checks and full suite on the final branch head.**
 
 ### Task 6: Final verification and PR
 
 **Files:** none beyond prior tasks.
 
-- [ ] **Step 1: Run full GitHub Actions suite** on the final branch head.
-- [ ] **Step 2: Confirm normal tests, compile, whitespace, private-file guard, recruiter previews, py312/py313 runtime build and clean offline verification all pass.**
-- [ ] **Step 3: Inspect branch diff against `main` for scope leakage.**
-- [ ] **Step 4: Open PR against `main` with exact head SHA and acceptance evidence.**
+- [x] **Step 1: Run full GitHub Actions suite** on the final branch head.
+- [x] **Step 2: Confirm normal tests, compile, whitespace, private-file guard, recruiter previews, py312/py313 runtime build and clean offline verification all pass.**
+- [x] **Step 3: Inspect branch diff against `main` for scope leakage.**
+- [x] **Step 4: Open PR against `main` with exact head SHA and acceptance evidence.**
