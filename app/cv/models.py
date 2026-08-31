@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.domain import SearchIntent
+from app.radar.models import LanguageDecision
 
 FactKind = Literal[
     "identity",
@@ -292,6 +293,7 @@ class ApplicationPacket(StrictCVModel):
     selected_fact_ids: list[str] = Field(default_factory=list)
     selected_evidence_ids: list[str] = Field(default_factory=list)
     unresolved_gaps: list[str] = Field(default_factory=list)
+    language_decision: LanguageDecision
     cv_document: CVDocumentModel
     recruiter_document: Any
     cv_pdf_path: str = Field(min_length=1)
@@ -302,8 +304,6 @@ class ApplicationPacket(StrictCVModel):
     @field_validator("recruiter_document", mode="before")
     @classmethod
     def recruiter_document_must_be_typed(cls, value: Any) -> Any:
-        # Imported lazily to keep app.cv.models independent from recruiter_models,
-        # which itself depends on the core CV models in this module.
         from app.cv.recruiter_models import RecruiterDocumentModel
 
         return RecruiterDocumentModel.model_validate(value)
