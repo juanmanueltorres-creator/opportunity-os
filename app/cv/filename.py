@@ -5,6 +5,7 @@ import unicodedata
 
 _DEFAULT_MAX_LENGTH = 120
 _EXTENSION = ".pdf"
+_PREFIX = "CV"
 
 
 def build_cv_filename(
@@ -17,13 +18,25 @@ def build_cv_filename(
     if max_length <= len(_EXTENSION):
         raise ValueError("max_length must leave room for the PDF extension")
 
-    tokens = [_sanitize(part) for part in (candidate_name, role, company)]
-    stem = "_".join(token for token in tokens if token)
-    stem = re.sub(r"_+", "_", stem).strip("_") or "CV"
+    tokens = [
+        _candidate_name_token(candidate_name),
+        _sanitize(role),
+        _sanitize(company),
+    ]
+    payload = "_".join(token for token in tokens if token)
+    stem = f"{_PREFIX}_{payload}" if payload else _PREFIX
+    stem = re.sub(r"_+", "_", stem).strip("_")
 
     max_stem_length = max_length - len(_EXTENSION)
-    stem = stem[:max_stem_length].rstrip("_") or "CV"
+    stem = stem[:max_stem_length].rstrip("_") or _PREFIX[:max_stem_length]
     return f"{stem}{_EXTENSION}"
+
+
+def _candidate_name_token(candidate_name: str) -> str:
+    parts = candidate_name.split()
+    if len(parts) >= 2:
+        candidate_name = " ".join((parts[-1], *parts[:-1]))
+    return _sanitize(candidate_name)
 
 
 def _sanitize(value: str) -> str:
