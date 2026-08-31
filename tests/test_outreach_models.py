@@ -24,6 +24,7 @@ def _draft(
     filename: str = "Alex_Example_CV.pdf",
     recipient: str = "careers@example.test",
     subject: str = "Application — GIS Developer",
+    language: str = "en",
 ) -> DraftSnapshot:
     return DraftSnapshot(
         draft_snapshot_id="snap-1",
@@ -35,6 +36,7 @@ def _draft(
         to=[recipient],
         subject=subject,
         body_canonical="Hello\n\nAttached is my CV.",
+        language=language,
         attachments=[
             DraftAttachment(filename=filename, sha256="c" * 64, role="CV")
         ],
@@ -62,6 +64,12 @@ def test_attachment_filename_changes_semantic_draft_hash() -> None:
 def test_recipient_changes_semantic_draft_hash() -> None:
     left = _draft("draft-a", recipient="careers@example.test")
     right = _draft("draft-a", recipient="talent@example.test")
+    assert draft_sha256(left) != draft_sha256(right)
+
+
+def test_language_changes_semantic_draft_hash() -> None:
+    left = _draft("draft-a", language="en")
+    right = _draft("draft-a", language="es")
     assert draft_sha256(left) != draft_sha256(right)
 
 
@@ -99,6 +107,7 @@ def test_draft_requires_exactly_one_matching_cv_attachment() -> None:
             to=["careers@example.test"],
             subject="Application",
             body_canonical="Hello",
+            language="en",
             attachments=[
                 DraftAttachment(filename="notes.txt", sha256="d" * 64, role="OTHER")
             ],
@@ -120,6 +129,7 @@ def test_draft_requires_exactly_one_matching_cv_attachment() -> None:
             to=["careers@example.test"],
             subject="Application",
             body_canonical="Hello",
+            language="en",
             attachments=[
                 DraftAttachment(filename="cv.pdf", sha256="d" * 64, role="CV")
             ],
