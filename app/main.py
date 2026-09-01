@@ -13,6 +13,8 @@ from app.connectors.base import JobConnector
 from app.models.domain import CandidateProfile
 from app.operator_bridge.api import create_operator_router
 from app.operator_bridge.service import OperatorBridgeService
+from app.process_email.api import create_process_email_router
+from app.process_email.service import ProcessEmailService
 from app.profiles import load_profile
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
@@ -65,6 +67,15 @@ def _gmail_read_enabled() -> bool:
     if raw in {"0", "false", "no", "off", ""}:
         return False
     raise ValueError("OPPORTUNITY_GMAIL_READ_ENABLED must be boolean")
+
+
+def _process_email_enabled() -> bool:
+    raw = os.getenv("OPPORTUNITY_PROCESS_EMAIL_ENABLED", "false").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError("OPPORTUNITY_PROCESS_EMAIL_ENABLED must be boolean")
 
 
 def _load_source_registry() -> SourceRegistry:
@@ -142,6 +153,8 @@ def create_app(
     enable_operator_import: bool | None = None,
     gmail_read_service: GmailReadService | None = None,
     enable_gmail_read: bool | None = None,
+    process_email_service: ProcessEmailService | None = None,
+    enable_process_email: bool | None = None,
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
@@ -169,6 +182,11 @@ def create_app(
         enable_gmail_read
         if enable_gmail_read is not None
         else _gmail_read_enabled()
+    )
+    process_email_enabled = (
+        enable_process_email
+        if enable_process_email is not None
+        else _process_email_enabled()
     )
 
     owned_http_client: httpx.AsyncClient | None = None
@@ -234,6 +252,8 @@ def create_app(
         api.include_router(create_operator_router(resolved_operator_bridge_service))
     if gmail_read_enabled:
         api.include_router(create_gmail_read_router(gmail_read_service))
+    if process_email_enabled:
+        api.include_router(create_process_email_router(process_email_service))
     return api
 
 

@@ -48,6 +48,30 @@ def _aware_utc(value: datetime, *, field: str) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+class ObservationSemanticProvenance(StrictOperatorModel):
+    producer: Literal["PROCESS_EMAIL_CLASSIFIER"]
+    producer_version: str = Field(
+        min_length=1,
+        max_length=80,
+        pattern=r"^[A-Za-z0-9._-]+$",
+    )
+    policy_version: str = Field(
+        min_length=1,
+        max_length=80,
+        pattern=r"^[A-Za-z0-9._-]+$",
+    )
+    classification: str = Field(
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Z][A-Z0-9_]*$",
+    )
+    reason_code: str = Field(
+        min_length=1,
+        max_length=80,
+        pattern=r"^[A-Z][A-Z0-9_]*$",
+    )
+
+
 class OperatorObservation(StrictOperatorModel):
     observation_id: str = Field(min_length=1)
     source_type: ObservationSourceType
@@ -59,6 +83,7 @@ class OperatorObservation(StrictOperatorModel):
     observed_at: datetime
     reason: str | None = Field(default=None, min_length=1, max_length=280)
     process_label: str | None = Field(default=None, min_length=1, max_length=200)
+    semantic_provenance: ObservationSemanticProvenance | None = None
 
     @field_validator("observed_at")
     @classmethod

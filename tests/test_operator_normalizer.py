@@ -2,7 +2,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.operator_bridge.models import OperatorObservation, observation_sha256
+from app.operator_bridge.models import (
+    ObservationSemanticProvenance,
+    OperatorObservation,
+    observation_sha256,
+)
 from app.operator_bridge.normalizer import normalize_observation, relationship_event_id
 
 NOW = datetime(2026, 8, 29, 12, 0, tzinfo=timezone.utc)
@@ -21,6 +25,16 @@ def _observation(kind: str, **updates) -> OperatorObservation:
     }
     values.update(updates)
     return OperatorObservation(**values)
+
+
+def _semantic_provenance() -> ObservationSemanticProvenance:
+    return ObservationSemanticProvenance(
+        producer="PROCESS_EMAIL_CLASSIFIER",
+        producer_version="deterministic-process-email-v1",
+        policy_version="es-en-2026-09-v1",
+        classification="INTERVIEW_PROPOSED",
+        reason_code="INTERVIEW_INVITATION_EXPLICIT",
+    )
 
 
 @pytest.mark.parametrize(
@@ -60,6 +74,15 @@ def test_relationship_event_id_depends_only_on_source_identity() -> None:
     assert len(relationship_event_id(first)) == len("opobs-") + 64
 
 
+def test_semantic_provenance_does_not_change_relationship_event_identity() -> None:
+    plain = _observation("PROCESS_OPENED", observation_id="same-process-fact")
+    classified = plain.model_copy(
+        update={"semantic_provenance": _semantic_provenance()}
+    )
+
+    assert relationship_event_id(plain) == relationship_event_id(classified)
+
+
 def test_normalized_event_carries_only_allowlisted_bridge_metadata() -> None:
     observation = _observation(
         "PROCESS_OPENED",
@@ -76,6 +99,31 @@ def test_normalized_event_carries_only_allowlisted_bridge_metadata() -> None:
         "operator_observation_sha256": observation_sha256(observation),
         "process_label": "Backend Engineer",
     }
+
+
+def test_normalized_event_copies_only_typed_semantic_provenance() -> None:
+    observation = _observation(
+        "PROCESS_OPENED",
+        observation_id="gmail-message:m1:process-signal:INTERVIEW_PROPOSED",
+        semantic_provenance=_semantic_provenance(),
+    )
+
+    event = normalize_observation(observation)
+
+    assert event.metadata == {
+        "operator_source_type": "EMAIL_PROVIDER",
+        "operator_source_name": "gmail",
+        "operator_observation_id": "gmail-message:m1:process-signal:INTERVIEW_PROPOSED",
+        "operator_observation_sha256": observation_sha256(observation),
+        "semantic_producer": "PROCESS_EMAIL_CLASSIFIER",
+        "semantic_producer_version": "deterministic-process-email-v1",
+        "semantic_policy_version": "es-en-2026-09-v1",
+        "semantic_classification": "INTERVIEW_PROPOSED",
+        "semantic_reason_code": "INTERVIEW_INVITATION_EXPLICIT",
+    }
+    rendered = str(event.metadata).lower()
+    for forbidden in ("body", "subject", "evidence_text", "literal recruiter sentence"):
+        assert forbidden not in rendered
 
 
 def test_account_level_message_sent_adds_official_channel_only() -> None:

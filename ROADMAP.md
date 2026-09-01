@@ -261,6 +261,55 @@ Implementado:
 
 V0.2E1 tampoco clasifica automáticamente mails de proceso como `PROCESS_OPENED`, `PROCESS_UPDATED` o `PROCESS_CLOSED`: esa semántica requiere otra política de evidencia.
 
+### ✅ Process Email — evidence-aware process classifier
+
+Status: **implemented**.
+
+Process Email implementa una clasificación semántica separada y fail-closed para **un mensaje Gmail inbound explícitamente seleccionado**. El acceso FULL vive sólo en este slice; no cambia el adapter metadata-only de V0.2E1.
+
+```text
+explicit inbound Gmail message
+        ↓
+transient FULL content
+        ↓
+deterministic ES/EN signals + evidence preview
+        ↓
+zero/one candidate OperatorObservation
+        ↓
+existing Operator Bridge preview
+        ↓
+explicit human confirm/import
+```
+
+Implementado:
+
+- selección de exactamente un mensaje inbound;
+- contenido FULL transitorio y acotado a 256 KiB;
+- `text/plain` preferido, fallback visible desde `text/html` y attachments excluidos;
+- quoted history/signature conocidos removidos antes de clasificar;
+- reglas deterministas ES/EN con clasificación, confidence y reason codes versionados;
+- señales explícitas para `APPLICATION_ACKNOWLEDGED`, entrevista, avance, actualización, oferta y rechazo;
+- `ACK != process open`;
+- señales LOW, ambigüedad o conflictos no producen mutación candidata;
+- un rechazo sin proceso abierto no fabrica `PROCESS_CLOSED`;
+- el projector produce cero o una `OperatorObservation` y usa provenance tipada sin source text;
+- el servicio sólo llama al `OperatorBridgeService.preview()` existente: no tiene método de importación;
+- no existe ruta Process Email `/import`;
+- ruta preview ausente por defecto y flag independiente `OPPORTUNITY_PROCESS_EMAIL_ENABLED=false`;
+- persisted state no guarda subject, body ni evidence spans;
+- stale previews fallan cerrado y reintentos exactos permanecen idempotentes en el bridge existente;
+- no hay mailbox-wide sync, thread classification, attachments classification, dependencia nueva ni external LLM;
+- no envía, no aplica y no ejecuta follow-up automático.
+
+La frontera pública queda explícita:
+
+```text
+body access != body persistence
+classification != authority
+```
+
+La clasificación puede proponer evidencia semántica. La autoridad para importar sigue requiriendo **human confirmation** en el Operator Bridge existente.
+
 ### ✅ Search Health — provenance-aware pipeline reporting
 
 Search Health convierte el estado ya existente en un reporte local **read-only** en vez de crear un segundo sistema de tracking.
@@ -308,7 +357,7 @@ El backfill inicial fue ejercitado de forma privada contra una selección explí
 
 El próximo problema validado es ampliar la memoria de relaciones con conversaciones que hoy viven fuera de Gmail.
 
-**WhatsApp es un provider candidate prioritario**, especialmente para detectar conversaciones profesionales pendientes de respuesta, pero todavía no está implementado.
+**WhatsApp es un provider candidate prioritario y sigue siendo future work**, especialmente para detectar conversaciones profesionales pendientes de respuesta, pero todavía no está implementado.
 
 La próxima fase debe diseñar primero la frontera antes de escribir integración:
 
@@ -322,20 +371,6 @@ La próxima fase debe diseñar primero la frontera antes de escribir integració
 - separar importación histórica explícita de cualquier integración viva futura.
 
 El diseño debe decidir qué puede observarse de WhatsApp personal vs WhatsApp Business Platform sin inventar capacidades ni violar los límites del proveedor.
-
----
-
-## AFTER — Process-email classifier
-
-Con Gmail read ya separado del bridge, puede evaluarse una clasificación semántica específica para mensajes de proceso:
-
-- candidatura recibida;
-- entrevista propuesta;
-- avance de etapa;
-- rechazo/cierre;
-- actualización explícita de un proceso existente.
-
-La clasificación deberá tener una política visible de evidencia/confidence. Un subject o keyword aislado no alcanza para modificar Relationship Memory.
 
 ---
 

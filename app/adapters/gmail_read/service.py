@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from app.adapters.gmail_read.direction import (
+    is_inbound,
+    is_outbound,
+    normalize_owned_addresses,
+)
 from app.adapters.gmail_read.models import (
     GmailMessageEnvelope,
     GmailObservationResult,
@@ -15,46 +20,6 @@ _REPLY_RECEIVED_REASON = (
 )
 
 
-def _normalize_address(address: str) -> str:
-    return address.strip().lower()
-
-
-def _is_owned(address: str, owned: frozenset[str]) -> bool:
-    return _normalize_address(address) in owned
-
-
-def _recipients(message: GmailMessageEnvelope) -> tuple[str, ...]:
-    return (*message.to_addresses, *message.cc_addresses)
-
-
-def _has_external_recipient(
-    message: GmailMessageEnvelope,
-    owned: frozenset[str],
-) -> bool:
-    return any(not _is_owned(address, owned) for address in _recipients(message))
-
-
-def _has_owned_recipient(
-    message: GmailMessageEnvelope,
-    owned: frozenset[str],
-) -> bool:
-    return any(_is_owned(address, owned) for address in _recipients(message))
-
-
-def _is_outbound(message: GmailMessageEnvelope, owned: frozenset[str]) -> bool:
-    return (
-        "SENT" in message.label_ids
-        and _is_owned(message.from_address, owned)
-        and _has_external_recipient(message, owned)
-    )
-
-
-def _is_inbound(message: GmailMessageEnvelope, owned: frozenset[str]) -> bool:
-    return not _is_owned(message.from_address, owned) and _has_owned_recipient(
-        message, owned
-    )
-
-
 class GmailReadService:
     def __init__(
         self,
@@ -62,13 +27,8 @@ class GmailReadService:
         *,
         owned_addresses: set[str] | frozenset[str],
     ) -> None:
-        normalized = frozenset(
-            address.strip().lower() for address in owned_addresses if address.strip()
-        )
-        if not normalized:
-            raise ValueError("owned_addresses must contain at least one address")
         self.provider = provider
-        self.owned_addresses = normalized
+        self.owned_addresses = normalize_owned_addresses(owned_addresses)
 
     @staticmethod
     def _selection_ref(selection: GmailReadSelection) -> str:
@@ -103,7 +63,7 @@ class GmailReadService:
         message: GmailMessageEnvelope,
     ) -> GmailObservationResult:
         source_ref = f"gmail:message:{message.message_id}"
-        if not _is_outbound(message, self.owned_addresses):
+        if not is_outbound(message, self.owned_addresses):
             return GmailObservationResult(
                 status="AMBIGUOUS",
                 source_ref=source_ref,
@@ -141,12 +101,12 @@ class GmailReadService:
         outbound = [
             message
             for message in ordered
-            if _is_outbound(message, self.owned_addresses)
+            if is_outbound(message, self.owned_addresses)
         ]
         inbound = [
             message
             for message in ordered
-            if _is_inbound(message, self.owned_addresses)
+            if is_inbound(message, self.owned_addresses)
         ]
 
         qualifying = [
@@ -169,9 +129,7 @@ class GmailReadService:
             qualifying,
             key=lambda message: (message.internal_date, message.message_id),
         )
-        source_ref = (
-            f"gmail:thread:{thread.thread_id}:message:{reply.message_id}"
-        )
+        source_ref = f"gmail:thread:{thread.thread_id}:message:{reply.message_id}"
         observation = OperatorObservation(
             observation_id=f"gmail-message:{reply.message_id}:reply-received",
             source_type="EMAIL_PROVIDER",
