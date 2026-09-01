@@ -36,6 +36,18 @@ def normalize_observation(observation: OperatorObservation) -> RelationshipEvent
         "operator_observation_sha256": observation_sha256(observation),
     }
 
+    if observation.semantic_provenance is not None:
+        provenance = observation.semantic_provenance
+        metadata.update(
+            {
+                "semantic_producer": provenance.producer,
+                "semantic_producer_version": provenance.producer_version,
+                "semantic_policy_version": provenance.policy_version,
+                "semantic_classification": provenance.classification,
+                "semantic_reason_code": provenance.reason_code,
+            }
+        )
+
     if observation.kind in _PROCESS_KINDS and observation.process_label is not None:
         metadata["process_label"] = observation.process_label
 
