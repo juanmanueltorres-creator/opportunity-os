@@ -257,6 +257,34 @@ def read_outreach_facts(
     )
 
 
+def _relationship_source_anchors(
+    source_ref: str,
+    event_id: str,
+) -> tuple[str, str | None]:
+    """Normalize only exact Gmail refs emitted by the Gmail read adapter."""
+
+    message_prefix = "gmail:message:"
+    if source_ref.startswith(message_prefix):
+        message_id = source_ref[len(message_prefix) :]
+        if message_id:
+            return f"gmail-message:{message_id}", None
+
+    thread_prefix = "gmail:thread:"
+    message_separator = ":message:"
+    if source_ref.startswith(thread_prefix):
+        provider_part = source_ref[len(thread_prefix) :]
+        thread_id, separator, message_id = provider_part.rpartition(message_separator)
+        if separator and thread_id and message_id:
+            return (
+                f"gmail-message:{message_id}",
+                f"gmail-thread:{thread_id}",
+            )
+
+    if source_ref:
+        return f"source:{source_ref}", None
+    return f"native-relationship-event:{event_id}", None
+
+
 def read_relationship_facts(
     path: str | Path,
     window: ReportWindow,
@@ -291,8 +319,9 @@ def read_relationship_facts(
         if not _within(window, event.occurred_at):
             continue
         source_ref = (event.source_ref or "").strip()
-        exact_anchor = (
-            f"source:{source_ref}" if source_ref else f"native-relationship-event:{event.event_id}"
+        exact_anchor, thread_anchor = _relationship_source_anchors(
+            source_ref,
+            event.event_id,
         )
         facts.append(
             MetricFact(
@@ -304,6 +333,7 @@ def read_relationship_facts(
                 evidence_class="NATIVE",
                 exact_anchor=exact_anchor,
                 link_confidence=1.0,
+                thread_anchor=thread_anchor,
             )
         )
 
