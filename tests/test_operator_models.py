@@ -7,6 +7,7 @@ from app.operator_bridge.models import (
     PREVIEW_VERSION,
     ObservationImportRequest,
     ObservationPreview,
+    ObservationSemanticProvenance,
     OperatorObservation,
     observation_sha256,
 )
@@ -27,6 +28,18 @@ def _observation(**updates) -> OperatorObservation:
     }
     values.update(updates)
     return OperatorObservation(**values)
+
+
+def _semantic_provenance(**updates) -> ObservationSemanticProvenance:
+    values = {
+        "producer": "PROCESS_EMAIL_CLASSIFIER",
+        "producer_version": "deterministic-process-email-v1",
+        "policy_version": "es-en-2026-09-v1",
+        "classification": "INTERVIEW_PROPOSED",
+        "reason_code": "INTERVIEW_INVITATION_EXPLICIT",
+    }
+    values.update(updates)
+    return ObservationSemanticProvenance(**values)
 
 
 def test_operator_observation_is_strict_and_normalizes_time() -> None:
@@ -64,6 +77,53 @@ def test_operator_observation_rejects_raw_body_and_metadata() -> None:
         OperatorObservation(**base, body="secret")
     with pytest.raises(ValidationError):
         OperatorObservation(**base, metadata={"raw_payload": "secret"})
+
+
+def test_semantic_provenance_is_typed_bounded_and_source_text_free() -> None:
+    provenance = _semantic_provenance()
+    assert provenance.producer == "PROCESS_EMAIL_CLASSIFIER"
+    assert provenance.classification == "INTERVIEW_PROPOSED"
+
+    for extra in (
+        {"body": "private body"},
+        {"subject": "private subject"},
+        {"evidence_text": "literal recruiter sentence"},
+        {"metadata": {"raw_payload": "private"}},
+    ):
+        with pytest.raises(ValidationError):
+            ObservationSemanticProvenance(
+                producer="PROCESS_EMAIL_CLASSIFIER",
+                producer_version="deterministic-process-email-v1",
+                policy_version="es-en-2026-09-v1",
+                classification="INTERVIEW_PROPOSED",
+                reason_code="INTERVIEW_INVITATION_EXPLICIT",
+                **extra,
+            )
+
+
+def test_semantic_provenance_rejects_freeform_identifiers() -> None:
+    with pytest.raises(ValidationError):
+        _semantic_provenance(producer_version="version with spaces")
+    with pytest.raises(ValidationError):
+        _semantic_provenance(classification="interview proposed")
+    with pytest.raises(ValidationError):
+        _semantic_provenance(reason_code="X" * 81)
+
+
+def test_existing_observation_remains_valid_without_semantic_provenance() -> None:
+    observation = _observation()
+    assert observation.semantic_provenance is None
+
+
+def test_semantic_provenance_changes_observation_hash_without_changing_identity_fields() -> None:
+    plain = _observation()
+    classified = plain.model_copy(
+        update={"semantic_provenance": _semantic_provenance()}
+    )
+
+    assert plain.observation_id == classified.observation_id
+    assert plain.source_ref == classified.source_ref
+    assert observation_sha256(plain) != observation_sha256(classified)
 
 
 def test_operator_observation_rejects_naive_time() -> None:
