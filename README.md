@@ -46,6 +46,7 @@ The system does **not** treat every company as a vacancy and does **not** treat 
 | **Relationship Memory** | remember prior contact, replies, open processes, cooldowns and follow-up context |
 | **Operator Observation Bridge** | preview and explicitly confirm external facts before importing them into local state |
 | **Selective Gmail read** | turn an explicitly selected Gmail message/thread into a constrained observation without mailbox sync |
+| **Process Email** | classify one selected inbound Gmail message into bounded ES/EN hiring-process evidence before any local import |
 | **Outreach Core** | separate contact resolution, draft identity, approval, send request and send authorization |
 | **Search Health** | project local discovery, qualification, outreach and outcome evidence into coverage-aware counts and conversion cohorts |
 
@@ -187,6 +188,48 @@ The preview is read-only. If relevant state changes before the first import, the
 The current Gmail adapter is intentionally narrow: it reads only an explicitly selected message or thread, keeps allowlisted metadata, discards bodies/raw MIME/attachments and stops at `OperatorObservation`. Import into Relationship Memory remains a separate confirmed action.
 
 > **An imported observation is evidence about what happened; it is not authority to make something happen.**
+
+---
+
+## Process Email
+
+Process Email adds a separate semantic preview for one **selected inbound message**. It does not change the metadata-only Gmail Read contract and it does not create a second write path.
+
+```text
+explicit inbound Gmail message
+        ↓
+transient FULL content
+        ↓
+deterministic ES/EN signals + evidence preview
+        ↓
+zero/one candidate OperatorObservation
+        ↓
+existing Operator Bridge preview
+        ↓
+explicit human confirm/import
+```
+
+The evidence boundary is deliberate:
+
+```text
+body access != body persistence
+classification != authority
+ACK != process open
+```
+
+`APPLICATION_ACKNOWLEDGED` means there is explicit evidence that the application was received. It does not open a hiring process. Low-confidence, ambiguous or conflicting evidence produces no candidate mutation, and a rejection cannot fabricate a process close when no open process exists.
+
+Subject, current-message body and evidence spans remain transient. Persisted semantic provenance is limited to bounded classifier/ruleset/classification/reason identifiers. The FULL-content reader is limited to the explicitly selected message, rejects unsupported or oversized content fail-closed, excludes attachments and strips recognized quoted history before classification.
+
+There is no Process Email import route. The preview service has no write method: persistence still goes through the existing Operator Bridge and requires **human confirmation** of the exact preview. The classifier uses deterministic local ES/EN rules, not an external LLM, and does not send, apply or follow up.
+
+The API surface is independently feature-flagged and disabled by default:
+
+```text
+OPPORTUNITY_PROCESS_EMAIL_ENABLED=false
+```
+
+Process Email does not classify Gmail threads, scan a mailbox, or treat content access as permission to retain source text.
 
 ---
 
@@ -337,6 +380,12 @@ preview → confirm → local import
         ↓
 Relationship Memory (SQLite)
 
+selected inbound Gmail message
+        ↓
+transient FULL content → deterministic Process Email classification
+        ↓
+zero/one OperatorObservation → existing Operator Bridge preview
+
 native state + reconstructed history
         ↓
 read-only Search Health projection
@@ -384,7 +433,7 @@ POST /api/v1/targets/radar/run
 GET  /api/v1/relationships/context
 ```
 
-Operator-import and Gmail-read routes are disabled by default and appear only when their explicit feature flags are enabled. Search Health V1 is CLI + JSON only; it does not add a metrics API route.
+Operator-import, Gmail-read and Process Email preview routes are disabled by default and appear only when their explicit feature flags are enabled. Search Health V1 is CLI + JSON only; it does not add a metrics API route.
 
 ---
 
@@ -397,7 +446,8 @@ Real operator state is intentionally kept outside the public repository.
 - recruiter/contact data stays outside the public core;
 - Relationship Memory is local SQLite;
 - historical Search Health evidence and generated reports are local/gitignored;
-- Gmail observations retain only constrained metadata;
+- Gmail metadata observations retain only constrained metadata;
+- Process Email source body/subject/evidence remains transient and is not persisted by the classifier path;
 - provider errors are sanitized;
 - examples and public tests use fictional identities;
 - CI includes private/generated-file guards.
@@ -422,6 +472,8 @@ Current verification includes:
 
 Search Health adds regression coverage for strict historical imports, read-only source access, exact reconciliation, native evidence precedence, coverage propagation, conversion cohorts, deterministic JSON and aggregate-output privacy.
 
+Process Email adds regressions for one-message FULL content handling, MIME/size failures, bilingual classification, false-positive guards, relationship-aware projection, stale previews, idempotent confirmed import and source-text privacy in local SQLite.
+
 Recent production-path bugs — including a missing runtime PDF dependency, `3D` being misread as a numeric metric, language drift and legacy CV attachment selection — were turned into regression tests before their fixes were merged.
 
 ---
@@ -437,6 +489,7 @@ The product-first README keeps the historical public contract explicit so releas
 - **V0.2D — Relationship Memory / Context Bridge**: relationship context includes `FOLLOW_UP` and derived `DORMANT` state. Configure it with `OPPORTUNITY_RELATIONSHIPS_PATH`. Read-only routes include `GET  /api/v1/relationships/context` and `GET  /api/v1/relationships/{account_id}/context`. Esta slice no importa automáticamente Gmail, Apollo ni el CRM.
 - **V0.2E — Operator Observation Bridge**: `Observe → preview → confirm → import local fact`. An imported observation is evidence about what happened; it is not authority to make something happen.
 - **Gmail Read Adapter V0.2E1**: it accepts a selected Gmail message/thread and produces an `OperatorObservation`; it does not create drafts, does not send, and does not import Relationship Memory.
+- **Process Email V1**: one selected inbound Gmail message can be read through the separate transient FULL-content surface, classified by versioned deterministic ES/EN rules, projected to zero/one `OperatorObservation`, and handed to the existing Operator Bridge preview. Source text is transient; persistence still requires explicit human confirmation/import.
 - **Search Health V1**: read-only CLI + aggregate JSON over typed native/reconstructed evidence. Coverage is explicit, historical state remains separate, and metrics do not authorize external actions.
 
 The safety boundary remains explicit: CV Factory does not send email and does not submit applications. Opportunity OS does not create Gmail drafts automatically. Approval is not a send command.
