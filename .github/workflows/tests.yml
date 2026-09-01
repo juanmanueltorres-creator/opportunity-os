@@ -50,9 +50,12 @@ jobs:
             '*.local.yaml' \
             'state/outreach.local.sqlite3' \
             'state/relationships.local.sqlite3*' \
+            'state/history.local.sqlite3*' \
+            'state/history-import*.local.json' \
             'artifacts/relationships/**' \
             'artifacts/applications/**' \
             'artifacts/applications/**/outreach/**' \
+            'artifacts/metrics/**' \
             '*.pdf' \
             '*.docx')"
           if [[ -n "$forbidden" ]]; then
