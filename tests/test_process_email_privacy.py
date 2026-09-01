@@ -286,6 +286,7 @@ async def test_old_process_email_preview_is_blocked_after_relationship_state_cha
             occurred_at=NOW + timedelta(seconds=30),
             reason="separate confirmed contact",
             source_ref="manual:contact",
+            metadata={"official_channel": "manual-confirmed-channel"},
         )
     )
     assert [event.kind for event in repo.list_events("example-co")] == ["CONTACTED"]
