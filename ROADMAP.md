@@ -261,6 +261,47 @@ Implementado:
 
 V0.2E1 tampoco clasifica automáticamente mails de proceso como `PROCESS_OPENED`, `PROCESS_UPDATED` o `PROCESS_CLOSED`: esa semántica requiere otra política de evidencia.
 
+### ✅ Search Health — provenance-aware pipeline reporting
+
+Search Health convierte el estado ya existente en un reporte local **read-only** en vez de crear un segundo sistema de tracking.
+
+```text
+Opportunity Store / Radar evidence
+              +
+Outreach ledger / Relationship Memory
+              +
+historical observations (private, separate)
+              ↓
+       exact reconciliation
+              ↓
+        Metrics Projection
+              ↓
+       CLI + aggregate JSON
+```
+
+Implementado:
+
+- modelos estrictos para counts, ratios, coverage y ventana temporal;
+- cobertura explícita `COMPLETE`, `PARTIAL` y `UNKNOWN`;
+- `native history != reconstructed history`: el backfill histórico vive en un SQLite privado separado y nunca fabrica eventos nativos retrospectivos;
+- precedencia de evidencia `NATIVE > IMPORTED_PROVIDER > MANUAL` sólo cuando existe un anchor exacto compatible;
+- sin fuzzy matching por empresa, subject o proximidad temporal;
+- `event_confidence` separado de `link_confidence`;
+- observaciones con link incierto pueden permanecer como evidencia/counts, pero no entran silenciosamente en ratios de conversión;
+- `missing evidence is not zero`: una población o denominador no defendible produce `UNKNOWN`/`null`, no `0` o `0%`;
+- lectura de SQLite operacional en modo read-only; una fuente faltante no se crea como efecto colateral del reporting;
+- counts de discovery, qualification, packets, drafts, sends, replies y process state con coverage explícita;
+- conversiones sólo sobre cohortes defendibles;
+- CLI determinista `python -m app.metrics.report` + JSON agregado;
+- import histórico explícito e idempotente con `python -m app.metrics.import_history`;
+- manifests, SQLite histórico y reportes reales permanecen privados/gitignored;
+- output agregado sin provider IDs, contactos, emails, subjects, bodies ni notas privadas;
+- CI cubre contratos de history, sources, reconciliation, projection, determinismo y privacy.
+
+El backfill inicial fue ejercitado de forma privada contra una selección explícita de evidencia laboral real, declarada como `SELECTED_THREADS`: no se publica el historial personal ni se presenta esa selección como cobertura total del mailbox.
+
+**Metrics do not grant SEND, APPLY or FOLLOW-UP authority.** Search Health describe evidencia observada; no es un productivity score, success predictor ni causal optimizer.
+
 ---
 
 ## NEXT — V0.2E2 — Conversation-provider adapter design
@@ -353,9 +394,11 @@ El principio sigue siendo el mismo: **notificar cuando cambió algo útil**, no 
 Después de cerrar el bridge con operadores reales, pueden evaluarse:
 
 - vistas/resúmenes diarios que combinen vacantes, targets y relationships;
-- motivos estructurados para follow-up;
+- motivos estructurados para follow-up y actionable-next-state;
+- comparaciones descriptivas por source, language, intent o strategy con tamaños de muestra visibles;
+- dashboard/UI sobre la proyección existente, sin duplicar semántica;
+- métricas temporales como median time-to-reply cuando exista cobertura defendible;
 - adapters adicionales de fuentes públicas;
-- reporting de pipeline sin exponer PII;
 - export/import local y portable del estado privado;
 - mejor observabilidad de freshness/provenance.
 
