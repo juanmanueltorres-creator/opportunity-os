@@ -141,6 +141,8 @@ def test_partial_qualification_history_emits_lower_bound_counts_without_rate():
     assert report.counts.qualified_medium.value == 1
     assert report.counts.qualified_high.coverage == "PARTIAL"
     assert report.ratios.qualification_rate.value is None
+    assert report.ratios.qualification_rate.numerator == 2
+    assert report.ratios.qualification_rate.denominator == 3
     assert any("multiple scoring versions" in warning for warning in report.warnings)
 
 
@@ -353,8 +355,8 @@ def test_selected_thread_history_does_not_turn_all_sends_into_reply_denominator(
 
     metric = report.ratios.send_to_reply_rate
     assert metric.value is None
-    assert metric.numerator == 0
-    assert metric.denominator == 0
+    assert metric.numerator == 1
+    assert metric.denominator == 2
     assert metric.coverage == "PARTIAL"
 
 
