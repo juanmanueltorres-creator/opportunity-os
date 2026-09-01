@@ -28,7 +28,6 @@ MANIFEST
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
-#   to allow PyInstaller to inject version/other metadata.
 *.manifest
 *.spec
 
@@ -213,3 +212,9 @@ artifacts/relationships/*.local.*
 *.sqlite3
 taxonomy.local.json
 data/taxonomy/*.local.json
+
+# Search Health private/generated data
+artifacts/metrics/
+state/history.local.sqlite3
+state/history.local.sqlite3-*
+state/history-import*.local.json
