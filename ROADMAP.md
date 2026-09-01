@@ -263,6 +263,8 @@ V0.2E1 tampoco clasifica automáticamente mails de proceso como `PROCESS_OPENED`
 
 ### ✅ Process Email — evidence-aware process classifier
 
+Status: **implemented**.
+
 Process Email implementa una clasificación semántica separada y fail-closed para **un mensaje Gmail inbound explícitamente seleccionado**. El acceso FULL vive sólo en este slice; no cambia el adapter metadata-only de V0.2E1.
 
 ```text
