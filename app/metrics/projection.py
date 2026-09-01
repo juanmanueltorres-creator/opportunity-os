@@ -192,8 +192,8 @@ def _metric_ratio(
     return RatioMetric(
         name=name,
         value=value,
-        numerator=numerator if can_compute else 0,
-        denominator=denominator if can_compute else 0,
+        numerator=numerator,
+        denominator=denominator,
         coverage=coverage,
         basis=list(basis),
         warnings=list(warnings),
