@@ -213,3 +213,9 @@ artifacts/relationships/*.local.*
 *.sqlite3
 taxonomy.local.json
 data/taxonomy/*.local.json
+
+# Search Health private/generated data
+artifacts/metrics/
+state/history.local.sqlite3
+state/history.local.sqlite3-*
+state/history-import*.local.json

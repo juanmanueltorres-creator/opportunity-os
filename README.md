@@ -47,6 +47,7 @@ The system does **not** treat every company as a vacancy and does **not** treat 
 | **Operator Observation Bridge** | preview and explicitly confirm external facts before importing them into local state |
 | **Selective Gmail read** | turn an explicitly selected Gmail message/thread into a constrained observation without mailbox sync |
 | **Outreach Core** | separate contact resolution, draft identity, approval, send request and send authorization |
+| **Search Health** | project local discovery, qualification, outreach and outcome evidence into coverage-aware counts and conversion cohorts |
 
 See [`ROADMAP.md`](ROADMAP.md) for the detailed version history and future work.
 
@@ -189,6 +190,63 @@ The current Gmail adapter is intentionally narrow: it reads only an explicitly s
 
 ---
 
+## Search Health
+
+Search Health is a **read-only, provenance-aware projection** over the evidence Opportunity OS already has. It reports what can be defended about discovery, qualification, preparation, outreach and outcomes without turning incomplete history into fake precision.
+
+```text
+Opportunity Store / Radar evidence
+              +
+     Outreach / Relationship state
+              +
+  explicitly imported history
+              ↓
+      exact reconciliation
+              ↓
+        Metrics Projection
+              ↓
+       CLI + aggregate JSON
+```
+
+The boundary is explicit:
+
+```text
+native history != reconstructed history
+missing evidence is not zero
+```
+
+Historical observations live in a separate private SQLite store. They never fabricate retrospective `OutreachEvent`, `SendReceipt` or `RelationshipEvent` rows. When native and reconstructed evidence refer to the same exact event, native evidence wins; reconciliation never uses fuzzy company names, subject similarity or nearest timestamps.
+
+Every metric carries a coverage class:
+
+- `COMPLETE` — the declared evidence population for that metric/cohort is complete;
+- `PARTIAL` — useful observed evidence exists, but it does not cover the whole population;
+- `UNKNOWN` — there is no defensible metric population.
+
+A partial count may be a defensible lower bound. A conversion ratio remains `null` when its denominator or observation cohort cannot be defended. Search Health does not silently render missing evidence as `0` or `0%`.
+
+Generate a report with a fixed as-of boundary:
+
+```bash
+python -m app.metrics.report \
+  --from 2026-08-01 \
+  --as-of 2026-09-01T00:00:00+00:00
+```
+
+Optional historical evidence is imported explicitly from an allowlisted private manifest:
+
+```bash
+python -m app.metrics.import_history \
+  --manifest state/history-import-2026-08.local.json \
+  --history-db state/history.local.sqlite3
+```
+
+The historical manifest/database and generated `artifacts/metrics/` output are local and gitignored. The aggregate JSON contains metric values, basis, warnings and coverage, but not provider message/thread IDs, contact names, email addresses, subjects, bodies or company-specific private notes.
+
+**Metrics do not grant SEND, APPLY or FOLLOW-UP authority.** Search Health is not a productivity score, success predictor, causal optimizer or automatic follow-up engine.
+
+---
+
 ## Offline, reproducible recruiter runtime
 
 Agent runs can use a SHA-bound offline runtime for the canonical recruiter pipeline on Python 3.12 and 3.13.
@@ -278,6 +336,12 @@ OperatorObservation
 preview → confirm → local import
         ↓
 Relationship Memory (SQLite)
+
+native state + reconstructed history
+        ↓
+read-only Search Health projection
+        ↓
+CLI + aggregate JSON
 ```
 
 Core stack:
@@ -320,7 +384,7 @@ POST /api/v1/targets/radar/run
 GET  /api/v1/relationships/context
 ```
 
-Operator-import and Gmail-read routes are disabled by default and appear only when their explicit feature flags are enabled.
+Operator-import and Gmail-read routes are disabled by default and appear only when their explicit feature flags are enabled. Search Health V1 is CLI + JSON only; it does not add a metrics API route.
 
 ---
 
@@ -332,6 +396,7 @@ Real operator state is intentionally kept outside the public repository.
 - real CV facts/evidence are private;
 - recruiter/contact data stays outside the public core;
 - Relationship Memory is local SQLite;
+- historical Search Health evidence and generated reports are local/gitignored;
 - Gmail observations retain only constrained metadata;
 - provider errors are sanitized;
 - examples and public tests use fictional identities;
@@ -355,6 +420,8 @@ Current verification includes:
 - one-page / extractable-text / clickable-link checks;
 - offline runtime build and fresh-runner verification for Python 3.12 and 3.13.
 
+Search Health adds regression coverage for strict historical imports, read-only source access, exact reconciliation, native evidence precedence, coverage propagation, conversion cohorts, deterministic JSON and aggregate-output privacy.
+
 Recent production-path bugs — including a missing runtime PDF dependency, `3D` being misread as a numeric metric, language drift and legacy CV attachment selection — were turned into regression tests before their fixes were merged.
 
 ---
@@ -370,6 +437,7 @@ The product-first README keeps the historical public contract explicit so releas
 - **V0.2D — Relationship Memory / Context Bridge**: relationship context includes `FOLLOW_UP` and derived `DORMANT` state. Configure it with `OPPORTUNITY_RELATIONSHIPS_PATH`. Read-only routes include `GET  /api/v1/relationships/context` and `GET  /api/v1/relationships/{account_id}/context`. Esta slice no importa automáticamente Gmail, Apollo ni el CRM.
 - **V0.2E — Operator Observation Bridge**: `Observe → preview → confirm → import local fact`. An imported observation is evidence about what happened; it is not authority to make something happen.
 - **Gmail Read Adapter V0.2E1**: it accepts a selected Gmail message/thread and produces an `OperatorObservation`; it does not create drafts, does not send, and does not import Relationship Memory.
+- **Search Health V1**: read-only CLI + aggregate JSON over typed native/reconstructed evidence. Coverage is explicit, historical state remains separate, and metrics do not authorize external actions.
 
 The safety boundary remains explicit: CV Factory does not send email and does not submit applications. Opportunity OS does not create Gmail drafts automatically. Approval is not a send command.
 
