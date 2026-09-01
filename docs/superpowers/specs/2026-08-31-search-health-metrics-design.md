@@ -2,7 +2,7 @@
 
 ## Status
 
-Design approved in conversation for a dogfooding-first release.
+Design approved in conversation for a dogfooding-first release; implementation remains blocked until this written spec is reviewed.
 
 This slice is for the operator's own real job-search workflow first. It is not a multi-user analytics product, SaaS dashboard, productivity score, or generalized job-seeker UI.
 
@@ -182,8 +182,9 @@ provenance
 source_ref?
 provider_message_id?
 provider_thread_id?
-confidence
-reconstruction_notes?
+event_confidence
+link_confidence
+reconstruction_note?
 ```
 
 Supported V1 kinds:
@@ -205,7 +206,14 @@ MANUAL_ASSERTION
 
 `NATIVE` is not a historical-observation provenance. Native events remain in their native repositories.
 
-`confidence` is bounded to `[0, 1]`. It describes confidence in the reconstruction/match, not probability that the event happened if provider evidence directly confirms it.
+`event_confidence` and `link_confidence` are independently bounded to `[0, 1]`:
+
+- `event_confidence` describes confidence that the real-world event occurred;
+- `link_confidence` describes confidence that the event belongs to the stated opportunity/account.
+
+Direct provider evidence can therefore confirm that a reply exists while the opportunity linkage remains uncertain. Linkage-dependent ratios require a defensible link; event existence alone is insufficient.
+
+`reconstruction_note`, when present, is short and bounded. It must not contain copied message bodies, raw subjects, credentials or unrestricted provider content.
 
 ### Privacy boundary
 
@@ -288,8 +296,10 @@ Native relationship/outreach evidence outranks a historical observation only whe
 
 V1 definitions:
 
-- `opportunities_observed`: distinct stored opportunities whose `discovered_at` falls inside the report window;
-- `opportunities_new`: same as observed in V1 because the repository preserves the first inserted canonical opportunity and deduplicates subsequent source duplicates.
+- `opportunities_observed`: distinct canonical opportunities first persisted inside the report window;
+- `opportunities_new`: an explicit alias for the same persisted-first-observation population in V1.
+
+The two fields intentionally have the same value in V1 because the current repository stores one canonical row and discards subsequent duplicates rather than persisting a gross observation event stream. Keeping both names preserves the approved report vocabulary while making the limitation explicit. A later ingestion-observability slice may separate gross source observations from newly persisted opportunities.
 
 Source ingestion's transient `created/existing` diagnostics may be reported separately later, but V1 does not reconstruct historical duplicate volume from logs that were never persisted.
 
@@ -355,7 +365,7 @@ Every ratio records:
 name
 value?              # null when denominator/coverage makes a ratio indefensible
 numerator
- denominator
+denominator
 coverage
 basis[]
 warnings[]
@@ -531,14 +541,15 @@ Implementation follows TDD. At minimum, tests cover:
 5. native evidence wins over imported provider evidence; imported provider evidence wins over a manual assertion for the same exact fact;
 6. ambiguous possible duplicates are not fuzzily collapsed;
 7. an unmatched historical reply can be retained but cannot inflate `send_to_reply_rate`;
-8. missing reply/process coverage produces `PARTIAL`/`UNKNOWN`, not a fabricated zero outcome;
-9. a zero denominator yields `value=null`, not division errors or a misleading 0%;
-10. historical import is idempotent;
-11. historical import cannot write to the native outreach or relationship repositories;
-12. raw body/MIME/credential-like fields are rejected or discarded according to the strict importer contract;
-13. aggregate JSON contains no provider message/thread IDs, contact names, addresses, subjects or message bodies;
-14. missing optional databases are not created by report reads;
-15. fixed inputs + fixed `--as-of` yield deterministic metric values and stable JSON ordering.
+8. direct event evidence with uncertain opportunity linkage preserves high event confidence and lower link confidence;
+9. missing reply/process coverage produces `PARTIAL`/`UNKNOWN`, not a fabricated zero outcome;
+10. a zero denominator yields `value=null`, not division errors or a misleading 0%;
+11. historical import is idempotent;
+12. historical import cannot write to the native outreach or relationship repositories;
+13. raw body/MIME/credential-like fields are rejected or discarded according to the strict importer contract;
+14. aggregate JSON contains no provider message/thread IDs, contact names, addresses, subjects or message bodies;
+15. missing optional databases are not created by report reads;
+16. fixed inputs + fixed `--as-of` yield deterministic metric values and stable JSON ordering.
 
 Public fixtures contain fictional identities only.
 
@@ -552,7 +563,9 @@ The operator contract should state:
 
 ## Research-informed product constraints
 
-The design intentionally incorporates recurring patterns observed in existing job-search trackers and user discussions:
+The design intentionally incorporates recurring patterns observed in existing job-search trackers and user discussions. Reference products/repos considered include JobOps, thehar/job-tracker, AI-Job-Application-Tracker and JobTrail; the useful patterns are treated as product references rather than copied architecture.
+
+Recurring constraints from that research:
 
 - job trackers become burdensome when every event requires duplicate manual entry;
 - users want to know which CV/application state was actually used, not just the company name;
