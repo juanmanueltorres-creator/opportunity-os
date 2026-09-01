@@ -34,7 +34,7 @@ def _opportunity(opportunity_id: str, discovered_at: datetime) -> Opportunity:
         source="manual",
         source_id=f"source-{opportunity_id}",
         source_url=f"https://example.test/{opportunity_id}",
-        company="Example Labs",
+        company=f"Example Labs {opportunity_id}",
         title="Software Engineer",
         description="Build reliable systems.",
         discovered_at=discovered_at,
