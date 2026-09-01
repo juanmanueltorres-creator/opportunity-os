@@ -494,7 +494,7 @@ def project_search_health(
     send_reply_complete = (
         complete_history_scope
         and inputs.history.coverage == "COMPLETE"
-        and inputs.outreach.coverage != "UNKNOWN"
+        and send_coverage == "COMPLETE"
     )
     send_reply_coverage: Coverage = (
         "COMPLETE"
