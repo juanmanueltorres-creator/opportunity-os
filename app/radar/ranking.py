@@ -131,6 +131,12 @@ def rank_assessment(
 
     if eligibility.eligible:
         career_tier = classify_fit(career_score, confidence.score, policy)
+        if (
+            career is not None
+            and "mandatory_experience_unverified" in career.assessment.risks
+            and career_tier in {"HIGH", "MEDIUM"}
+        ):
+            career_tier = "STRETCH"
         income_tier = _classify_income_fit(income_score, confidence.score, policy)
     else:
         career_tier = "DISCARD" if career_score is not None else None
