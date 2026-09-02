@@ -28,7 +28,7 @@ ProcessEmailStatus = Literal[
 ]
 
 CLASSIFIER_VERSION = "deterministic-process-email-v1"
-RULESET_VERSION = "es-en-2026-09-v1"
+RULESET_VERSION = "es-en-2026-09-v2"
 
 
 class StrictProcessEmailModel(BaseModel):
@@ -63,7 +63,7 @@ class ProcessSignal(StrictProcessEmailModel):
 class ProcessClassification(StrictProcessEmailModel):
     disposition: ClassificationDisposition
     classifier_version: Literal["deterministic-process-email-v1"] = CLASSIFIER_VERSION
-    ruleset_version: Literal["es-en-2026-09-v1"] = RULESET_VERSION
+    ruleset_version: Literal["es-en-2026-09-v2"] = RULESET_VERSION
     signals: list[ProcessSignal] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
@@ -99,7 +99,7 @@ class ProcessProjection(StrictProcessEmailModel):
 class ProcessEmailPreview(StrictProcessEmailModel):
     status: ProcessEmailStatus
     classifier_version: Literal["deterministic-process-email-v1"] = CLASSIFIER_VERSION
-    ruleset_version: Literal["es-en-2026-09-v1"] = RULESET_VERSION
+    ruleset_version: Literal["es-en-2026-09-v2"] = RULESET_VERSION
     source_ref: str | None = Field(default=None, min_length=1)
     observed_at: datetime | None = None
     signals: list[ProcessSignal] = Field(default_factory=list)
