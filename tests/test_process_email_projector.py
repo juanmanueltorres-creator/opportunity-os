@@ -183,7 +183,7 @@ def test_highest_priority_compatible_signal_drives_one_observation() -> None:
     assert observation.semantic_provenance.model_dump() == {
         "producer": "PROCESS_EMAIL_CLASSIFIER",
         "producer_version": "deterministic-process-email-v1",
-        "policy_version": "es-en-2026-09-v2",
+        "policy_version": "es-en-2026-09-v3",
         "classification": "OFFER_RECEIVED",
         "reason_code": "OFFER_EXPLICIT",
     }
