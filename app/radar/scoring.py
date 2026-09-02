@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 
 from app.matching.scorer import assess_opportunity
@@ -23,6 +24,15 @@ from app.radar.taxonomy import SkillMatchLevel, TaxonomyResolver
 
 _CAPABILITY_KINDS = {"skill", "experience"}
 _BARRIER_KINDS = {"license", "education", "experience", "work_authorization"}
+_EXPERIENCE_YEARS_RE = re.compile(
+    r"\b(?P<years>\d+(?:\.\d+)?)\s*(?:\+|[-–—]\s*\d+(?:\.\d+)?)?\s*(?:years?|años?|anos?)\b",
+    re.IGNORECASE,
+)
+_EXPERIENCE_CONTEXT_STOPWORDS = {
+    "a", "al", "and", "anos", "años", "at", "de", "del", "el", "en",
+    "experience", "experiencia", "least", "minimum", "minimo", "mínimo",
+    "of", "or", "the", "y", "year", "years",
+}
 
 
 def assess_career(
@@ -38,22 +48,24 @@ def assess_career(
 
     assessment_time = _aware_now(now)
     track_profile = _profile_for_track(profile, track)
-    mandatory = _skill_requirements(enrichment, importance="mandatory")
-    preferred = _skill_requirements(enrichment, importance="preferred")
+    mandatory = _career_requirements(enrichment, importance="mandatory")
+    preferred = _career_requirements(enrichment, importance="preferred")
 
     if not mandatory and not preferred:
         return assess_opportunity(opportunity, track_profile, now=assessment_time)
 
-    required_terms, mandatory_resolutions = _resolved_terms(
-        mandatory,
+    required_terms, _ = _resolved_terms(
+        [requirement for requirement in mandatory if requirement.kind == "skill"],
         track,
         resolver,
     )
-    preferred_terms, preferred_resolutions = _resolved_terms(
-        preferred,
+    preferred_terms, _ = _resolved_terms(
+        [requirement for requirement in preferred if requirement.kind == "skill"],
         track,
         resolver,
     )
+    mandatory_resolutions = _resolved_career_requirements(mandatory, track, resolver)
+    preferred_resolutions = _resolved_career_requirements(preferred, track, resolver)
     score_opportunity = opportunity.model_copy(
         update={
             "required_skills": required_terms,
@@ -76,6 +88,13 @@ def assess_career(
         if multiplier == 0.0
     ]
 
+    risks = list(base.risks)
+    if any(
+        requirement.kind == "experience" and multiplier == 0.0
+        for requirement, (_, multiplier) in zip(mandatory, mandatory_resolutions)
+    ):
+        _append_unique(risks, "mandatory_experience_unverified")
+
     overall_score = round(
         0.40 * mandatory_fit
         + 0.20 * base.domain_fit
@@ -84,12 +103,12 @@ def assess_career(
         + 0.10 * base.freshness_fit,
         1,
     )
-    recommendation = _recommend(overall_score, base.risks)
+    recommendation = _recommend(overall_score, risks)
     explanation = (
         f"mandatory={mandatory_fit:.1f}; domain={base.domain_fit:.1f}; "
         f"evidence={base.evidence_fit:.1f}; location={base.location_fit:.1f}; "
         f"freshness={base.freshness_fit:.1f}; matched={strengths}; "
-        f"gaps={gaps}; risks={base.risks}"
+        f"gaps={gaps}; risks={risks}"
     )
 
     return OpportunityAssessment(
@@ -102,7 +121,7 @@ def assess_career(
         freshness_fit=base.freshness_fit,
         strengths=strengths,
         gaps=gaps,
-        risks=base.risks,
+        risks=risks,
         evidence=base.evidence,
         recommendation=recommendation,
         explanation=explanation,
@@ -222,7 +241,7 @@ def _profile_for_track(
     return profile.model_copy(
         update={
             "roles": list(track.roles),
-            "skills": list(track.skills),
+            "skills": _verified_candidate_skills(track),
             "domains": list(track.domains),
             "evidence": list(track.evidence),
             "tracks": [],
@@ -230,7 +249,7 @@ def _profile_for_track(
     )
 
 
-def _skill_requirements(
+def _career_requirements(
     enrichment: OpportunityEnrichment,
     *,
     importance: str,
@@ -238,7 +257,14 @@ def _skill_requirements(
     return [
         requirement
         for requirement in enrichment.requirements
-        if requirement.kind == "skill" and requirement.importance == importance
+        if requirement.importance == importance
+        and (
+            requirement.kind == "skill"
+            or (
+                requirement.kind == "experience"
+                and _minimum_experience_years(requirement.value) is not None
+            )
+        )
     ]
 
 
@@ -249,8 +275,9 @@ def _resolved_terms(
 ) -> tuple[list[str], list[tuple[str | None, float]]]:
     terms: list[str] = []
     resolutions: list[tuple[str | None, float]] = []
+    candidate_skills = _verified_candidate_skills(track)
     for requirement in requirements:
-        resolved = resolver.resolve_skill(requirement.value, track.skills)
+        resolved = resolver.resolve_skill(requirement.value, candidate_skills)
         multiplier = resolved.multiplier
         if (
             requirement.exactness == "exact_product"
@@ -263,6 +290,47 @@ def _resolved_terms(
         else:
             terms.append(requirement.value)
     return terms, resolutions
+
+
+def _resolved_career_requirements(
+    requirements: list[Requirement],
+    track: CandidateTrack,
+    resolver: TaxonomyResolver,
+) -> list[tuple[str | None, float]]:
+    skill_resolutions = iter(_resolved_terms(
+        [requirement for requirement in requirements if requirement.kind == "skill"],
+        track,
+        resolver,
+    )[1])
+    resolutions: list[tuple[str | None, float]] = []
+    for requirement in requirements:
+        if requirement.kind == "skill":
+            resolutions.append(next(skill_resolutions))
+            continue
+        score = _experience_capability_score(requirement, track)
+        resolutions.append((requirement.value if score > 0.0 else None, score))
+    return resolutions
+
+
+def _minimum_experience_years(value: str) -> float | None:
+    match = _EXPERIENCE_YEARS_RE.search(value)
+    if match is None:
+        return None
+    return float(match.group("years"))
+
+
+def _verified_candidate_skills(track: CandidateTrack) -> list[str]:
+    skills = list(track.skills)
+    seen = {_normalize(value) for value in skills}
+    for evidence in track.evidence:
+        if not evidence.verified:
+            continue
+        for skill in evidence.skills:
+            key = _normalize(skill)
+            if key and key not in seen:
+                seen.add(key)
+                skills.append(skill)
+    return skills
 
 
 def _weighted_requirement_fit(
@@ -302,7 +370,10 @@ def _capability_fit(
     gaps: list[str] = []
     for requirement in targets:
         if requirement.kind == "skill":
-            resolved = resolver.resolve_skill(requirement.value, track.skills)
+            resolved = resolver.resolve_skill(
+                requirement.value,
+                _verified_candidate_skills(track),
+            )
             score = resolved.multiplier
             if (
                 requirement.exactness == "exact_product"
@@ -325,15 +396,36 @@ def _experience_capability_score(
     track: CandidateTrack,
 ) -> float:
     requirement_key = _normalize(requirement.value)
+    required_years = _minimum_experience_years(requirement.value)
+    required_context = _experience_context_terms(requirement.value)
+
     for evidence in track.evidence:
         if not evidence.verified or evidence.type != "experience":
             continue
-        corpus = " ".join(
-            [evidence.label, *evidence.skills, *evidence.domains]
-        ).casefold()
-        if requirement_key and requirement_key in corpus:
+        corpus = " ".join([evidence.label, *evidence.skills, *evidence.domains])
+        if required_years is not None:
+            evidenced_years = _minimum_experience_years(evidence.label)
+            if evidenced_years is None or evidenced_years < required_years:
+                continue
+            evidence_context = _experience_context_terms(corpus)
+            if not required_context or required_context.intersection(evidence_context):
+                return 1.0
+            continue
+        if requirement_key and requirement_key in _normalize(corpus):
             return 1.0
     return 0.0
+
+
+def _experience_context_terms(value: str) -> set[str]:
+    terms = {
+        token.casefold()
+        for token in re.findall(r"[^\W\d_]+", value, flags=re.UNICODE)
+    }
+    return {
+        term
+        for term in terms
+        if len(term) >= 3 and term not in _EXPERIENCE_CONTEXT_STOPWORDS
+    }
 
 
 def _logistics_fit(
@@ -494,7 +586,10 @@ def _recommend(score: float, risks: list[str]) -> Recommendation:
         recommendation = "nurture"
     else:
         recommendation = "discard"
-    if "location conflict" in risks and recommendation == "apply":
+    if (
+        "location conflict" in risks
+        or "mandatory_experience_unverified" in risks
+    ) and recommendation == "apply":
         return "stretch"
     return recommendation
 
@@ -524,3 +619,8 @@ def _normalize(value: str) -> str:
 
 def _dedupe(values: list[str]) -> list[str]:
     return list(dict.fromkeys(values))
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
