@@ -30,6 +30,10 @@ _GENERIC_DESCRIPTION = (
 
 _APPLICATION_ACK = (
     re.compile(r"\bwe (?:have )?received your application\b", re.I),
+    re.compile(
+        r"\byour application(?:\s+to\s+[^.!?\n]{1,120})?\s+has been received\b",
+        re.I,
+    ),
     re.compile(r"\bthank you for applying\b", re.I),
     re.compile(r"\bhemos recibido tu (?:candidatura|postulaci[oó]n)\b", re.I),
     re.compile(r"\brecibimos tu (?:candidatura|postulaci[oó]n)\b", re.I),
@@ -81,6 +85,10 @@ _OFFER = (
 )
 _REJECTION = (
     re.compile(r"\bwe will not be moving forward with your application\b", re.I),
+    re.compile(
+        r"\bwe (?:have )?decided not to move forward with your application\b",
+        re.I,
+    ),
     re.compile(r"\bwe have decided to move forward with other candidates\b", re.I),
     re.compile(r"\bthis position has been filled\b", re.I),
     re.compile(r"\bno continuaremos con tu candidatura\b", re.I),

@@ -164,7 +164,7 @@ async def test_full_interview_preview_requires_explicit_existing_import_and_pers
         "operator_observation_sha256": preview.operator_preview.observation_sha256,
         "semantic_producer": "PROCESS_EMAIL_CLASSIFIER",
         "semantic_producer_version": "deterministic-process-email-v1",
-        "semantic_policy_version": "es-en-2026-09-v2",
+        "semantic_policy_version": "es-en-2026-09-v3",
         "semantic_classification": "INTERVIEW_PROPOSED",
         "semantic_reason_code": "INTERVIEW_INVITATION_EXPLICIT",
     }

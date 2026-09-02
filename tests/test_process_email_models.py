@@ -43,7 +43,7 @@ def _classification(
     return ProcessClassification(
         disposition=disposition,
         classifier_version="deterministic-process-email-v1",
-        ruleset_version="es-en-2026-09-v2",
+        ruleset_version="es-en-2026-09-v3",
         signals=[_signal()] if signals is None else signals,
         warnings=[] if warnings is None else warnings,
     )
@@ -172,7 +172,7 @@ def test_preview_normalizes_observed_at_and_requires_empty_external_actions() ->
     preview = ProcessEmailPreview(
         status="NOT_PROCESS",
         classifier_version="deterministic-process-email-v1",
-        ruleset_version="es-en-2026-09-v2",
+        ruleset_version="es-en-2026-09-v3",
         source_ref="gmail:message:m1",
         observed_at=observed,
         signals=[],
@@ -185,7 +185,7 @@ def test_preview_normalizes_observed_at_and_requires_empty_external_actions() ->
         ProcessEmailPreview(
             status="NOT_PROCESS",
             classifier_version="deterministic-process-email-v1",
-            ruleset_version="es-en-2026-09-v2",
+            ruleset_version="es-en-2026-09-v3",
             source_ref="gmail:message:m1",
             observed_at=NOW,
             signals=[],
@@ -199,7 +199,7 @@ def test_preview_rejects_naive_observed_at() -> None:
         ProcessEmailPreview(
             status="NOT_PROCESS",
             classifier_version="deterministic-process-email-v1",
-            ruleset_version="es-en-2026-09-v2",
+            ruleset_version="es-en-2026-09-v3",
             source_ref="gmail:message:m1",
             observed_at=datetime(2026, 9, 1, 12, 0),
             signals=[],
@@ -232,7 +232,7 @@ def test_preview_requires_operator_preview_only_with_candidate() -> None:
         ProcessEmailPreview(
             status="CLASSIFIED",
             classifier_version="deterministic-process-email-v1",
-            ruleset_version="es-en-2026-09-v2",
+            ruleset_version="es-en-2026-09-v3",
             source_ref="gmail:message:m1",
             observed_at=NOW,
             signals=[_signal()],
@@ -246,7 +246,7 @@ def test_ambiguous_preview_can_never_carry_candidate_observation() -> None:
         ProcessEmailPreview(
             status="AMBIGUOUS",
             classifier_version="deterministic-process-email-v1",
-            ruleset_version="es-en-2026-09-v2",
+            ruleset_version="es-en-2026-09-v3",
             source_ref="gmail:message:m1",
             observed_at=NOW,
             signals=[_signal("REJECTED", reason_code="REJECTION_EXPLICIT"), _signal()],
