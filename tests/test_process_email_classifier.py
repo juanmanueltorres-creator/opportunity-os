@@ -261,7 +261,7 @@ def test_classifier_versions_are_exact_and_result_is_deterministic(
     second = classifier.classify(text)
 
     assert CLASSIFIER_VERSION == "deterministic-process-email-v1"
-    assert RULESET_VERSION == "es-en-2026-09-v2"
+    assert RULESET_VERSION == "es-en-2026-09-v3"
     assert first == second
     assert first.model_dump_json() == second.model_dump_json()
 
