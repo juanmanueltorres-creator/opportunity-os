@@ -41,6 +41,7 @@ _INTERVIEW_EXPLICIT = (
     ),
     re.compile(r"\bwe['’]d like to invite you to (?:an? )?interview\b", re.I),
     re.compile(r"\binvite you to (?:an? )?interview\b", re.I),
+    re.compile(r"\b(?:submit|complete|start) your (?:one-way )?video interview\b", re.I),
     re.compile(r"\bqueremos invitarte a una entrevista\b", re.I),
     re.compile(r"\bte invitamos a una entrevista\b", re.I),
 )
