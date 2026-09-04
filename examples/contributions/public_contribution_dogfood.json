@@ -1,0 +1,231 @@
+{
+  "version": "public-contribution-dogfood-v1",
+  "cases": [
+    {
+      "case_id": "hypothesized-geospatial-sdk",
+      "entry": {
+        "entry_id": "contrib-telehost-maps-sdk",
+        "repository_full_name": "telehostca/maps-sdk",
+        "repository_url": "https://github.com/telehostca/maps-sdk",
+        "origin": "REPOSITORY_RESEARCH",
+        "need_basis": "HYPOTHESIZED",
+        "need_statement": "A small TypeScript demo could make the SDK's geospatial workflow easier to evaluate.",
+        "evidence_refs": [],
+        "task_ref": null,
+        "bounded_task": "Build a minimal search-to-map-to-route demo without presenting it as a maintainer-requested task.",
+        "task_claim_state": "NONE",
+        "expected_effort": "S",
+        "risk_level": "LOW",
+        "discovered_at": "2026-09-04T03:30:00Z"
+      },
+      "events": [],
+      "proof": null,
+      "expected": {
+        "stage": "DISCOVERED",
+        "task_claim_state": "NONE",
+        "blocking_reason": null
+      }
+    },
+    {
+      "case_id": "open-unassigned-explicit-bug",
+      "entry": {
+        "entry_id": "contrib-trixo-issue-1",
+        "repository_full_name": "trixocom/odoo-argentina-trx-ce",
+        "repository_url": "https://github.com/trixocom/odoo-argentina-trx-ce",
+        "origin": "PUBLIC_ISSUE",
+        "need_basis": "OBSERVED",
+        "need_statement": "Odoo 19 CE installation can fail on an invalid es_419 language code while es_AR is active.",
+        "evidence_refs": [
+          "https://github.com/trixocom/odoo-argentina-trx-ce/issues/1"
+        ],
+        "task_ref": "github:issue:trixocom/odoo-argentina-trx-ce#1",
+        "bounded_task": "Reproduce the language-code failure, preserve compatible behavior, and add regression coverage.",
+        "task_claim_state": "AVAILABLE",
+        "expected_effort": "S",
+        "risk_level": "LOW",
+        "discovered_at": "2026-09-04T03:31:00Z"
+      },
+      "events": [],
+      "proof": null,
+      "expected": {
+        "stage": "TASK_READY",
+        "task_claim_state": "AVAILABLE",
+        "blocking_reason": null
+      }
+    },
+    {
+      "case_id": "strong-issue-claimed-other",
+      "entry": {
+        "entry_id": "contrib-sunat-issue-106",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "repository_url": "https://github.com/crafter-research/sunat-cli",
+        "origin": "HELP_WANTED",
+        "need_basis": "OBSERVED",
+        "need_statement": "The project requests human and agent discovery routes through /docs, /en/docs, and /llms.txt.",
+        "evidence_refs": [
+          "https://github.com/crafter-research/sunat-cli/issues/106"
+        ],
+        "task_ref": "github:issue:crafter-research/sunat-cli#106",
+        "bounded_task": "Implement the documented discovery routes while reusing existing sources of truth.",
+        "task_claim_state": "CLAIMED_OTHER",
+        "expected_effort": "M",
+        "risk_level": "LOW",
+        "discovered_at": "2026-09-04T03:32:00Z"
+      },
+      "events": [],
+      "proof": null,
+      "expected": {
+        "stage": "DISCOVERED",
+        "task_claim_state": "CLAIMED_OTHER",
+        "blocking_reason": null
+      }
+    },
+    {
+      "case_id": "moracarta-self-claimed-open-pr",
+      "entry": {
+        "entry_id": "contrib-moracarta-25",
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "repository_url": "https://github.com/WesleyHanauer/moracarta",
+        "origin": "PUBLIC_ISSUE",
+        "need_basis": "OBSERVED",
+        "need_statement": "The setup command needs deterministic test coverage.",
+        "evidence_refs": [
+          "https://github.com/WesleyHanauer/moracarta/issues/25"
+        ],
+        "task_ref": "github:issue:WesleyHanauer/moracarta#25",
+        "bounded_task": "Add test coverage for setup configuration generation without changing interactive behavior.",
+        "task_claim_state": "UNKNOWN",
+        "expected_effort": "S",
+        "risk_level": "LOW",
+        "discovered_at": "2026-09-04T02:04:00Z"
+      },
+      "events": [
+        {
+          "event_id": "moracarta-01-discovered",
+          "entry_id": "contrib-moracarta-25",
+          "kind": "DISCOVERED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "https://github.com/WesleyHanauer/moracarta/issues/25",
+          "observed_at": "2026-09-04T02:04:00Z"
+        },
+        {
+          "event_id": "moracarta-02-task-selected",
+          "entry_id": "contrib-moracarta-25",
+          "kind": "TASK_SELECTED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "https://github.com/WesleyHanauer/moracarta/issues/25",
+          "observed_at": "2026-09-04T02:05:00Z",
+          "task_ref": "github:issue:WesleyHanauer/moracarta#25"
+        },
+        {
+          "event_id": "moracarta-03-task-claimed-self",
+          "entry_id": "contrib-moracarta-25",
+          "kind": "TASK_CLAIMED_SELF",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "https://github.com/WesleyHanauer/moracarta/issues/25",
+          "observed_at": "2026-09-04T02:06:00Z",
+          "actor_ref": "github:user:juanmanueltorres-creator",
+          "task_ref": "github:issue:WesleyHanauer/moracarta#25"
+        },
+        {
+          "event_id": "moracarta-04-work-started",
+          "entry_id": "contrib-moracarta-25",
+          "kind": "WORK_STARTED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "github:branch:juanmanueltorres-creator/moracarta:test/setup-command",
+          "observed_at": "2026-09-04T02:10:49Z"
+        },
+        {
+          "event_id": "moracarta-05-pr-opened",
+          "entry_id": "contrib-moracarta-25",
+          "kind": "PR_OPENED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "https://github.com/WesleyHanauer/moracarta/pull/42",
+          "observed_at": "2026-09-04T02:22:25Z",
+          "actor_ref": "github:user:juanmanueltorres-creator",
+          "work_ref": "github:pr:WesleyHanauer/moracarta#42"
+        }
+      ],
+      "proof": {
+        "proof_id": "proof-moracarta-42",
+        "entry_id": "contrib-moracarta-25",
+        "artifact_kind": "PULL_REQUEST",
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "artifact_ref": "github:pr:WesleyHanauer/moracarta#42",
+        "artifact_url": "https://github.com/WesleyHanauer/moracarta/pull/42",
+        "status": "OPEN",
+        "observed_at": "2026-09-04T02:22:25Z",
+        "evidence_refs": [
+          "https://github.com/WesleyHanauer/moracarta/pull/42"
+        ]
+      },
+      "expected": {
+        "stage": "IN_REVIEW",
+        "task_claim_state": "CLAIMED_SELF",
+        "blocking_reason": null,
+        "proof_status": "OPEN"
+      }
+    },
+    {
+      "case_id": "sunat-draft-pr-external-blocker",
+      "entry": {
+        "entry_id": "contrib-sunat-16",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "repository_url": "https://github.com/crafter-research/sunat-cli",
+        "origin": "PUBLIC_ISSUE",
+        "need_basis": "OBSERVED",
+        "need_statement": "Live SUNAT smoke coverage is being implemented for scraper paths and runtime verification.",
+        "evidence_refs": [
+          "https://github.com/crafter-research/sunat-cli/pull/115"
+        ],
+        "task_ref": "github:issue:crafter-research/sunat-cli#16",
+        "bounded_task": "Add a live smoke workflow and assertions while keeping external authorization outside repository authority.",
+        "task_claim_state": "CLAIMED_SELF",
+        "expected_effort": "M",
+        "risk_level": "MEDIUM",
+        "discovered_at": "2026-09-04T00:02:20Z"
+      },
+      "events": [
+        {
+          "event_id": "sunat-01-pr-opened",
+          "entry_id": "contrib-sunat-16",
+          "kind": "PR_OPENED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "https://github.com/crafter-research/sunat-cli/pull/115",
+          "observed_at": "2026-09-04T00:02:20Z",
+          "actor_ref": "github:user:juanmanueltorres-creator",
+          "work_ref": "github:pr:crafter-research/sunat-cli#115"
+        },
+        {
+          "event_id": "sunat-02-blocked",
+          "entry_id": "contrib-sunat-16",
+          "kind": "BLOCKED",
+          "source_type": "PUBLIC_GITHUB",
+          "source_ref": "github:status:crafter-research/sunat-cli@06dcfd240451c8770033bdee14fb21efb0313965:Vercel",
+          "observed_at": "2026-09-04T00:15:40Z",
+          "reason": "external deployment authorization required"
+        }
+      ],
+      "proof": {
+        "proof_id": "proof-sunat-115",
+        "entry_id": "contrib-sunat-16",
+        "artifact_kind": "PULL_REQUEST",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "artifact_ref": "github:pr:crafter-research/sunat-cli#115",
+        "artifact_url": "https://github.com/crafter-research/sunat-cli/pull/115",
+        "status": "OPEN",
+        "observed_at": "2026-09-04T00:15:40Z",
+        "evidence_refs": [
+          "https://github.com/crafter-research/sunat-cli/pull/115",
+          "github:status:crafter-research/sunat-cli@06dcfd240451c8770033bdee14fb21efb0313965:Vercel"
+        ]
+      },
+      "expected": {
+        "stage": "IN_REVIEW",
+        "task_claim_state": "CLAIMED_SELF",
+        "blocking_reason": "external deployment authorization required",
+        "proof_status": "OPEN"
+      }
+    }
+  ]
+}
