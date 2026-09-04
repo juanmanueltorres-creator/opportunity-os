@@ -1,3 +1,8 @@
+from app.contributions.bridge import ContributionObservationBridge
+from app.contributions.github_provider import (
+    GitHubPublicContributionProvider,
+    selection_from_github_url,
+)
 from app.contributions.models import (
     ContributionContext,
     ContributionEvent,
@@ -24,6 +29,7 @@ from app.contributions.projector import (
     ContributionProjectionError,
     ContributionProjector,
 )
+from app.contributions.repository import SQLiteContributionRepository
 
 __all__ = [
     "PREVIEW_VERSION",
@@ -34,16 +40,20 @@ __all__ = [
     "ContributionImportRequest",
     "ContributionImportResult",
     "ContributionObservation",
+    "ContributionObservationBridge",
     "ContributionPreview",
     "ContributionProjectionError",
     "ContributionProjector",
     "GitHubCheckSnapshot",
     "GitHubContributionSelection",
     "GitHubIssueSnapshot",
+    "GitHubPublicContributionProvider",
     "GitHubPullRequestSnapshot",
     "GitHubReviewSnapshot",
     "ProofOfWork",
     "PublicContributionEntry",
+    "SQLiteContributionRepository",
     "canonical_sha256",
     "observation_sha256",
+    "selection_from_github_url",
 ]
