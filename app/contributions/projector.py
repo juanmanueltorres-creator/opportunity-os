@@ -20,7 +20,11 @@ class ContributionProjector:
     ) -> ContributionContext:
         ordered = sorted(events, key=lambda event: (event.observed_at, event.event_id))
 
-        stage = "TASK_READY" if entry.task_claim_state == "AVAILABLE" else "DISCOVERED"
+        stage = (
+            "TASK_READY"
+            if entry.task_claim_state in {"AVAILABLE", "CLAIMED_SELF"}
+            else "DISCOVERED"
+        )
         task_claim_state = entry.task_claim_state
         blocking_reason = None
         active_work_ref = None
@@ -57,6 +61,16 @@ class ContributionProjector:
             elif kind == "TASK_RELEASED":
                 stage = "TASK_READY"
                 task_claim_state = "AVAILABLE"
+            elif kind == "TASK_CLOSED":
+                task_claim_state = "CLOSED"
+                if stage in {
+                    "DISCOVERED",
+                    "CONTACTED",
+                    "ENGAGED",
+                    "TASK_READY",
+                    "PAUSED",
+                }:
+                    stage = "CLOSED"
             elif kind == "WORK_STARTED":
                 stage = "IN_PROGRESS"
             elif kind == "PR_OPENED":
