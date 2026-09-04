@@ -508,24 +508,8 @@ git commit -m "feat: add public contribution domain models"
 
 **Interfaces:**
 - Consumes: `PublicContributionEntry`, `ContributionEvent`, `ContributionContext`.
-- Produces:
-
-```python
-class ContributionProjectionError(ValueError):
-    pass
-
-
-class ContributionProjector:
-    def project(
-        self,
-        *,
-        entry: PublicContributionEntry,
-        events: list[ContributionEvent],
-    ) -> ContributionContext:
-        raise NotImplementedError
-```
-
-The final implementation must replace `raise NotImplementedError` during this task; it is shown only as the exact public signature to create before the TDD implementation.
+- Produces the public symbols `ContributionProjectionError` and `ContributionProjector`.
+- `ContributionProjector.project` accepts keyword-only `entry: PublicContributionEntry` and `events: list[ContributionEvent]`, and returns `ContributionContext`.
 
 Projection is pure: no IO, DB, clock read, environment variable, network call, or external mutation.
 
@@ -721,7 +705,7 @@ Expected result: collection fails because `app.contributions.projector` does not
 
 - [ ] **Step 3: Implement deterministic event ordering and normal transitions**
 
-Create `app/contributions/projector.py`. Sort with:
+Create `app/contributions/projector.py`. Define `ContributionProjectionError` as a `ValueError` subclass and `ContributionProjector.project` with the interface above. Sort with:
 
 ```python
 ordered = sorted(events, key=lambda event: (event.observed_at, event.event_id))
@@ -747,7 +731,7 @@ if event.entry_id != entry.entry_id:
     raise ContributionProjectionError("event entry_id does not match contribution entry")
 ```
 
-Implement every transition listed above. Set `last_event_kind` and `last_observed_at` after each successful event. Return `ContributionContext(event_count=len(ordered), ...)`.
+Implement every transition listed above. Set `last_event_kind` and `last_observed_at` after each successful event. Return `ContributionContext` with `event_count=len(ordered)` and all projected fields.
 
 - [ ] **Step 4: Add fail-closed sequence tests**
 
