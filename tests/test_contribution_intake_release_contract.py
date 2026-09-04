@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 import subprocess
 
@@ -8,14 +9,14 @@ from app.contributions.observations import ContributionImportReceipt, Contributi
 
 
 def test_contribution_intake_does_not_register_fastapi_routes():
-    from app.main import app
+    from app.main import app as fastapi_app
 
-    before = set(app.openapi()["paths"])
-    import app.contributions.bridge  # noqa: F401
-    import app.contributions.intake_cli  # noqa: F401
+    before = set(fastapi_app.openapi()["paths"])
+    importlib.import_module("app.contributions.bridge")
+    importlib.import_module("app.contributions.intake_cli")
 
-    app.openapi_schema = None
-    after = set(app.openapi()["paths"])
+    fastapi_app.openapi_schema = None
+    after = set(fastapi_app.openapi()["paths"])
     assert after == before
 
 
