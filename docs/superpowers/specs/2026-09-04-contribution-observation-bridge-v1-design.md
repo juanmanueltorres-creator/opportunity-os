@@ -6,11 +6,9 @@ Base: `main` at `c1ee646e5797d5e06ca6139cf17924d2029991d1`
 
 ## 1. Purpose
 
-Public Contribution Core V1 can represent contribution surfaces, contribution events, projected contribution context, and public proof of work. It does not yet provide a safe path from an explicitly selected public GitHub issue or pull request into those domain objects.
+Public Contribution Core V1 can represent contribution surfaces, append-only contribution events, projected context, and public proof of work. It does not yet provide a safe path from an explicitly selected public GitHub issue or pull request into those domain objects.
 
-Contribution Intake / Observation Bridge V1 adds that path while preserving the authority boundary already established by Public Contribution Core.
-
-The intended flow is:
+Contribution Intake / Observation Bridge V1 adds that path:
 
 ```text
 explicit public GitHub issue / PR
@@ -25,16 +23,14 @@ ContributionPreview
         ↓
 explicit human confirmation
         ↓
-local ContributionEvent or new PublicContributionEntry
+local PublicContributionEntry or ContributionEvent
         ↓
 ContributionContext
 ```
 
-The bridge observes public repository facts. It does not claim tasks, comment, open pull requests, merge, contact maintainers, or infer employment interest.
+The bridge observes public repository facts. It does not claim tasks, comment, open or mutate pull requests, merge, contact maintainers, or infer employment interest.
 
 ## 2. Hard invariants
-
-The following invariants are normative:
 
 ```text
 OBSERVE != CLAIM
@@ -48,97 +44,80 @@ GOOD_PROBLEM != AVAILABLE_PROBLEM
 PUBLIC_GITHUB_FACT != MAINTAINER_INTENT
 ```
 
-The bridge may convert an explicit public GitHub fact into local contribution state only after an operator previews and confirms the exact observation.
+The bridge may convert an explicit public GitHub fact into local contribution state only after the operator previews and confirms the exact observation.
 
-The bridge must never convert repository activity into hiring, recruiting, endorsement, or contact permission semantics.
-
-## 3. Scope
+## 3. V1 scope
 
 V1 supports one explicitly selected public GitHub issue or pull request at a time.
 
-It supports:
+Included:
 
-- public issue availability and assignment state;
-- public issue closure for an already-known contribution entry;
-- public pull request open, review, changes-requested, merge, and close facts;
+- issue availability and assignment state;
+- issue closure for an already-known entry;
+- PR open, review, changes-requested, merge, and close facts;
 - narrowly evidenced external authorization/permission blockers;
-- deterministic preview and import;
-- local SQLite persistence of entries, events, and import receipts;
-- a thin local CLI for explicit preview/import dogfood;
-- optional read-only GitHub authentication through an environment token.
+- deterministic preview/import;
+- local SQLite persistence for entries, events, and import receipts;
+- a thin local CLI for explicit dogfood;
+- optional read-only GitHub authentication.
 
-V1 does not support:
+Excluded:
 
-- repository discovery or scanning;
-- contribution ranking or radar;
+- GitHub search/radar/discovery;
 - automatic issue assignment;
-- issue comments;
-- pull-request creation or mutation;
-- merge authority;
-- Gmail collaboration-response classification;
-- maintainer conversation interpretation;
-- Relationship Memory mutation;
-- Outreach integration;
-- CV changes;
-- automatic `EvidenceItem` or `ProofOfWork` promotion;
-- employment inference;
+- comments or review submission;
+- PR creation, update, close, or merge;
 - background polling;
-- HTTP API routes;
-- autonomous follow-up.
+- Gmail collaboration classification;
+- Relationship Memory mutation;
+- Outreach/CV/Process Email integration;
+- automatic `ProofOfWork` or `EvidenceItem` promotion;
+- hiring or contact-permission inference;
+- HTTP API routes.
 
 ## 4. Architectural position
 
-The bridge is a sibling of the existing Operator Observation Bridge, not an extension of it.
+This is a sibling of the existing Operator Observation Bridge, not an extension of it.
 
-The existing `OperatorObservation` contract is relationship/hiring-oriented: it requires `account_id` and normalizes into `RelationshipEvent`. Contribution observations must not be pushed through that contract.
+`OperatorObservation` is relationship/hiring-oriented: it requires `account_id` and normalizes into `RelationshipEvent`. Contribution observations must not enter that contract.
 
-V1 introduces contribution-specific bridge components under the contribution subsystem:
+Proposed layout:
 
 ```text
 app/contributions/
-  models.py                 # existing core + small compatibility amendments
-  projector.py              # existing core + small compatibility amendments
-  repository.py             # new local persistence
-  observations.py           # new observation/preview/import models
-  github_provider.py        # explicit public GitHub read adapter
-  normalizer.py             # observation -> entry/event candidate
-  bridge.py                 # preview/import service
+  models.py                 # existing core + compatibility amendments
+  projector.py              # existing core + compatibility amendments
+  repository.py             # local persistence
+  observations.py           # observation/preview/import contracts
+  github_provider.py        # explicit public GitHub GET adapter
+  normalizer.py             # snapshot -> observation -> entry/event candidate
+  bridge.py                 # preview/import orchestration
   intake_cli.py             # explicit local operator surface
 ```
 
 No contribution model is added to `app.operator_bridge`, `app.relationships`, `app.outreach`, or `app.process_email`.
 
-## 5. Required Public Contribution Core compatibility amendments
+## 5. Required core compatibility corrections
 
-Real intake exposes two gaps in the just-merged core. These are treated as compatibility corrections required by this bridge, not as unrelated refactoring.
+Real intake exposes two gaps in the merged core. They are required corrections for this bridge, not unrelated refactoring.
 
-### 5.1 Initial `CLAIMED_SELF` projection
+### 5.1 `CLAIMED_SELF` must initialize as `TASK_READY`
 
-The approved Public Contribution Core design specifies:
-
-```text
-task_claim_state = AVAILABLE      -> TASK_READY
-task_claim_state = CLAIMED_SELF   -> TASK_READY
-otherwise                         -> DISCOVERED
-```
-
-The current implementation only initializes `AVAILABLE` as `TASK_READY`.
-
-V1 must correct the projector so:
+The approved core design says:
 
 ```text
 AVAILABLE     -> TASK_READY
 CLAIMED_SELF  -> TASK_READY
-CLAIMED_OTHER -> DISCOVERED
+otherwise     -> DISCOVERED
 ```
 
-This is required for the Moracarta issue #25 dogfood case: a public issue already assigned to the operator is an actionable task, not merely a discovered surface.
+The current implementation only initializes `AVAILABLE` as `TASK_READY`.
 
-A regression test must freeze this behavior.
+V1 must correct that behavior and add a regression test. This is required for Moracarta issue #25: an issue already assigned to the operator is actionable, not merely discovered.
 
-### 5.2 Public issue closure requires a task-close event
+### 5.2 Add `TASK_CLOSED`
 
-The current core has no event that means "the public task/issue itself closed". Mapping issue closure to `PR_CLOSED`, `DISCARDED`, or `PAUSED` would fabricate semantics.
+The core currently has no event for "the public issue/task closed". Mapping that fact to `PR_CLOSED`, `PAUSED`, or `DISCARDED` would fabricate semantics.
 
 V1 adds:
 
@@ -152,112 +131,84 @@ ContributionEventKind += TASK_CLOSED
 task_claim_state = CLOSED
 ```
 
-Stage behavior is conservative:
+Stage semantics:
 
 ```text
-if current stage in {DISCOVERED, CONTACTED, ENGAGED, TASK_READY, PAUSED}:
+if stage in {DISCOVERED, CONTACTED, ENGAGED, TASK_READY, PAUSED}:
     stage = CLOSED
-elif current stage in {IN_PROGRESS, IN_REVIEW, COMPLETED, CLOSED, DISCARDED}:
-    preserve current stage
+elif stage in {IN_PROGRESS, IN_REVIEW, COMPLETED, CLOSED, DISCARDED}:
+    preserve stage
 ```
 
-Rationale:
+Closing an issue must not erase an open PR or a completed contribution. A later reopened issue may emit `TASK_RELEASED` and return to `TASK_READY`.
 
-- a closed issue with no work underway is no longer actionable;
-- closing the issue must not erase an already-open PR or completed contribution;
-- a reopened issue can later emit `TASK_RELEASED`, returning it to `TASK_READY`.
-
-A new already-closed issue is not imported as a new entry in V1. `ISSUE_CLOSED` is accepted only for an existing contribution entry.
+A newly selected already-closed issue cannot create a new entry in V1; `ISSUE_CLOSED` is accepted only for an existing contribution entry.
 
 ## 6. Explicit GitHub selection
 
-The bridge never scans GitHub. The operator supplies one exact public resource.
-
 ```text
 GitHubContributionSelection
-  resource_kind            # ISSUE | PULL_REQUEST
+  resource_kind             # ISSUE | PULL_REQUEST
   repository_full_name
   number
   source_url
   operator_github_login
-  entry_id?                # optional for ISSUE; required for PULL_REQUEST
+  entry_id?                 # optional for ISSUE; required for PULL_REQUEST
 ```
 
 Rules:
 
-- `repository_full_name` is canonical `owner/repo`.
-- `number` is positive.
-- `source_url` must match the selected repository/resource identity.
-- `operator_github_login` is explicit input used only to distinguish self-assignment from assignment to another contributor.
-- GitHub login comparison is case-insensitive after canonical normalization.
-- `entry_id` is optional for an issue because a new public issue may create a proposed entry.
-- `entry_id` is mandatory for a pull request.
+- repository identity is canonical `owner/repo`;
+- resource number is positive;
+- URL must match repository, kind, and number;
+- operator login is explicit and used only for self-vs-other assignment;
+- login comparison is case-insensitive after normalization;
+- PR selection always requires explicit `entry_id`.
 
-### 6.1 No automatic PR-to-issue linkage
+For an issue without `entry_id`, the bridge computes the deterministic issue entry id first. If that entry already exists, the issue is treated as an existing entry rather than as a new intake.
 
-The bridge must not infer contribution lineage from PR body text such as:
+### 6.1 No automatic PR-to-issue lineage
 
-```text
-Closes #25
-Fixes #106
-Related to #1
-```
+PR text such as `Closes #25`, `Fixes #106`, or `Related to #1` is not authoritative lineage.
 
-For a pull request, the operator must explicitly identify the existing contribution entry.
-
-This prevents textual cross-links from silently becoming authoritative task lineage.
+The operator must explicitly select the existing contribution entry for every PR preview.
 
 ## 7. Read-only GitHub provider
 
-`GitHubPublicContributionProvider` may issue public GitHub GET requests only for the explicitly selected resource and the minimum public subresources needed to classify it.
+`GitHubPublicContributionProvider` performs only GET requests for the explicitly selected public resource and the minimum subresources needed to classify it.
 
-Allowed reads in V1:
+Allowed reads:
 
 - selected issue metadata;
-- selected pull request metadata;
-- reviews for the selected pull request;
-- commit/check/status metadata needed for bounded blocker detection.
+- selected PR metadata;
+- selected PR reviews;
+- selected PR commit/check/status metadata required for bounded blocker detection.
 
-Forbidden provider actions:
+Forbidden:
 
-- POST, PUT, PATCH, DELETE;
-- search endpoints for repository discovery;
-- issue assignment;
-- comments;
-- review submission;
-- pull-request mutation;
-- merge;
-- repository mutation.
+```text
+POST
+PUT
+PATCH
+DELETE
+search/discovery endpoints
+assignment
+comments
+review submission
+PR mutation
+merge
+repository mutation
+```
 
-The provider exposes a protocol so tests use fixtures/fakes rather than live GitHub.
+The provider exposes a protocol so tests use fakes/fixtures rather than live GitHub.
 
-### 7.1 Authentication
+An optional `GITHUB_TOKEN` may be used only for read requests/rate-limit relief. It is never persisted, serialized, logged, or included in errors.
 
-Public unauthenticated reads are valid.
+## 8. Transient GitHub snapshots
 
-An optional `GITHUB_TOKEN` may be used only as a bearer credential for read requests and rate-limit relief.
+Raw GitHub responses normalize immediately into strict allowlisted snapshots. Raw issue/PR bodies, review text, check logs, headers, and credentials are not persisted.
 
-The token:
-
-- is never persisted;
-- is never serialized into an observation;
-- is never logged;
-- is never included in error messages;
-- does not expand V1 action authority.
-
-### 7.2 Transient source material
-
-GitHub responses may contain fields not needed by the domain, including issue/PR bodies and verbose check descriptions.
-
-V1 persists only the allowlisted typed facts required by the observation, entry, event, and receipt contracts.
-
-Raw issue bodies, raw PR bodies, raw review text, raw check logs, HTTP headers, and provider credentials are not persisted.
-
-## 8. GitHub snapshot models
-
-Provider payloads are normalized immediately into strict transient snapshots.
-
-### 8.1 Issue snapshot
+### Issue
 
 ```text
 GitHubIssueSnapshot
@@ -271,11 +222,10 @@ GitHubIssueSnapshot
   created_at
   updated_at
   closed_at?
+  captured_at
 ```
 
-The issue body is not part of this model.
-
-### 8.2 Pull request snapshot
+### Pull request
 
 ```text
 GitHubPullRequestSnapshot
@@ -291,11 +241,12 @@ GitHubPullRequestSnapshot
   closed_at?
   merged_at?
   head_sha
-  latest_relevant_review?
-  relevant_check_snapshot?
+  reviews[]
+  checks[]
+  captured_at
 ```
 
-Review snapshot:
+Review:
 
 ```text
 GitHubReviewSnapshot
@@ -305,7 +256,7 @@ GitHubReviewSnapshot
   submitted_at
 ```
 
-Check snapshot:
+Check:
 
 ```text
 GitHubCheckSnapshot
@@ -313,14 +264,14 @@ GitHubCheckSnapshot
   name
   state_or_conclusion
   description_code?
-  observed_at
+  fact_at
 ```
 
-No raw review body or check log is stored.
+All timestamps are timezone-aware UTC after normalization.
 
 ## 9. Contribution observation
 
-A `ContributionObservation` is a typed statement about one public GitHub fact.
+A `ContributionObservation` is one typed public fact.
 
 ```text
 ContributionObservation
@@ -331,14 +282,17 @@ ContributionObservation
   kind
   entry_id?
   repository_full_name
-  observed_at
+  public_title?             # bounded public issue title; required for issue intake
+  fact_at                   # public fact occurrence time
+  captured_at               # time Opportunity OS read the fact
   task_ref?
   work_ref?
   actor_ref?
   reason_code?
+  source_fact_identity
 ```
 
-Observation kinds:
+Kinds:
 
 ```text
 ISSUE_AVAILABLE
@@ -356,19 +310,18 @@ BLOCKER_CLEARED
 
 Rules:
 
-- models use `extra="forbid"`;
-- timestamps must be timezone-aware and normalize to UTC;
-- `source_ref` is the exact public GitHub resource supporting the observation;
-- issue observations require `task_ref`;
+- strict `extra="forbid"` models;
+- issue observations require `task_ref` and bounded `public_title`;
 - PR/review observations require `work_ref`;
-- `EXTERNAL_BLOCKER` requires a bounded allowlisted `reason_code`;
-- observations contain no employment, recruiting, salary, hiring, or contact-permission fields.
+- blocker observation requires an allowlisted `reason_code`;
+- `captured_at >= fact_at` is not required because provider clocks/source timestamps may differ slightly, but both must be aware UTC;
+- no employment, recruiting, salary, or contact-permission fields exist.
 
-## 10. Observation identity and canonical hashes
+`fact_at` becomes the candidate `ContributionEvent.observed_at`. `captured_at` becomes a new entry's `discovered_at`.
 
-Observation identity must be stable across repeated reads of the same public fact.
+## 10. Stable observation identity
 
-The canonical identity basis is:
+Identity basis:
 
 ```text
 PUBLIC_GITHUB
@@ -381,164 +334,142 @@ source_fact_identity
 
 Examples:
 
-- issue assignment state may use the issue update identity relevant to the observed state;
-- PR open uses PR identity + created timestamp;
-- review uses the public review identifier;
-- merge uses PR identity + merged timestamp;
-- check blocker uses check/status identity.
+- PR open: PR identity + created timestamp;
+- review: public review id/ref;
+- merge: PR identity + merged timestamp;
+- issue closure: issue identity + closed timestamp;
+- blocker: check/status identity.
 
-`observation_id` is derived from a SHA-256 digest of canonical identity fields.
-
-`observation_sha256` hashes the complete typed observation in canonical JSON form.
-
-The bridge reuses the semantic pattern of the Operator Bridge but not its relationship-specific models.
+`observation_id` is derived from a SHA-256 digest of canonical identity fields. `observation_sha256` hashes the full typed observation as canonical JSON.
 
 ## 11. New issue intake
 
-An issue selection without `entry_id` may propose a new `PublicContributionEntry` only when the issue is open.
+An issue without an existing entry may propose a new immutable `PublicContributionEntry` only when the issue is open.
 
-The proposed entry is deterministic:
-
-```text
-entry_id
-  = contrib-<sha256(PUBLIC_GITHUB|repository_full_name|ISSUE|issue_number)>
-
-repository_full_name
-  = issue repository
-
-repository_url
-  = canonical repository URL
-
-origin
-  = PUBLIC_ISSUE
-
-need_basis
-  = OBSERVED
-
-need_statement
-  = sanitized public issue title
-
-evidence_refs
-  = [issue_url]
-
-task_ref
-  = issue_url
-
-bounded_task
-  = sanitized issue title
-
-discovered_at
-  = operator observation time
-```
-
-Initial `task_claim_state` derives only from public issue state/assignees:
+Deterministic identity:
 
 ```text
-open + no assignees
-  -> AVAILABLE
-
-open + operator login in assignees
-  -> CLAIMED_SELF
-
-open + assignee(s) and operator absent
-  -> CLAIMED_OTHER
+entry_id = contrib-<sha256(PUBLIC_GITHUB|repository_full_name|ISSUE|issue_number)>
 ```
 
-No issue body interpretation is required to create the entry.
-
-A closed issue without an existing `entry_id` is blocked with:
+Proposed fields:
 
 ```text
-closed_issue_requires_existing_entry
+repository_full_name = issue repository
+repository_url       = canonical repository URL
+origin               = PUBLIC_ISSUE
+need_basis           = OBSERVED
+need_statement       = sanitized bounded public issue title
+evidence_refs        = [issue_url]
+task_ref             = issue_url
+bounded_task          = sanitized bounded public issue title
+discovered_at         = observation.captured_at
 ```
 
-V1 does not create historical closed entries from arbitrary GitHub URLs.
+Initial claim state derives only from public state/assignees:
+
+```text
+open + no assignees                         -> AVAILABLE
+open + operator login among assignees       -> CLAIMED_SELF
+open + assignee(s), operator not among them -> CLAIMED_OTHER
+```
+
+No issue body interpretation is required.
+
+Closed issue + no existing entry returns `BLOCKED` with `closed_issue_requires_existing_entry`.
+
+New-entry import persists the entry and receipt atomically; no synthetic `ContributionEvent` is required because initial task state is already carried by the immutable entry.
 
 ## 12. Existing issue normalization
 
-For an issue tied to an existing entry, the current public issue snapshot is compared to the local contribution state.
-
-Mapping:
+Mapping when a deterministic/existing entry is present:
 
 ```text
-ISSUE_AVAILABLE
-  -> TASK_RELEASED
-
-ISSUE_CLAIMED_SELF
-  -> TASK_CLAIMED_SELF
-
-ISSUE_CLAIMED_OTHER
-  -> TASK_CLAIMED_OTHER
-
-ISSUE_CLOSED
-  -> TASK_CLOSED
+ISSUE_AVAILABLE       -> TASK_RELEASED
+ISSUE_CLAIMED_SELF    -> TASK_CLAIMED_SELF
+ISSUE_CLAIMED_OTHER   -> TASK_CLAIMED_OTHER
+ISSUE_CLOSED          -> TASK_CLOSED
 ```
 
-A candidate event is emitted only when it would represent a real change from the currently projected local state.
+An event is emitted only if it represents a real change from projected local state.
 
 Examples:
 
-- local `AVAILABLE`, GitHub still open/unassigned -> `NO_CHANGE`;
-- local `CLAIMED_SELF`, GitHub still assigned to operator -> `NO_CHANGE`;
-- local `CLAIMED_OTHER`, assignment removed -> `TASK_RELEASED`;
-- local `AVAILABLE`, issue closes -> `TASK_CLOSED`.
+```text
+local AVAILABLE + still open/unassigned -> NO_CHANGE
+local CLAIMED_SELF + still self-assigned -> NO_CHANGE
+local CLAIMED_OTHER + assignee removed   -> TASK_RELEASED
+local AVAILABLE + issue closes           -> TASK_CLOSED
+```
 
-The normalizer never emits an event solely to refresh a timestamp.
+No event exists only to refresh a timestamp.
 
 ## 13. Pull request normalization
 
-A pull request selection always requires an explicit existing `entry_id`.
+PR selection always requires an explicit existing entry. The selected PR's upstream/base repository identity must equal the entry's `repository_full_name`.
 
-The selected PR repository must match the contribution entry's `repository_full_name` as the upstream/base repository identity.
+The normalizer emits at most one candidate event per preview.
 
-The normalizer emits at most one candidate `ContributionEvent` per preview.
+### 13.1 Chronology, not semantic priority
 
-This one-event rule keeps every imported fact individually reviewable and makes replay/idempotency straightforward.
+A merged/closed PR may already contain older reviews or older blocker facts. Importing the terminal state before those older facts would make later append-only history impossible.
 
-### 13.1 Deterministic PR priority
+Therefore normalization works as follows:
 
-If multiple public facts are visible in one PR snapshot, choose the first not-yet-represented fact in this order:
+1. If local history lacks `PR_OPENED`, propose `PR_OPENED` first using PR `created_at`.
+2. Otherwise build the set of unseen admissible PR facts:
+   - relevant reviews;
+   - blocker/blocker-cleared facts;
+   - merge or close fact.
+3. Sort unseen facts by:
 
 ```text
-1. PR_OPENED
-2. PR_MERGED or PR_CLOSED
-3. CHANGES_REQUESTED or REVIEW_RECEIVED
-4. EXTERNAL_BLOCKER or BLOCKER_CLEARED
-5. NO_CHANGE
+(fact_at, deterministic_kind_order, source_fact_identity)
 ```
 
-Consequences:
+4. Select the earliest fact whose resulting core sequence is valid.
+5. Emit at most that one event.
+6. If none exists, return `NO_CHANGE`.
 
-- selecting an already-merged PR with no local `PR_OPENED` first proposes `PR_OPENED`; a subsequent preview may propose `PR_MERGED`;
-- selecting an open PR with an authorization blocker first establishes `PR_OPENED`; a subsequent preview may propose `BLOCKED`;
-- invalid core sequences are never bypassed merely because GitHub currently shows a later terminal state.
+This preserves public chronology and append-only event ordering.
+
+A deterministic tie order is frozen only for equal timestamps:
+
+```text
+CHANGES_REQUESTED
+REVIEW_RECEIVED
+EXTERNAL_BLOCKER
+BLOCKER_CLEARED
+PR_MERGED
+PR_CLOSED
+```
+
+The tie order does not override actual timestamps.
 
 ### 13.2 Review mapping
-
-The latest relevant unseen public review maps as:
 
 ```text
 CHANGES_REQUESTED -> CHANGES_REQUESTED
 APPROVED           -> REVIEW_RECEIVED
 COMMENTED          -> REVIEW_RECEIVED
-DISMISSED          -> no event in V1
+DISMISSED          -> ignored in V1
 ```
 
-A review before local `PR_OPENED` is never imported first because `PR_OPENED` has higher normalization priority.
+No review can import before local `PR_OPENED`.
 
-## 14. Bounded external blocker detection
+## 14. Evidence-aware blocker detection
 
-A failed CI/check is not automatically a contribution blocker. Generic test failure may simply indicate that the submitted code is failing and must not be mislabeled as an external dependency.
+A generic failing CI check is not automatically an external blocker.
 
-V1 emits `EXTERNAL_BLOCKER` only when public structured evidence explicitly indicates authorization, permission, access, or action-required gating outside normal code-test failure.
+V1 emits `EXTERNAL_BLOCKER` only when structured public evidence explicitly indicates authorization, permission, access, or action-required gating outside ordinary code-test failure.
 
-Accepted evidence classes:
+Accepted evidence:
 
 ```text
-GitHub check conclusion = ACTION_REQUIRED
+check conclusion = ACTION_REQUIRED
 ```
 
-or an allowlisted deterministic public status description match such as:
+or an allowlisted deterministic status-description match such as:
 
 ```text
 authorization required
@@ -548,13 +479,13 @@ deployment access required
 team authorization required
 ```
 
-The persisted event reason is a bounded code, not raw provider text. Example:
+Persisted reason is a bounded code, for example:
 
 ```text
 EXTERNAL_AUTHORIZATION_REQUIRED
 ```
 
-Generic states such as these do not create `BLOCKED` by themselves:
+These alone do not create `BLOCKED`:
 
 ```text
 failure
@@ -564,17 +495,15 @@ build failed
 lint failed
 ```
 
-If an active blocker exists and the same gating condition is demonstrably cleared, the bridge may propose `BLOCKER_CLEARED -> UNBLOCKED`.
+If an active blocker exists and the same gate is demonstrably cleared, the bridge may produce `BLOCKER_CLEARED -> UNBLOCKED`.
 
 ## 15. Contribution preview
-
-`ContributionPreview` is the human-review surface.
 
 ```text
 ContributionPreview
   preview_version
   status                    # IMPORTABLE | NO_CHANGE | ALREADY_IMPORTED | BLOCKED
-  observation_id
+  observation               # complete typed ContributionObservation
   observation_sha256
   preview_sha256
   entry_id
@@ -587,11 +516,11 @@ ContributionPreview
   external_actions[]
 ```
 
-`external_actions` must always be empty and is validator-enforced.
+`external_actions` must always be empty and validator-enforced.
 
-`context_after` is projected in memory only. Preview performs no local mutation.
+Preview is read-only. `context_after` is projected in memory.
 
-### 15.1 Preview state hash
+### 15.1 Preview hash
 
 `preview_sha256` binds:
 
@@ -600,30 +529,30 @@ preview_version
 observation_sha256
 proposed_entry or existing canonical entry
 candidate_event or null
-canonical existing event history hash
-projected context before
-projected context after
+canonical current event-history hash
+context_before
+context_after
 ```
 
-This prevents confirmation of a preview after local contribution state has changed.
+Same observation + same local state yields the same preview hash.
 
 ## 16. Preview statuses
 
 ```text
 IMPORTABLE
-  = exact observation can create one new entry or append one new event
+  exact preview can insert one new entry or append one event
 
 NO_CHANGE
-  = public fact is valid but local state already represents it; no import needed
+  valid public fact is already represented by local state, but no exact prior receipt is required
 
 ALREADY_IMPORTED
-  = the exact deterministic observation/import identity already has a receipt
+  exact deterministic observation/import identity already has a receipt
 
 BLOCKED
-  = source identity, entry lineage, domain sequence, or evidence rule is invalid
+  source identity, lineage, sequence, or evidence rule is invalid
 ```
 
-Representative bounded errors:
+Bounded errors include:
 
 ```text
 unknown_contribution_entry
@@ -637,28 +566,29 @@ unsupported_github_fact
 external_blocker_not_evidenced
 ```
 
-Errors must not include provider response bodies, credentials, raw review text, or raw check logs.
+Errors never contain raw provider bodies, tokens, review text, or check logs.
 
-## 17. Import confirmation
+## 17. Import contract
+
+Import uses the exact serialized preview that the operator reviewed:
 
 ```text
 ContributionImportRequest
-  observation
-  preview_sha256
+  preview
   confirmed_by
   confirmed_at
 ```
 
 Rules:
 
-- `confirmed_at >= observation.observed_at`;
-- confirmation is explicit and local;
-- import never executes a GitHub write;
-- import does not re-fetch GitHub.
+- `preview.status` must be `IMPORTABLE`;
+- `confirmed_at >= preview.observation.captured_at`;
+- import performs no GitHub read or write;
+- import recomputes normalization/hash against current local state using the typed observation embedded in the preview;
+- if local state changed, return `BLOCKED_STALE_PREVIEW`;
+- the bridge never silently refreshes the external fact during import.
 
-The preview represents an exact observed public snapshot. If GitHub changes afterward, that is a new observation, not a reason to rewrite history.
-
-Import re-evaluates the current local contribution state and recomputes the preview hash. If local state changed, import returns `BLOCKED_STALE_PREVIEW`.
+A later GitHub change becomes a new observation/preview rather than a rewrite of confirmed history.
 
 ## 18. Import receipt
 
@@ -677,21 +607,19 @@ ContributionImportReceipt
   status                    # IMPORTED | ALREADY_IMPORTED
 ```
 
-A new-entry intake may have no `contribution_event_id` because the immutable entry itself represents the initial observed task state.
+New-entry intake can have no `contribution_event_id` because the immutable entry carries the initial state.
 
-Receipts do not contain source bodies or hiring semantics.
+## 19. SQLite contribution repository
 
-## 19. Local SQLite repository
-
-V1 introduces:
+Default private path:
 
 ```text
 state/contributions.local.sqlite3
 ```
 
-The path is private/local and must be gitignored and covered by the private-file CI guard.
+It must be gitignored and added to the private/generated-file CI guard.
 
-The repository stores exactly three durable surfaces:
+Durable tables:
 
 ```text
 contribution_entries
@@ -699,277 +627,226 @@ contribution_events
 contribution_import_receipts
 ```
 
-`ContributionContext` remains a projection and is not an independent source of truth.
+`ContributionContext` remains a projection, not stored truth.
 
-### 19.1 Entry persistence
+### Entries
 
-`PublicContributionEntry` is immutable after creation in V1.
-
-Rules:
-
-- new `entry_id` -> insert;
-- identical replay -> idempotent;
-- same `entry_id` with different canonical payload -> conflict;
-- no update-in-place API exists.
-
-### 19.2 Event persistence
-
-`ContributionEvent` is append-only.
-
-Rules:
-
-- deterministic event identity;
+- immutable after creation;
+- new id inserts;
 - identical replay is idempotent;
-- same event id with different payload is conflict;
-- event order is validated by `(observed_at, event_id)`;
-- the complete projected sequence must validate before commit;
-- event append and receipt persistence are atomic.
+- same id with different canonical payload is conflict;
+- no update-in-place API.
 
-### 19.3 Read behavior
+### Events
 
-Reading a missing default contribution database must not create the database or parent directory.
+- append-only;
+- deterministic identity;
+- identical replay idempotent;
+- identity conflict rejected;
+- `(observed_at, event_id)` ordering enforced;
+- complete projected sequence validates before commit.
 
-Initialization is explicit.
+### Transactions
 
-This preserves the repo's established no-side-effect read behavior.
+New-entry import:
+
+```text
+entry + receipt
+```
+
+Existing-entry transition:
+
+```text
+event + receipt
+```
+
+Each pair is atomic.
+
+Reading a missing default DB must not create the DB or parent directory. Initialization is explicit.
 
 ## 20. Bridge service
-
-`ContributionObservationBridge` owns preview/import orchestration.
-
-Dependencies:
 
 ```text
 ContributionObservationBridge
   -> GitHubPublicContributionProvider
   -> SQLiteContributionRepository
   -> ContributionProjector
-  -> deterministic contribution normalizer
+  -> deterministic normalizer
 ```
 
-It does not depend on:
+It does not depend on Operator Bridge, Relationships, Outreach, Process Email, or CV services.
 
-```text
-OperatorBridgeService
-RelationshipService
-OutreachService
-ProcessEmailService
-CVPreparationService
-```
-
-### 20.1 Preview flow
+Preview flow:
 
 ```text
 selection
-  ↓
-provider read
-  ↓
-strict transient snapshot
-  ↓
-build deterministic observation
-  ↓
-load existing entry/events if applicable
-  ↓
-normalize to proposed entry OR zero/one event
-  ↓
-project context before/after
-  ↓
-return hash-bound preview
+  -> provider GET
+  -> strict transient snapshot
+  -> deterministic observation
+  -> load current entry/events
+  -> normalize to proposed entry OR zero/one event
+  -> project before/after
+  -> return hash-bound preview
 ```
 
-### 20.2 Import flow
+Import flow:
 
 ```text
-confirmed request
-  ↓
-normalize same typed observation
-  ↓
-check identical prior receipt
-  ↓
-recompute current local preview hash
-  ↓
-reject stale/conflicting/domain-invalid state
-  ↓
-atomic entry/event + receipt transaction
-  ↓
-return receipt
+confirmed serialized preview
+  -> check exact prior receipt
+  -> recompute against current local state
+  -> reject stale/conflicting/invalid state
+  -> atomic local insert
+  -> receipt
 ```
 
 ## 21. Thin local CLI
 
-V1 includes a local CLI only to make the bridge dogfoodable without adding an HTTP API.
+No HTTP route is added in V1.
 
-Illustrative commands:
-
-```text
-python -m app.contributions.intake_cli preview \
-  --url https://github.com/trixocom/odoo-argentina-trx-ce/issues/1 \
-  --operator-login juanmanueltorres-creator
-```
-
-For an existing contribution / PR:
+Exact preview command:
 
 ```text
 python -m app.contributions.intake_cli preview \
-  --url https://github.com/WesleyHanauer/moracarta/pull/42 \
-  --entry-id <entry-id> \
-  --operator-login juanmanueltorres-creator
+  --url <public-github-issue-or-pr-url> \
+  --operator-login <github-login> \
+  [--entry-id <existing-entry-id>] \
+  [--db state/contributions.local.sqlite3] \
+  --out <preview.json>
 ```
 
-Import requires an exact serialized preview plus explicit confirmation metadata.
+Behavior:
 
-The CLI:
+- performs explicit public GET read;
+- writes the exact typed preview JSON to `--out`;
+- also prints a compact human-readable summary;
+- does not import;
+- does not mutate GitHub.
 
-- prints typed JSON;
-- never asks GitHub to mutate anything;
-- never auto-confirms;
-- never imports on `preview`;
-- does not expose tokens;
-- defaults to the private local contribution DB path.
+Exact import command:
 
-Exact CLI argument names may be adjusted during implementation to match existing CLI conventions without changing the domain contract.
+```text
+python -m app.contributions.intake_cli import \
+  --preview-file <preview.json> \
+  --confirmed-by <operator-id> \
+  [--db state/contributions.local.sqlite3]
+```
+
+Behavior:
+
+- performs no GitHub network call;
+- validates exact preview and local-state hash;
+- imports only if `IMPORTABLE` and still current;
+- prints typed receipt JSON;
+- never auto-confirms.
 
 ## 22. Dogfood fixtures
 
-Tests use sanitized public snapshots, not live GitHub network calls.
+Tests use sanitized public snapshots, not live network calls. Public repository identities/URLs are acceptable; fixtures contain no personal emails, private messages, tokens, or inferred hiring intent.
 
-Public identities/URLs may remain because they are already public, but fixtures must contain no personal email addresses, private messages, access tokens, or inferred hiring intent.
-
-### Fixture A — Trixo issue #1
-
-Public pattern:
+### A — Trixo issue #1
 
 ```text
-open issue
-no assignee
+open + unassigned
+-> proposed entry AVAILABLE
+-> context_after TASK_READY
+-> candidate_event null
 ```
 
-Expected new-entry preview:
+### B — Moracarta issue #25
 
 ```text
-status = IMPORTABLE
-proposed_entry.need_basis = OBSERVED
-proposed_entry.task_claim_state = AVAILABLE
-context_after.stage = TASK_READY
-candidate_event = null
+open + assigned to operator
+-> proposed entry CLAIMED_SELF
+-> context_after TASK_READY
 ```
 
-### Fixture B — Moracarta issue #25
+This freezes the `CLAIMED_SELF` compatibility correction.
 
-Public pattern:
+### C — claimed-other public issue
 
 ```text
-open issue
-assigned to operator
+open + assigned to another contributor
+-> proposed entry CLAIMED_OTHER
+-> context_after DISCOVERED
 ```
 
-Expected new-entry preview:
+A good problem does not become available merely because it is relevant.
 
-```text
-proposed_entry.task_claim_state = CLAIMED_SELF
-context_after.stage = TASK_READY
-```
+### D — Moracarta PR #42
 
-This fixture freezes the compatibility correction from section 5.1.
-
-### Fixture C — Crafter issue #106-like claimed-other case
-
-Public pattern:
-
-```text
-open useful issue
-assigned to another contributor
-```
-
-Expected:
-
-```text
-proposed_entry.task_claim_state = CLAIMED_OTHER
-context_after.stage = DISCOVERED
-```
-
-The bridge must not mark it actionable merely because the problem is good.
-
-### Fixture D — Moracarta PR #42
-
-Given the explicit Moracarta contribution entry:
+Given an explicit Moracarta entry:
 
 ```text
 open PR
-not merged
-```
-
-Expected first PR preview:
-
-```text
-candidate_event.kind = PR_OPENED
-context_after.stage = IN_REVIEW
-```
-
-### Fixture E — SUNAT PR #115 authorization blocker
-
-Given an explicit SUNAT contribution entry and a public PR snapshot whose public check description explicitly indicates team/deployment authorization gating:
-
-First preview/import:
-
-```text
-PR_OPENED
+-> PR_OPENED
 -> IN_REVIEW
 ```
 
-Second preview/import:
+### E — SUNAT PR #115 authorization blocker
+
+Given an explicit SUNAT entry and a sanitized public check snapshot with explicit authorization gating:
 
 ```text
+first preview/import:
+PR_OPENED -> IN_REVIEW
+
+later chronological preview/import:
 BLOCKED(reason=EXTERNAL_AUTHORIZATION_REQUIRED)
 -> stage remains IN_REVIEW
--> blocking_reason is non-null
+-> blocking_reason non-null
 ```
 
-Generic CI failure without explicit authorization evidence must not produce this blocker.
+A generic failing check must not produce the blocker.
 
-## 23. Determinism and fail-closed rules
+## 23. Required regression coverage
 
-At minimum, regression tests must prove:
+At minimum:
 
-1. strict observation/snapshot models reject unknown fields;
+1. strict models reject unknown fields;
 2. naive datetimes fail;
-3. GitHub token never enters typed models;
-4. selected URL identity must match repo/kind/number;
-5. new open unassigned issue proposes `AVAILABLE` entry;
-6. new open self-assigned issue proposes `CLAIMED_SELF` entry;
-7. `CLAIMED_SELF` initial projection is `TASK_READY`;
-8. new other-assigned issue stays non-actionable;
-9. new closed issue without entry is blocked;
-10. existing issue closure maps to `TASK_CLOSED`;
-11. `TASK_CLOSED` updates task state without erasing `IN_REVIEW`;
-12. reopened issue can map to `TASK_RELEASED`;
-13. PR selection without entry id is blocked;
+3. token/authorization data cannot enter typed models;
+4. URL identity mismatch is blocked;
+5. new unassigned issue -> `AVAILABLE`;
+6. new self-assigned issue -> `CLAIMED_SELF`;
+7. initial `CLAIMED_SELF` -> `TASK_READY`;
+8. other-assigned issue remains non-actionable;
+9. closed new issue without entry is blocked;
+10. existing closure -> `TASK_CLOSED`;
+11. `TASK_CLOSED` does not erase `IN_REVIEW`;
+12. reopened issue -> `TASK_RELEASED`;
+13. PR without entry id is blocked;
 14. PR repository mismatch is blocked;
-15. PR body cross-link text never creates lineage;
-16. PR open is imported before later visible merge/close facts;
-17. review is never imported before PR open;
-18. merge/close sequence remains valid under core projector rules;
-19. exact review identity is idempotent;
-20. generic CI failure does not create external blocker;
-21. explicit auth/action-required evidence can create blocker;
-22. blocker remains orthogonal to `IN_REVIEW`;
-23. blocker clear maps to `UNBLOCKED` only when blocker is active;
-24. one preview emits at most one candidate event;
-25. repeated same source/local state returns `NO_CHANGE` or `ALREADY_IMPORTED` deterministically;
-26. same observation + same local state yields identical preview hash;
-27. local state change invalidates old preview hash;
-28. import never calls a GitHub mutation method;
-29. identical import is idempotent;
-30. conflicting observation identity fails closed;
-31. entry/event/receipt persistence is atomic;
-32. reading missing DB creates no file;
-33. public fixtures contain no private mail bodies or credentials;
-34. contribution models still contain no employment authority fields;
-35. default FastAPI/OpenAPI surface remains unchanged.
+15. PR body text never creates lineage;
+16. `PR_OPENED` precedes all later PR facts;
+17. unseen PR facts are selected chronologically;
+18. equal timestamps use deterministic tie order;
+19. older review is not stranded behind a later merge import;
+20. review cannot precede PR open;
+21. merge/close sequence respects core projector rules;
+22. exact review identity is idempotent;
+23. generic CI failure does not create external blocker;
+24. explicit action-required/auth evidence can create blocker;
+25. blocker remains orthogonal to `IN_REVIEW`;
+26. blocker clear requires active blocker;
+27. one preview emits at most one candidate event;
+28. repeated represented state -> deterministic `NO_CHANGE`/`ALREADY_IMPORTED`;
+29. same observation + local state -> same preview hash;
+30. local state change invalidates old preview;
+31. import uses embedded typed preview and does not re-fetch GitHub;
+32. import never calls a GitHub mutation method;
+33. identical import is idempotent;
+34. identity conflict fails closed;
+35. entry/receipt transaction is atomic;
+36. event/receipt transaction is atomic;
+37. missing DB read has no side effect;
+38. fixtures contain no private payloads or credentials;
+39. contribution models retain no employment-authority fields;
+40. default FastAPI/OpenAPI surface remains unchanged.
 
-## 24. Privacy and logging
+## 24. Privacy, release boundary, and acceptance
 
-Logs may include bounded operational identifiers:
+Logs may include bounded identifiers only:
 
 ```text
 repository_full_name
@@ -980,24 +857,9 @@ entry_id
 status/error_code
 ```
 
-Logs must not include:
+Logs exclude tokens, auth headers, raw bodies, raw reviews, raw check logs, private emails, and private messages.
 
-```text
-GitHub token
-Authorization header
-raw issue body
-raw PR body
-raw review body
-raw check logs
-private email address
-private message content
-```
-
-Public URLs are acceptable provenance, but no system may reinterpret their existence as permission for outreach.
-
-## 25. Release contract
-
-Public documentation for this slice must state:
+Public docs must state:
 
 ```text
 GitHub reads are explicit and read-only.
@@ -1005,76 +867,54 @@ Preview is local and non-mutating.
 Import mutates only local contribution state after confirmation.
 No GitHub write authority is added.
 Contribution outcomes do not imply employment interest.
+V1 is explicit-resource intake, not discovery/radar.
 ```
 
-The release contract must also state that V1 is intake for explicitly selected resources, not repository discovery/radar.
+V1 is accepted only when:
 
-## 26. Acceptance criteria
-
-Contribution Intake / Observation Bridge V1 is complete only when:
-
-- the `CLAIMED_SELF -> TASK_READY` compatibility bug is fixed and regression-tested;
-- `TASK_CLOSED` exists with the conservative projection semantics defined here;
-- strict GitHub issue/PR/review/check snapshot models exist;
-- strict contribution observation/preview/import/receipt models exist;
-- a read-only explicit GitHub provider exists;
-- no provider mutation method exists in the V1 adapter surface;
-- new open issues can be previewed as proposed immutable entries;
-- PRs require explicit existing entry lineage;
-- PR-to-issue linkage is never inferred from PR text;
-- existing issue/PR state can normalize to zero or one contribution event;
-- blocker classification is evidence-aware and generic CI failure does not become an external blocker;
+- both core compatibility corrections are implemented and tested;
+- strict snapshot and observation bridge contracts exist;
+- the provider surface is GET-only;
+- new open issues can preview deterministic immutable entries;
+- PRs require explicit lineage;
+- PR text cannot infer lineage;
+- existing state normalizes to zero/one event in public chronology;
+- blocker classification is evidence-aware;
 - preview is deterministic and state-hash bound;
-- import requires explicit human confirmation and rejects stale previews;
-- SQLite persistence is append-only/idempotent/conflict-safe and atomic;
-- missing-database reads are side-effect free;
-- thin CLI preview/import dogfood works without adding HTTP routes;
-- five public/sanitized dogfood cases pass;
-- no existing hiring, relationship, outreach, CV, Process Email, or default API contract changes;
-- full repository tests, compile gate, diff check, private-file guard, recruiter regressions, and offline runtime verification remain green.
+- import uses the exact confirmed serialized preview and rejects stale state;
+- SQLite persistence is append-only/idempotent/conflict-safe/atomic;
+- missing-DB reads are side-effect free;
+- CLI preview/import works without HTTP API routes or GitHub writes;
+- all five dogfood cases pass;
+- hiring/relationship/outreach/CV/Process Email contracts remain unchanged;
+- full repo tests, compile, diff check, private-file guard, recruiter regressions, and offline runtime gates remain green.
 
-## 27. Future seams
+## 25. Future seams
 
-Explicitly deferred:
-
-### Contribution Radar
+Deferred designs:
 
 ```text
-GitHub search/discovery
-  -> ranked contribution candidates
-  -> explicit operator selection
-  -> this intake bridge
+Contribution Radar
+GitHub search -> ranked candidates -> explicit selection -> this bridge
 ```
-
-### Contribution Conversation Classifier
 
 ```text
-explicit Gmail/public conversation
-  -> contribution-response classification
-  -> contribution observation preview
-  -> human confirmation
+Contribution Conversation Classifier
+explicit Gmail/public conversation -> contribution observation preview -> human confirmation
 ```
 
-This must remain separate from hiring Process Email.
-
-### Proof-of-work promotion
+This remains separate from hiring Process Email.
 
 ```text
-ContributionEvent / public PR state
-  -> ProofOfWork preview
-  -> human confirmation
-  -> optional candidate evidence preview
+Proof-of-work promotion
+ContributionEvent/public PR -> ProofOfWork preview -> human confirmation -> optional candidate evidence preview
 ```
 
-No automatic promotion is authorized by this design.
+No automatic promotion is authorized.
 
-### Monitoring
+Background monitoring/polling is also deferred because it introduces scheduling and external freshness policy.
 
-Background GitHub polling, notifications, and change watches require a separate design because they introduce scheduling, external freshness policy, and repeated network reads.
-
-## 28. Design summary
-
-V1 deliberately implements the narrow bridge:
+## 26. Summary
 
 ```text
 one selected public GitHub resource
@@ -1083,7 +923,7 @@ read-only factual snapshot
         ↓
 strict contribution observation
         ↓
-zero/one deterministic local transition
+zero/one chronological local transition
         ↓
 hash-bound preview
         ↓
@@ -1092,4 +932,4 @@ human confirmation
 append-only local contribution history
 ```
 
-It makes Public Contribution Core operational without turning Opportunity OS into a GitHub bot, a recruiter inference engine, or an autonomous collaboration agent.
+This makes Public Contribution Core operational without turning Opportunity OS into a GitHub bot, recruiter inference engine, or autonomous collaboration agent.
