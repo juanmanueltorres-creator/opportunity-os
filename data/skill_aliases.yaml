@@ -1,4 +1,4 @@
-version: "1"
+version: "2"
 entries:
   - canonical_skill: PostgreSQL
     aliases: [postgres]
@@ -12,6 +12,11 @@ entries:
     approved_by: maintainers
   - canonical_skill: PostGIS
     aliases: [spatial database]
+    relationship: related
+    confidence: 0.7
+    approved_by: maintainers
+  - canonical_skill: PostgreSQL
+    aliases: ["bases de datos", "base de datos"]
     relationship: related
     confidence: 0.7
     approved_by: maintainers

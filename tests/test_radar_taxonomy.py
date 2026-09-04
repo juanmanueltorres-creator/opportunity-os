@@ -37,6 +37,15 @@ def test_related_term_is_not_silent_equivalence() -> None:
     assert result.multiplier == 0.70
 
 
+def test_spanish_generic_database_requirement_is_related_to_postgresql() -> None:
+    result = _resolver().resolve_skill("bases de datos", ["PostgreSQL"])
+
+    assert result.level == "TAXONOMY_RELATED"
+    assert result.matched_skill == "PostgreSQL"
+    assert result.multiplier == 0.70
+    assert result.taxonomy_source == "aliases:2"
+
+
 def test_unknown_skill_has_zero_weight() -> None:
     result = _resolver().resolve_skill("COBOL", ["Python", "PostGIS"])
 
