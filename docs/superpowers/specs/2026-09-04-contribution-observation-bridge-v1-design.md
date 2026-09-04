@@ -167,6 +167,15 @@ Rules:
 
 For an issue without `entry_id`, the bridge computes the deterministic issue entry id first. If that entry already exists, the issue is treated as an existing entry rather than as a new intake.
 
+For an issue with an existing entry, lineage is stricter than repository equality:
+
+```text
+entry.repository_full_name == selected.repository_full_name
+entry.task_ref == selected.source_url
+```
+
+If `task_ref` is absent or points at a different task—even in the same repository—the preview is blocked with `task_ref_mismatch`. V1 does not mutate an immutable hypothesis entry to attach a newly discovered issue.
+
 ### 6.1 No automatic PR-to-issue lineage
 
 PR text such as `Closes #25`, `Fixes #106`, or `Related to #1` is not authoritative lineage.
@@ -204,6 +213,8 @@ The provider exposes a protocol so tests use fakes/fixtures rather than live Git
 
 An optional `GITHUB_TOKEN` may be used only for read requests/rate-limit relief. It is never persisted, serialized, logged, or included in errors.
 
+All wall-clock values used by the bridge/provider are injectable. Tests pass explicit `captured_at`, `confirmed_at`, and `processed_at` values; production CLI wiring may obtain them from a clock dependency. No domain hash or event identity depends on an untestable hidden `datetime.now()` call.
+
 ## 8. Transient GitHub snapshots
 
 Raw GitHub responses normalize immediately into strict allowlisted snapshots. Raw issue/PR bodies, review text, check logs, headers, and credentials are not persisted.
@@ -224,6 +235,8 @@ GitHubIssueSnapshot
   closed_at?
   captured_at
 ```
+
+For issue assignment/availability facts, `fact_at` derives from the public issue `updated_at`; for closure it derives from `closed_at`. An unrelated GitHub update may produce a new observation identity, but if task state did not change the normalizer returns `NO_CHANGE` and appends no event.
 
 ### Pull request
 
@@ -314,7 +327,7 @@ Rules:
 - issue observations require `task_ref` and bounded `public_title`;
 - PR/review observations require `work_ref`;
 - blocker observation requires an allowlisted `reason_code`;
-- `captured_at >= fact_at` is not required because provider clocks/source timestamps may differ slightly, but both must be aware UTC;
+- both `fact_at` and `captured_at` must be aware UTC;
 - no employment, recruiting, salary, or contact-permission fields exist.
 
 `fact_at` becomes the candidate `ContributionEvent.observed_at`. `captured_at` becomes a new entry's `discovered_at`.
@@ -337,6 +350,7 @@ Examples:
 - PR open: PR identity + created timestamp;
 - review: public review id/ref;
 - merge: PR identity + merged timestamp;
+- issue availability/assignment: canonical issue state + assignee set + `updated_at`;
 - issue closure: issue identity + closed timestamp;
 - blocker: check/status identity.
 
@@ -382,7 +396,16 @@ New-entry import persists the entry and receipt atomically; no synthetic `Contri
 
 ## 12. Existing issue normalization
 
-Mapping when a deterministic/existing entry is present:
+Before normalization, the existing entry must satisfy both repository and task lineage:
+
+```text
+entry.repository_full_name == observation.repository_full_name
+entry.task_ref == observation.task_ref
+```
+
+Otherwise fail closed with `repository_mismatch` or `task_ref_mismatch`.
+
+Mapping:
 
 ```text
 ISSUE_AVAILABLE       -> TASK_RELEASED
@@ -557,6 +580,7 @@ Bounded errors include:
 ```text
 unknown_contribution_entry
 repository_mismatch
+task_ref_mismatch
 pr_requires_entry_id
 closed_issue_requires_existing_entry
 observation_identity_conflict
@@ -672,6 +696,7 @@ ContributionObservationBridge
   -> SQLiteContributionRepository
   -> ContributionProjector
   -> deterministic normalizer
+  -> injected clock
 ```
 
 It does not depend on Operator Bridge, Relationships, Outreach, Process Email, or CV services.
@@ -684,6 +709,7 @@ selection
   -> strict transient snapshot
   -> deterministic observation
   -> load current entry/events
+  -> validate repository/task lineage
   -> normalize to proposed entry OR zero/one event
   -> project before/after
   -> return hash-bound preview
@@ -718,8 +744,8 @@ python -m app.contributions.intake_cli preview \
 Behavior:
 
 - performs explicit public GET read;
-- writes the exact typed preview JSON to `--out`;
-- also prints a compact human-readable summary;
+- writes exact typed preview JSON to `--out`;
+- prints a compact human-readable summary;
 - does not import;
 - does not mutate GitHub.
 
@@ -812,37 +838,39 @@ At minimum:
 7. initial `CLAIMED_SELF` -> `TASK_READY`;
 8. other-assigned issue remains non-actionable;
 9. closed new issue without entry is blocked;
-10. existing closure -> `TASK_CLOSED`;
-11. `TASK_CLOSED` does not erase `IN_REVIEW`;
-12. reopened issue -> `TASK_RELEASED`;
-13. PR without entry id is blocked;
-14. PR repository mismatch is blocked;
-15. PR body text never creates lineage;
-16. `PR_OPENED` precedes all later PR facts;
-17. unseen PR facts are selected chronologically;
-18. equal timestamps use deterministic tie order;
-19. older review is not stranded behind a later merge import;
-20. review cannot precede PR open;
-21. merge/close sequence respects core projector rules;
-22. exact review identity is idempotent;
-23. generic CI failure does not create external blocker;
-24. explicit action-required/auth evidence can create blocker;
-25. blocker remains orthogonal to `IN_REVIEW`;
-26. blocker clear requires active blocker;
-27. one preview emits at most one candidate event;
-28. repeated represented state -> deterministic `NO_CHANGE`/`ALREADY_IMPORTED`;
-29. same observation + local state -> same preview hash;
-30. local state change invalidates old preview;
-31. import uses embedded typed preview and does not re-fetch GitHub;
-32. import never calls a GitHub mutation method;
-33. identical import is idempotent;
-34. identity conflict fails closed;
-35. entry/receipt transaction is atomic;
-36. event/receipt transaction is atomic;
-37. missing DB read has no side effect;
-38. fixtures contain no private payloads or credentials;
-39. contribution models retain no employment-authority fields;
-40. default FastAPI/OpenAPI surface remains unchanged.
+10. existing issue with wrong/missing `task_ref` is blocked;
+11. existing closure -> `TASK_CLOSED`;
+12. `TASK_CLOSED` does not erase `IN_REVIEW`;
+13. reopened issue -> `TASK_RELEASED`;
+14. PR without entry id is blocked;
+15. PR repository mismatch is blocked;
+16. PR body text never creates lineage;
+17. `PR_OPENED` precedes all later PR facts;
+18. unseen PR facts are selected chronologically;
+19. equal timestamps use deterministic tie order;
+20. older review is not stranded behind a later merge import;
+21. review cannot precede PR open;
+22. merge/close sequence respects core projector rules;
+23. exact review identity is idempotent;
+24. generic CI failure does not create external blocker;
+25. explicit action-required/auth evidence can create blocker;
+26. blocker remains orthogonal to `IN_REVIEW`;
+27. blocker clear requires active blocker;
+28. one preview emits at most one candidate event;
+29. repeated represented state -> deterministic `NO_CHANGE`/`ALREADY_IMPORTED`;
+30. same observation + local state -> same preview hash;
+31. local state change invalidates old preview;
+32. import uses embedded typed preview and does not re-fetch GitHub;
+33. import never calls a GitHub mutation method;
+34. identical import is idempotent;
+35. identity conflict fails closed;
+36. entry/receipt transaction is atomic;
+37. event/receipt transaction is atomic;
+38. missing DB read has no side effect;
+39. injected clocks make preview/import deterministic in tests;
+40. fixtures contain no private payloads or credentials;
+41. contribution models retain no employment-authority fields;
+42. default FastAPI/OpenAPI surface remains unchanged.
 
 ## 24. Privacy, release boundary, and acceptance
 
@@ -874,14 +902,15 @@ V1 is accepted only when:
 
 - both core compatibility corrections are implemented and tested;
 - strict snapshot and observation bridge contracts exist;
-- the provider surface is GET-only;
+- provider surface is GET-only;
 - new open issues can preview deterministic immutable entries;
+- existing issue lineage requires exact repository + `task_ref` match;
 - PRs require explicit lineage;
 - PR text cannot infer lineage;
 - existing state normalizes to zero/one event in public chronology;
 - blocker classification is evidence-aware;
 - preview is deterministic and state-hash bound;
-- import uses the exact confirmed serialized preview and rejects stale state;
+- import uses exact confirmed serialized preview and rejects stale state;
 - SQLite persistence is append-only/idempotent/conflict-safe/atomic;
 - missing-DB reads are side-effect free;
 - CLI preview/import works without HTTP API routes or GitHub writes;
