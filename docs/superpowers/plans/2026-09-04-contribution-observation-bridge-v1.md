@@ -697,7 +697,8 @@ Use:
 
 ```python
 identity = f"PUBLIC_GITHUB|{repository_full_name}|ISSUE|{issue_number}"
-entry_id = f"contrib-{hashlib.sha256(identity.encode("utf-8")).hexdigest()}"
+digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+entry_id = f"contrib-{digest}"
 ```
 
 Issue observation identity contains canonical state, sorted case-folded assignee logins, and public `updated_at`; closure identity uses `closed_at`.
