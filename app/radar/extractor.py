@@ -36,6 +36,35 @@ PREFERRED_CUES = (
 MANDATORY_SECTION_HEADINGS = {"lo que buscamos"}
 PREFERRED_SECTION_HEADINGS = {"valoraremos"}
 
+_EDUCATION_SECTION_PREFIXES = (
+    "estudiantes avanzados",
+    "estudiante avanzado",
+    "graduados",
+    "graduado",
+)
+_OTHER_SECTION_PREFIXES = (
+    "interés por",
+    "interes por",
+    "capacidad analítica",
+    "capacidad analitica",
+    "buenas habilidades",
+)
+_EXPERIENCE_SECTION_PREFIXES = (
+    "experiencia ",
+    "participación en proyectos",
+    "participacion en proyectos",
+)
+_KNOWLEDGE_SECTION_PREFIXES = (
+    "conocimientos o experiencia en la plataforma ",
+    "conocimiento o experiencia en la plataforma ",
+    "conocimientos o experiencia en ",
+    "conocimiento o experiencia en ",
+    "conocimientos de ",
+    "conocimiento de ",
+    "conocimientos en ",
+    "conocimiento en ",
+)
+
 _DIRECT_ATS_SOURCES = {"greenhouse", "lever", "ashby"}
 _LANGUAGE_TERMS = {
     "english",
@@ -71,7 +100,7 @@ class RequirementExtractor(Protocol):
 
 
 class RuleBasedRequirementExtractor:
-    def __init__(self, *, extractor_version: str = "rules-v2") -> None:
+    def __init__(self, *, extractor_version: str = "rules-v3") -> None:
         if not extractor_version.strip():
             raise ValueError("extractor_version is required")
         self.extractor_version = extractor_version.strip()
@@ -82,12 +111,20 @@ class RuleBasedRequirementExtractor:
         for skill in opportunity.required_skills:
             self._add_requirement(
                 requirements,
-                self._structured_skill(skill, importance="mandatory", source_field="required_skills"),
+                self._structured_skill(
+                    skill,
+                    importance="mandatory",
+                    source_field="required_skills",
+                ),
             )
         for skill in opportunity.preferred_skills:
             self._add_requirement(
                 requirements,
-                self._structured_skill(skill, importance="preferred", source_field="preferred_skills"),
+                self._structured_skill(
+                    skill,
+                    importance="preferred",
+                    source_field="preferred_skills",
+                ),
             )
 
         free_text_requirements = self._extract_text_requirements(opportunity.description)
@@ -229,30 +266,13 @@ class RuleBasedRequirementExtractor:
                 continue
 
             body = line[1:].strip()
-            for raw_term in _split_requirement_terms(body):
-                term = _clean_term(raw_term)
-                if not term:
-                    continue
-                kind = _requirement_kind(term)
-                requirements.append(
-                    Requirement(
-                        kind=kind,
-                        value=term,
-                        importance=current_importance,
-                        exactness=(
-                            "declarative"
-                            if kind in {"license", "work_authorization"}
-                            else "conceptual"
-                        ),
-                        provenance=DerivedValue[str](
-                            value=term,
-                            source_text=line,
-                            source_field="description",
-                            extraction_method="explicit_rule",
-                            confidence=0.9,
-                        ),
-                    )
+            requirements.extend(
+                _parse_section_bullet(
+                    body,
+                    importance=current_importance,
+                    source_text=line,
                 )
+            )
 
         return requirements
 
@@ -279,6 +299,76 @@ class RuleBasedRequirementExtractor:
                 and existing.provenance.extraction_method != "source_structured"
             ):
                 requirements[key] = candidate
+
+
+def _parse_section_bullet(
+    body: str,
+    *,
+    importance: str,
+    source_text: str,
+) -> list[Requirement]:
+    cleaned_body = _clean_term(body)
+    if not cleaned_body:
+        return []
+
+    normalized = _normalized_key(cleaned_body)
+    if normalized.startswith(_EDUCATION_SECTION_PREFIXES):
+        return [_text_requirement(cleaned_body, "education", importance, source_text)]
+    if normalized.startswith(_OTHER_SECTION_PREFIXES):
+        return [_text_requirement(cleaned_body, "other", importance, source_text)]
+    if normalized.startswith(_EXPERIENCE_SECTION_PREFIXES):
+        return [_text_requirement(cleaned_body, "experience", importance, source_text)]
+
+    terms: list[str] = []
+    if normalized.startswith(_KNOWLEDGE_SECTION_PREFIXES):
+        for raw_term in _split_requirement_terms(cleaned_body):
+            term = _strip_section_skill_prefix(_clean_term(raw_term))
+            if term:
+                terms.append(term)
+    else:
+        terms = [
+            term
+            for raw_term in _split_requirement_terms(cleaned_body)
+            if (term := _clean_term(raw_term))
+        ]
+
+    return [
+        _text_requirement(term, _requirement_kind(term), importance, source_text)
+        for term in terms
+    ]
+
+
+def _strip_section_skill_prefix(term: str) -> str:
+    normalized = _normalized_key(term)
+    for prefix in sorted(_KNOWLEDGE_SECTION_PREFIXES, key=len, reverse=True):
+        if normalized.startswith(prefix):
+            return _clean_term(term[len(prefix) :])
+    return term
+
+
+def _text_requirement(
+    value: str,
+    kind: str,
+    importance: str,
+    source_text: str,
+) -> Requirement:
+    return Requirement(
+        kind=kind,
+        value=value,
+        importance=importance,
+        exactness=(
+            "declarative"
+            if kind in {"license", "work_authorization"}
+            else "conceptual"
+        ),
+        provenance=DerivedValue[str](
+            value=value,
+            source_text=source_text,
+            source_field="description",
+            extraction_method="explicit_rule",
+            confidence=0.9,
+        ),
+    )
 
 
 def _normalize_spaces(value: str) -> str:
@@ -340,11 +430,20 @@ def _requirement_kind(term: str) -> str:
         return "language"
     if re.search(r"\b(years?|años?|anos?|experience|experiencia)\b", normalized):
         return "experience"
-    if re.search(r"\b(bachelor|master|degree|licenciatura|universitario|university)\b", normalized):
+    if re.search(
+        r"\b(bachelor|master|degree|licenciatura|universitario|university)\b",
+        normalized,
+    ):
         return "education"
-    if re.search(r"\b(license|licencia|certification|certificación|certificacion)\b", normalized):
+    if re.search(
+        r"\b(license|licencia|certification|certificación|certificacion)\b",
+        normalized,
+    ):
         return "license"
-    if re.search(r"\b(work authorization|work permit|visa|autorización laboral|autorizacion laboral)\b", normalized):
+    if re.search(
+        r"\b(work authorization|work permit|visa|autorización laboral|autorizacion laboral)\b",
+        normalized,
+    ):
         return "work_authorization"
     if re.search(r"\b(location|located|reside|residencia|ubicación|ubicacion)\b", normalized):
         return "location"
