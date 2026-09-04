@@ -59,7 +59,7 @@ No existing job, target-account, outreach, process-email, or relationship contra
 2. Public need and contribution hypothesis remain distinct.
 3. Task quality and task availability remain distinct.
 4. Contribution lifecycle and hiring lifecycle remain distinct.
-5. Current state is projected from append-only events.
+5. Current state is projected from an immutable entry plus append-only events.
 6. Blocking is orthogonal to lifecycle stage.
 7. Repository identity is canonical; `TargetAccount` linkage is optional.
 8. No private email bodies or provider payloads are persisted in public fixtures.
@@ -70,7 +70,7 @@ No existing job, target-account, outreach, process-email, or relationship contra
 
 ### 4.1 `PublicContributionEntry`
 
-Represents why a public repository or task is worth considering as a contribution surface.
+Represents why a public repository or task is worth considering as a contribution surface at discovery time.
 
 Proposed fields:
 
@@ -134,15 +134,14 @@ Rules:
 - `account_id` is optional. A legitimate public contribution may belong to an individual or project that is not a `TargetAccount`.
 - `OBSERVED` and `MAINTAINER_STATED` require at least one evidence reference.
 - `HYPOTHESIZED` may describe a bounded contribution idea but must not claim that the maintainer requested it.
-- `CLAIMED_SELF` and `CLAIMED_OTHER` require `task_ref`.
-- `AVAILABLE` requires `task_ref`.
+- `AVAILABLE`, `CLAIMED_SELF`, `CLAIMED_OTHER`, and `CLOSED` require `task_ref`.
 - `bounded_task` is a scoped work description, not a promise that the work is available.
 - Unknown extra fields fail closed.
 - All timestamps are timezone-aware and normalized to UTC.
 
 ### 4.2 `ContributionEvent`
 
-Represents one evidenced event in the contribution lifecycle.
+Represents one evidenced event after discovery.
 
 Proposed fields:
 
@@ -154,6 +153,7 @@ source_type
 source_ref
 observed_at
 actor_ref?
+task_ref?
 work_ref?
 reason?
 ```
@@ -167,7 +167,9 @@ MAINTAINER_REPLIED
 COLLABORATION_WELCOMED
 WORK_PROPOSED
 TASK_SELECTED
-TASK_CLAIMED
+TASK_CLAIMED_SELF
+TASK_CLAIMED_OTHER
+TASK_RELEASED
 WORK_STARTED
 PR_OPENED
 REVIEW_RECEIVED
@@ -194,6 +196,7 @@ Rules:
 
 - Every event has a provenance-bearing `source_ref`.
 - V1 may model an event whose source is private (`EMAIL_PROVIDER`) but public dogfood fixtures must not contain private body text, email addresses, or provider payloads.
+- `TASK_SELECTED`, `TASK_CLAIMED_SELF`, `TASK_CLAIMED_OTHER`, and `TASK_RELEASED` require `task_ref`.
 - `PR_OPENED`, `PR_MERGED`, and `PR_CLOSED` require `work_ref`.
 - `BLOCKED` requires a bounded `reason`.
 - `UNBLOCKED` clears the active blocker during projection.
@@ -203,7 +206,7 @@ Rules:
 
 ### 5.1 Primary stage
 
-`ContributionContext` is derived from an entry plus its ordered events.
+`ContributionContext` is derived from the immutable entry plus its ordered events.
 
 The primary stage is exclusive:
 
@@ -215,6 +218,7 @@ TASK_READY
 IN_PROGRESS
 IN_REVIEW
 COMPLETED
+CLOSED
 PAUSED
 DISCARDED
 ```
@@ -228,29 +232,44 @@ blocking_reason?
 last_event_kind?
 last_observed_at?
 task_claim_state
+active_task_ref?
 active_work_ref?
 event_count
 ```
 
-Projection intent:
+#### Initial projection from the entry
+
+A contribution can already contain an actionable public issue when first discovered. The initial stage therefore depends on the entry's task state:
 
 ```text
-DISCOVERED                 -> DISCOVERED
+task_claim_state = AVAILABLE      -> TASK_READY
+task_claim_state = CLAIMED_SELF   -> TASK_READY
+otherwise                         -> DISCOVERED
+```
+
+`CLAIMED_OTHER` does not become `TASK_READY`: a good task already taken by somebody else is evidence of a useful problem, not an actionable task for the operator.
+
+#### Event projection
+
+```text
+DISCOVERED                 -> preserve current initial/substantive stage
 OUTREACH_SENT              -> CONTACTED
 MAINTAINER_REPLIED         -> ENGAGED
 COLLABORATION_WELCOMED     -> ENGAGED
 WORK_PROPOSED              -> ENGAGED
 TASK_SELECTED              -> TASK_READY
-TASK_CLAIMED               -> TASK_READY
+TASK_CLAIMED_SELF          -> TASK_READY + task_claim_state=CLAIMED_SELF
+TASK_CLAIMED_OTHER         -> preserve stage + task_claim_state=CLAIMED_OTHER
+TASK_RELEASED              -> TASK_READY + task_claim_state=AVAILABLE
 WORK_STARTED               -> IN_PROGRESS
 PR_OPENED                  -> IN_REVIEW
 REVIEW_RECEIVED            -> IN_REVIEW
 CHANGES_REQUESTED          -> IN_REVIEW
 PR_MERGED                  -> COMPLETED
-PR_CLOSED                  -> COMPLETED
+PR_CLOSED                  -> CLOSED
 PAUSED                     -> PAUSED
 RESUMED                    -> recompute from last substantive non-pause event
-DISCARDED                   -> DISCARDED
+DISCARDED                  -> DISCARDED
 ```
 
 `BLOCKED` and `UNBLOCKED` do not replace the primary stage.
@@ -287,9 +306,12 @@ A repeated projection over the same canonical entry and event sequence must prod
 Invalid event sequences fail closed where semantics would otherwise be fabricated. At minimum:
 
 - `PR_MERGED` without prior `PR_OPENED` is invalid in V1.
+- `PR_CLOSED` without prior `PR_OPENED` is invalid.
 - `REVIEW_RECEIVED` or `CHANGES_REQUESTED` without prior `PR_OPENED` is invalid.
 - `UNBLOCKED` without an active blocker is invalid.
-- `TASK_CLAIMED` without a task reference is invalid.
+- a second `BLOCKED` while a blocker is already active is invalid until `UNBLOCKED` occurs.
+- task events that require a task reference fail closed without one.
+- `TASK_CLAIMED_OTHER` never creates an actionable `TASK_READY` stage by itself.
 
 V1 does not attempt a complete project-management state machine. The projector enforces only invariants needed by the dogfood cases.
 
@@ -324,6 +346,7 @@ Rules:
 - `artifact_ref` must identify the public PR.
 - `evidence_refs` must contain public provenance.
 - `MERGED` is stronger proof that work was accepted upstream, but it does not imply employment interest, endorsement beyond the contribution, or permission to contact anyone.
+- `CLOSED_UNMERGED` remains proof that work was attempted and publicly inspectable; it is not equivalent to accepted work.
 - V1 does not automatically promote `ProofOfWork` into the existing candidate `EvidenceItem` model.
 - Future evidence promotion must remain behind an explicit preview/confirmation boundary.
 
@@ -365,6 +388,7 @@ Expected:
 
 ```text
 task_claim_state = CLAIMED_OTHER
+stage = DISCOVERED
 ```
 
 The model must preserve that distinction; issue quality must not imply availability.
@@ -378,7 +402,7 @@ Expected event sequence:
 ```text
 DISCOVERED
 TASK_SELECTED
-TASK_CLAIMED
+TASK_CLAIMED_SELF
 WORK_STARTED
 PR_OPENED
 ```
@@ -450,22 +474,27 @@ Required regression coverage:
 2. timezone-naive timestamps fail closed;
 3. observed/maintainer-stated needs require provenance;
 4. hypotheses cannot silently become observed needs;
-5. task availability and task quality are independent;
-6. claimed task requires a task ref;
+5. task availability and task quality remain independent;
+6. task claim/closed states require a task ref;
 7. deterministic event ordering produces stable projection;
-8. outreach without reply projects `CONTACTED`, not `ENGAGED`;
-9. maintainer reply projects `ENGAGED` without fabricating a task;
-10. task selection/claim projects `TASK_READY`;
-11. work start projects `IN_PROGRESS`;
-12. PR open projects `IN_REVIEW`;
-13. blocker preserves the current primary stage;
-14. unblock clears only the blocker;
-15. review before PR fails closed;
-16. merge before PR fails closed;
-17. merged PR projects `COMPLETED`;
-18. `ProofOfWork(MERGED)` never creates employment semantics;
-19. all five dogfood fixtures project the expected result;
-20. no fixture contains private email body text or personal email addresses.
+8. entry `AVAILABLE` starts as `TASK_READY`;
+9. entry `CLAIMED_OTHER` does not start as `TASK_READY`;
+10. outreach without reply projects `CONTACTED`, not `ENGAGED`;
+11. maintainer reply projects `ENGAGED` without fabricating a task;
+12. task selection/self-claim projects `TASK_READY`;
+13. other-claim does not fabricate availability;
+14. work start projects `IN_PROGRESS`;
+15. PR open projects `IN_REVIEW`;
+16. blocker preserves the current primary stage;
+17. unblock clears only the blocker;
+18. double-block fails closed;
+19. review before PR fails closed;
+20. merge/close before PR fails closed;
+21. merged PR projects `COMPLETED`;
+22. closed-unmerged PR projects `CLOSED`;
+23. `ProofOfWork(MERGED)` never creates employment semantics;
+24. all five dogfood fixtures project the expected result;
+25. no fixture contains private email body text, provider payloads, or personal email addresses.
 
 The final implementation gate must include the focused contribution suite plus the repository's existing full pytest/compile/private-file checks.
 
@@ -530,7 +559,7 @@ applications → interviews → offers
 Public Contribution Core V1 is complete when:
 
 - the four strict domain objects exist (`PublicContributionEntry`, `ContributionEvent`, `ContributionContext`, `ProofOfWork`);
-- contribution stage is deterministically projected from append-only events;
+- contribution stage is deterministically projected from immutable discovery state plus append-only events;
 - blocker state is orthogonal to lifecycle stage;
 - optional `TargetAccount` linkage is supported without being required;
 - the five public/sanitized dogfood cases pass;
