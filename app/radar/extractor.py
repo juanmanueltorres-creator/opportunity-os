@@ -33,6 +33,8 @@ PREFERRED_CUES = (
     "será un plus",
     "sera un plus",
 )
+MANDATORY_SECTION_HEADINGS = {"lo que buscamos"}
+PREFERRED_SECTION_HEADINGS = {"valoraremos"}
 
 _DIRECT_ATS_SOURCES = {"greenhouse", "lever", "ashby"}
 _LANGUAGE_TERMS = {
@@ -69,7 +71,7 @@ class RequirementExtractor(Protocol):
 
 
 class RuleBasedRequirementExtractor:
-    def __init__(self, *, extractor_version: str = "rules-v1") -> None:
+    def __init__(self, *, extractor_version: str = "rules-v2") -> None:
         if not extractor_version.strip():
             raise ValueError("extractor_version is required")
         self.extractor_version = extractor_version.strip()
@@ -172,7 +174,7 @@ class RuleBasedRequirementExtractor:
         )
 
     def _extract_text_requirements(self, description: str) -> list[Requirement]:
-        requirements: list[Requirement] = []
+        requirements = self._extract_section_requirements(description)
         for sentence in _sentences(description):
             parsed = _parse_explicit_requirement_sentence(sentence)
             if parsed is None:
@@ -202,6 +204,56 @@ class RuleBasedRequirementExtractor:
                         ),
                     )
                 )
+        return requirements
+
+    @staticmethod
+    def _extract_section_requirements(description: str) -> list[Requirement]:
+        requirements: list[Requirement] = []
+        current_importance: str | None = None
+
+        for raw_line in description.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            heading = line.rstrip(":").strip().casefold()
+            if heading in MANDATORY_SECTION_HEADINGS:
+                current_importance = "mandatory"
+                continue
+            if heading in PREFERRED_SECTION_HEADINGS:
+                current_importance = "preferred"
+                continue
+
+            if current_importance is None or not line.startswith(("-", "•", "*")):
+                current_importance = None
+                continue
+
+            body = line[1:].strip()
+            for raw_term in _split_requirement_terms(body):
+                term = _clean_term(raw_term)
+                if not term:
+                    continue
+                kind = _requirement_kind(term)
+                requirements.append(
+                    Requirement(
+                        kind=kind,
+                        value=term,
+                        importance=current_importance,
+                        exactness=(
+                            "declarative"
+                            if kind in {"license", "work_authorization"}
+                            else "conceptual"
+                        ),
+                        provenance=DerivedValue[str](
+                            value=term,
+                            source_text=line,
+                            source_field="description",
+                            extraction_method="explicit_rule",
+                            confidence=0.9,
+                        ),
+                    )
+                )
+
         return requirements
 
     @staticmethod
