@@ -1,0 +1,189 @@
+{
+  "cases": [
+    {
+      "case_id": "trixo-open-unassigned",
+      "selection": {
+        "resource_kind": "ISSUE",
+        "repository_full_name": "trixocom/odoo-argentina-trx-ce",
+        "number": 1,
+        "source_url": "https://github.com/trixocom/odoo-argentina-trx-ce/issues/1",
+        "operator_github_login": "juanmanueltorres-creator",
+        "entry_id": null
+      },
+      "snapshot_kind": "ISSUE",
+      "snapshot": {
+        "repository_full_name": "trixocom/odoo-argentina-trx-ce",
+        "issue_number": 1,
+        "issue_url": "https://github.com/trixocom/odoo-argentina-trx-ce/issues/1",
+        "title": "Invalid language code: es_419 en l10n_ar_edi_base",
+        "state": "OPEN",
+        "assignee_logins": [],
+        "author_login": "fernandogiacomino",
+        "created_at": "2026-08-12T15:26:47+00:00",
+        "updated_at": "2026-08-12T15:26:47+00:00",
+        "closed_at": null,
+        "captured_at": "2026-09-04T14:30:00+00:00"
+      },
+      "expected_claim_state": "AVAILABLE",
+      "expected_stage": "TASK_READY"
+    },
+    {
+      "case_id": "moracarta-self-claimed",
+      "selection": {
+        "resource_kind": "ISSUE",
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "number": 25,
+        "source_url": "https://github.com/WesleyHanauer/moracarta/issues/25",
+        "operator_github_login": "juanmanueltorres-creator",
+        "entry_id": null
+      },
+      "snapshot_kind": "ISSUE",
+      "snapshot": {
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "issue_number": 25,
+        "issue_url": "https://github.com/WesleyHanauer/moracarta/issues/25",
+        "title": "tests: setup command",
+        "state": "OPEN",
+        "assignee_logins": ["juanmanueltorres-creator"],
+        "author_login": "WesleyHanauer",
+        "created_at": "2026-09-02T17:23:19+00:00",
+        "updated_at": "2026-09-04T00:32:04+00:00",
+        "closed_at": null,
+        "captured_at": "2026-09-04T14:30:00+00:00"
+      },
+      "expected_claim_state": "CLAIMED_SELF",
+      "expected_stage": "TASK_READY"
+    },
+    {
+      "case_id": "sunat-claimed-other",
+      "selection": {
+        "resource_kind": "ISSUE",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "number": 106,
+        "source_url": "https://github.com/crafter-research/sunat-cli/issues/106",
+        "operator_github_login": "juanmanueltorres-creator",
+        "entry_id": null
+      },
+      "snapshot_kind": "ISSUE",
+      "snapshot": {
+        "repository_full_name": "crafter-research/sunat-cli",
+        "issue_number": 106,
+        "issue_url": "https://github.com/crafter-research/sunat-cli/issues/106",
+        "title": "docs: add llms.txt",
+        "state": "OPEN",
+        "assignee_logins": ["BenjaminGhiggo"],
+        "author_login": "crafter-research",
+        "created_at": "2026-09-01T12:00:00+00:00",
+        "updated_at": "2026-09-03T12:00:00+00:00",
+        "closed_at": null,
+        "captured_at": "2026-09-04T14:30:00+00:00"
+      },
+      "expected_claim_state": "CLAIMED_OTHER",
+      "expected_stage": "DISCOVERED"
+    },
+    {
+      "case_id": "moracarta-pr-open",
+      "selection": {
+        "resource_kind": "PULL_REQUEST",
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "number": 42,
+        "source_url": "https://github.com/WesleyHanauer/moracarta/pull/42",
+        "operator_github_login": "juanmanueltorres-creator",
+        "entry_id": "contrib-moracarta-25"
+      },
+      "existing_entry": {
+        "entry_id": "contrib-moracarta-25",
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "repository_url": "https://github.com/WesleyHanauer/moracarta",
+        "account_id": null,
+        "origin": "PUBLIC_ISSUE",
+        "need_basis": "OBSERVED",
+        "need_statement": "tests: setup command",
+        "evidence_refs": ["https://github.com/WesleyHanauer/moracarta/issues/25"],
+        "task_ref": "https://github.com/WesleyHanauer/moracarta/issues/25",
+        "bounded_task": "tests: setup command",
+        "task_claim_state": "CLAIMED_SELF",
+        "expected_effort": "UNKNOWN",
+        "risk_level": "UNKNOWN",
+        "discovered_at": "2026-09-04T00:32:04+00:00"
+      },
+      "snapshot_kind": "PULL_REQUEST",
+      "snapshot": {
+        "repository_full_name": "WesleyHanauer/moracarta",
+        "pr_number": 42,
+        "pr_url": "https://github.com/WesleyHanauer/moracarta/pull/42",
+        "state": "OPEN",
+        "merged": false,
+        "draft": false,
+        "author_login": "juanmanueltorres-creator",
+        "created_at": "2026-09-04T02:22:25+00:00",
+        "updated_at": "2026-09-04T02:22:25+00:00",
+        "closed_at": null,
+        "merged_at": null,
+        "head_sha": "a22e50f9b541f889b47ea5da5fa205353bd97e8a",
+        "reviews": [],
+        "checks": [],
+        "captured_at": "2026-09-04T14:30:00+00:00"
+      },
+      "expected_event": "PR_OPENED",
+      "expected_stage": "IN_REVIEW"
+    },
+    {
+      "case_id": "sunat-pr-external-blocker",
+      "selection": {
+        "resource_kind": "PULL_REQUEST",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "number": 115,
+        "source_url": "https://github.com/crafter-research/sunat-cli/pull/115",
+        "operator_github_login": "juanmanueltorres-creator",
+        "entry_id": "contrib-sunat-16"
+      },
+      "existing_entry": {
+        "entry_id": "contrib-sunat-16",
+        "repository_full_name": "crafter-research/sunat-cli",
+        "repository_url": "https://github.com/crafter-research/sunat-cli",
+        "account_id": null,
+        "origin": "PUBLIC_ISSUE",
+        "need_basis": "OBSERVED",
+        "need_statement": "live SUNAT smoke coverage",
+        "evidence_refs": ["https://github.com/crafter-research/sunat-cli/issues/16"],
+        "task_ref": "https://github.com/crafter-research/sunat-cli/issues/16",
+        "bounded_task": "live SUNAT smoke coverage",
+        "task_claim_state": "CLAIMED_SELF",
+        "expected_effort": "UNKNOWN",
+        "risk_level": "UNKNOWN",
+        "discovered_at": "2026-09-04T00:02:20+00:00"
+      },
+      "snapshot_kind": "PULL_REQUEST",
+      "snapshot": {
+        "repository_full_name": "crafter-research/sunat-cli",
+        "pr_number": 115,
+        "pr_url": "https://github.com/crafter-research/sunat-cli/pull/115",
+        "state": "OPEN",
+        "merged": false,
+        "draft": true,
+        "author_login": "juanmanueltorres-creator",
+        "created_at": "2026-09-04T00:02:20+00:00",
+        "updated_at": "2026-09-04T00:15:40+00:00",
+        "closed_at": null,
+        "merged_at": null,
+        "head_sha": "06dcfd240451c8770033bdee14fb21efb0313965",
+        "reviews": [],
+        "checks": [
+          {
+            "check_ref": "status:vercel-auth",
+            "name": "Vercel",
+            "state_or_conclusion": "failure",
+            "description_code": "EXTERNAL_AUTHORIZATION_REQUIRED",
+            "fact_at": "2026-09-04T00:10:00+00:00"
+          }
+        ],
+        "captured_at": "2026-09-04T14:30:00+00:00"
+      },
+      "expected_first_event": "PR_OPENED",
+      "expected_second_event": "BLOCKED",
+      "expected_stage": "IN_REVIEW",
+      "expected_blocking_reason": "EXTERNAL_AUTHORIZATION_REQUIRED"
+    }
+  ]
+}
