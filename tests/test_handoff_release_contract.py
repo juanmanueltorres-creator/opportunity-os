@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 HANDOFF_ROOT = Path("app/handoffs")
-README = Path("README.md")
+PUBLIC_CONTRACT_DOCS = (Path("README.md"), Path("docs/CROSS_REPO_HANDOFF_V01.md"))
 
 FORBIDDEN_PRODUCTION_REFERENCES = (
     "app.targets",
@@ -15,7 +15,7 @@ FORBIDDEN_PRODUCTION_REFERENCES = (
     "httpx.Client",
 )
 
-REQUIRED_README_BOUNDARIES = (
+REQUIRED_PUBLIC_BOUNDARIES = (
     "handoff preview != import",
     "IMPORT_PUBLIC_CONTRIBUTION != automatic import",
     "PUBLIC_CONTRIBUTION_CANDIDATE != JOB_OPENING",
@@ -29,6 +29,10 @@ def _handoff_source() -> str:
     )
 
 
+def _public_contract_text() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PUBLIC_CONTRACT_DOCS)
+
+
 def test_handoff_package_has_no_forbidden_authority_or_io_references() -> None:
     source = _handoff_source()
 
@@ -36,8 +40,8 @@ def test_handoff_package_has_no_forbidden_authority_or_io_references() -> None:
         assert forbidden not in source
 
 
-def test_readme_freezes_handoff_authority_boundary() -> None:
-    readme = README.read_text(encoding="utf-8")
+def test_public_docs_freeze_handoff_authority_boundary() -> None:
+    public_contract = _public_contract_text()
 
-    for statement in REQUIRED_README_BOUNDARIES:
-        assert statement in readme
+    for statement in REQUIRED_PUBLIC_BOUNDARIES:
+        assert statement in public_contract
