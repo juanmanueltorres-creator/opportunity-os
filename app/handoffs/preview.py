@@ -48,9 +48,12 @@ def _actor_preview(
     handoff: ResearchOpportunityHandoff,
     candidate: ActorNeedHypothesisCandidate,
 ) -> OpportunityHandoffPreview:
-    if candidate.actor_refs:
-        dispositions: list[Disposition] = ["RESEARCH_ACTOR", "WATCH", "DISCARD"]
-        blocked_reasons: list[str] = []
+    if candidate.research_status in {"contradicted", "discarded"}:
+        dispositions: list[Disposition] = ["WATCH", "DISCARD"]
+        blocked_reasons: list[str] = ["research_status_not_researchable"]
+    elif candidate.actor_refs:
+        dispositions = ["RESEARCH_ACTOR", "WATCH", "DISCARD"]
+        blocked_reasons = []
     else:
         dispositions = ["WATCH", "DISCARD"]
         blocked_reasons = ["actor_ref_required_for_research_actor"]
