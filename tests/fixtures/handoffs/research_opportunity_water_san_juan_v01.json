@@ -1,0 +1,27 @@
+{
+  "contract": "research-opportunity-handoff/v0.1",
+  "handoff_id": "roh:dogfood:water-san-juan:001",
+  "created_at": "2026-09-04T22:35:00-03:00",
+  "source": {
+    "system": "andes-context-os",
+    "source_question_ref": "question:dogfood:water-san-juan:001",
+    "research_intent_ref": "research-intent:dogfood:water-san-juan:001",
+    "hypothesis_ref": "hypothesis:dogfood:water-san-juan:001"
+  },
+  "candidate": {
+    "kind": "ACTOR_NEED_HYPOTHESIS",
+    "need_category": "water_decision_support",
+    "statement": "Una decisión recurrente relacionada con agua en San Juan podría requerir combinar contexto territorial y evidencia satelital antes de campo.",
+    "actor_refs": [],
+    "evidence_refs": [],
+    "assumptions": [
+      "Existe al menos una decisión recurrente de gestión de agua cuyo resultado puede cambiar con contexto territorial o satelital."
+    ],
+    "missing_context": [
+      "Actor que toma la decisión",
+      "Cadencia y territorio exactos de la decisión",
+      "Fuentes públicas trazables que hoy informan esa decisión"
+    ],
+    "research_status": "researching"
+  }
+}

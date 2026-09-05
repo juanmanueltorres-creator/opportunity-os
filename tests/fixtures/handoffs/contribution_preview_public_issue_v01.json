@@ -1,0 +1,48 @@
+{
+  "preview_version": "contribution-preview-v1",
+  "status": "IMPORTABLE",
+  "observation": {
+    "observation_id": "observation:dogfood:public-issue:001",
+    "source_type": "PUBLIC_GITHUB",
+    "source_name": "github",
+    "source_ref": "https://github.com/example-labs/geospatial-toolkit/issues/42",
+    "kind": "ISSUE_AVAILABLE",
+    "entry_id": "entry:dogfood:public-issue:001",
+    "repository_full_name": "example-labs/geospatial-toolkit",
+    "public_title": "Preserve CRS metadata during GeoJSON export",
+    "fact_at": "2026-09-04T22:24:00-03:00",
+    "captured_at": "2026-09-04T22:25:00-03:00",
+    "task_ref": "https://github.com/example-labs/geospatial-toolkit/issues/42",
+    "work_ref": null,
+    "actor_ref": null,
+    "reason_code": null,
+    "source_fact_identity": "example-labs/geospatial-toolkit#issue-42:open-unassigned"
+  },
+  "observation_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "preview_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "entry_id": "entry:dogfood:public-issue:001",
+  "source_ref": "https://github.com/example-labs/geospatial-toolkit/issues/42",
+  "proposed_entry": {
+    "entry_id": "entry:dogfood:public-issue:001",
+    "repository_full_name": "example-labs/geospatial-toolkit",
+    "repository_url": "https://github.com/example-labs/geospatial-toolkit",
+    "account_id": null,
+    "origin": "PUBLIC_ISSUE",
+    "need_basis": "MAINTAINER_STATED",
+    "need_statement": "Open issue requests a bounded fix to preserve CRS metadata during GeoJSON export.",
+    "evidence_refs": [
+      "https://github.com/example-labs/geospatial-toolkit/issues/42"
+    ],
+    "task_ref": "https://github.com/example-labs/geospatial-toolkit/issues/42",
+    "bounded_task": "Add a regression test and preserve CRS metadata in the GeoJSON export path.",
+    "task_claim_state": "AVAILABLE",
+    "expected_effort": "S",
+    "risk_level": "LOW",
+    "discovered_at": "2026-09-04T22:25:00-03:00"
+  },
+  "candidate_event": null,
+  "context_before": null,
+  "context_after": null,
+  "errors": [],
+  "external_actions": []
+}
