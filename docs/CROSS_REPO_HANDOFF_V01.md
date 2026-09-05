@@ -27,10 +27,12 @@ An `ACTOR_NEED_HYPOTHESIS` is reviewable research context only. Territorial acto
 Legal preview dispositions are:
 
 ```text
-RESEARCH_ACTOR   # only when actor_refs is non-empty
+RESEARCH_ACTOR   # only with actor_refs and proposed/researching/supported status
 WATCH
 DISCARD
 ```
+
+`contradicted` and `discarded` hypotheses remain reviewable but do not expose `RESEARCH_ACTOR`.
 
 Evidence refs, assumptions, missing context, and research status remain separate and are preserved verbatim.
 
