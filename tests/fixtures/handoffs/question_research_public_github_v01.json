@@ -1,0 +1,32 @@
+{
+  "contract": "question-research-handoff/v0.1",
+  "handoff_id": "qrh:dogfood:public-github:001",
+  "created_at": "2026-09-04T22:20:00-03:00",
+  "source": {
+    "system": "question-radar",
+    "question_id": "question:dogfood:public-github:001",
+    "question_profile_ref": null,
+    "decision_id": "decision:dogfood:public-github:001",
+    "decision_fingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "question": {
+    "raw": "¿Qué problema público de software geoespacial puedo resolver en un repositorio externo donde exista una tarea explícita y disponible?",
+    "canonical": "¿Qué problema público de software geoespacial puedo resolver en un repositorio externo donde exista una tarea explícita y disponible?"
+  },
+  "investigation": {
+    "decision": "RESEARCH",
+    "rationale": "Investigar una tarea pública y acotada sin convertir una issue interesante en vacante, permiso de contacto ni disponibilidad no verificada.",
+    "next_test": "Verificar una issue pública geoespacial con necesidad explícita, estado observable y alcance acotable antes de crear cualquier candidato de contribución."
+  },
+  "routing": {
+    "kind": "PUBLIC_CONTRIBUTION_RESEARCH",
+    "destination": "opportunity-os"
+  },
+  "constraints": [
+    "route != opportunity",
+    "handoff != evidence",
+    "current_at_export != current_now",
+    "PUBLIC_CONTRIBUTION_CANDIDATE != JOB_OPENING",
+    "GOOD_PROBLEM != AVAILABLE_PROBLEM"
+  ]
+}
