@@ -1,0 +1,27 @@
+{
+  "contract": "research-opportunity-handoff/v0.1",
+  "handoff_id": "roh:dogfood:public-github:001",
+  "created_at": "2026-09-04T22:28:00-03:00",
+  "source": {
+    "system": "question-radar",
+    "source_question_ref": "question:dogfood:public-github:001",
+    "research_intent_ref": null,
+    "hypothesis_ref": null
+  },
+  "candidate": {
+    "kind": "PUBLIC_CONTRIBUTION_CANDIDATE",
+    "repository_full_name": "example-labs/geospatial-toolkit",
+    "repository_url": "https://github.com/example-labs/geospatial-toolkit",
+    "origin": "PUBLIC_ISSUE",
+    "need_basis": "MAINTAINER_STATED",
+    "need_statement": "Open issue requests a bounded fix to preserve CRS metadata during GeoJSON export.",
+    "evidence_refs": [
+      "https://github.com/example-labs/geospatial-toolkit/issues/42"
+    ],
+    "task_ref": "https://github.com/example-labs/geospatial-toolkit/issues/42",
+    "bounded_task": "Add a regression test and preserve CRS metadata in the GeoJSON export path.",
+    "task_claim_state": "AVAILABLE",
+    "expected_effort": "S",
+    "risk_level": "LOW"
+  }
+}
