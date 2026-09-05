@@ -113,6 +113,12 @@ class ActorNeedHypothesisCandidate(StrictHandoffModel):
             raise ValueError("actor_refs must contain only non-empty strings")
         return value
 
+    @model_validator(mode="after")
+    def validate_evidence_backed_status(self) -> "ActorNeedHypothesisCandidate":
+        if self.research_status in {"supported", "contradicted"} and not self.evidence_refs:
+            raise ValueError(f"{self.research_status} requires evidence_refs")
+        return self
+
 
 class PublicContributionCandidate(StrictHandoffModel):
     kind: Literal["PUBLIC_CONTRIBUTION_CANDIDATE"]

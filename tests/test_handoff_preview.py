@@ -1,6 +1,9 @@
 from copy import deepcopy
 from datetime import datetime
 
+import pytest
+from pydantic import ValidationError
+
 from app.handoffs.models import ResearchOpportunityHandoff
 from app.handoffs.preview import preview_research_opportunity_handoff
 
@@ -58,13 +61,35 @@ def handoff(payload: dict) -> ResearchOpportunityHandoff:
     return ResearchOpportunityHandoff.model_validate(deepcopy(payload))
 
 
-def test_actor_refs_present_offer_research_watch_discard_only():
-    preview = preview_research_opportunity_handoff(handoff(ACTOR_WITH_REFS))
+@pytest.mark.parametrize("research_status", ["proposed", "researching", "supported"])
+def test_active_actor_statuses_offer_research_watch_discard(research_status: str):
+    payload = deepcopy(ACTOR_WITH_REFS)
+    payload["candidate"]["research_status"] = research_status
+    preview = preview_research_opportunity_handoff(handoff(payload))
     assert preview.status == "REVIEWABLE"
     assert preview.candidate_kind == "ACTOR_NEED_HYPOTHESIS"
     assert preview.source_freshness == "AS_OF_EXPORT"
     assert preview.allowed_dispositions == ["RESEARCH_ACTOR", "WATCH", "DISCARD"]
     assert preview.contribution_entry is None
+
+
+@pytest.mark.parametrize("research_status", ["contradicted", "discarded"])
+def test_terminal_actor_statuses_do_not_offer_research_actor(research_status: str):
+    payload = deepcopy(ACTOR_WITH_REFS)
+    payload["candidate"]["research_status"] = research_status
+    preview = preview_research_opportunity_handoff(handoff(payload))
+    assert preview.allowed_dispositions == ["WATCH", "DISCARD"]
+    assert preview.blocked_reasons == ["research_status_not_researchable"]
+
+
+@pytest.mark.parametrize("research_status", ["supported", "contradicted"])
+def test_evidence_backed_statuses_reject_empty_evidence_refs(research_status: str):
+    payload = deepcopy(ACTOR_WITH_REFS)
+    payload["candidate"]["research_status"] = research_status
+    payload["candidate"]["evidence_refs"] = []
+
+    with pytest.raises(ValidationError, match="evidence_refs"):
+        handoff(payload)
 
 
 def test_actor_refs_empty_offer_watch_discard_only():
