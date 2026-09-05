@@ -351,6 +351,89 @@ El backfill inicial fue ejercitado de forma privada contra una selección explí
 
 **Metrics do not grant SEND, APPLY or FOLLOW-UP authority.** Search Health describe evidencia observada; no es un productivity score, success predictor ni causal optimizer.
 
+### ✅ Public Contribution Core V1
+
+Public Contribution Core agrega un dominio separado para representar trabajo público y proof-of-work sin convertirlo en una vacante o señal de contratación.
+
+```text
+PUBLIC_CONTRIBUTION_ENTRY != JOB_OPENING
+PR_OPENED != EMPLOYMENT_INTEREST
+PR_MERGED != EMPLOYMENT_INTEREST
+GOOD_PROBLEM != AVAILABLE_PROBLEM
+```
+
+Implementado:
+
+- `PublicContributionEntry`, eventos deterministas, `ContributionContext` y `ProofOfWork`;
+- disponibilidad de tarea separada de calidad/interés del problema;
+- lifecycle de contribución separado del hiring funnel;
+- blocker state ortogonal al stage de contribución;
+- fixtures públicas/sanitizadas para hipótesis, issue disponible, issue ya tomado, contribución propia y review bloqueada;
+- sin API route, Relationship Memory, Outreach, CV, Gmail, Apollo ni nueva autoridad externa.
+
+Un issue interesante puede ser una buena superficie de aprendizaje o colaboración. No implica que el maintainer esté contratando ni que exista permiso de contacto comercial.
+
+### ✅ Contribution Observation Bridge V1
+
+El bridge de contribuciones permite observar **un recurso público de GitHub explícitamente seleccionado** y convertirlo en evidencia local sólo después de una confirmación humana exacta.
+
+```text
+selected public GitHub issue / PR
+        ↓
+typed public snapshot
+        ↓
+deterministic ContributionPreview
+        ↓
+explicit human confirmation
+        ↓
+local contribution entry / event
+```
+
+Implementado:
+
+- provider público GitHub GET-only, sin métodos de mutación;
+- selección acotada a un issue o PR explícito;
+- normalización cronológica y determinista;
+- preview read-only que no inicializa SQLite;
+- import ligado al preview exacto, con stale/conflict detection e idempotencia;
+- lineage de PR explícito: el texto de un PR no fabrica por sí solo una tarea autoritativa;
+- CLI con `preview` e import confirmado, sin bypass `--yes`/auto-confirm;
+- sin FastAPI route nueva ni integración cruzada con hiring/outreach.
+
+El bridge observa contribuciones; no interpreta un PR como employment interest.
+
+### ✅ Cross-Repo Opportunity Handoff V0.1
+
+El handoff V0.1 permite que Opportunity OS reciba **artefactos JSON versionados y read-only** desde investigación previa, sin compartir imports Python, RPC entre repos, background chaining ni autoridad de acción.
+
+Dos caminos están soportados:
+
+```text
+ACTOR_NEED_HYPOTHESIS
+PUBLIC_CONTRIBUTION_CANDIDATE
+```
+
+Fronteras congeladas:
+
+```text
+handoff preview != import
+IMPORT_PUBLIC_CONTRIBUTION != automatic import
+PUBLIC_CONTRIBUTION_CANDIDATE != JOB_OPENING
+```
+
+Implementado:
+
+- contratos Pydantic estrictos/fail-closed para los handoffs;
+- preview de `ACTOR_NEED_HYPOTHESIS` con `RESEARCH_ACTOR | WATCH | DISCARD`;
+- `RESEARCH_ACTOR` sólo para estados `proposed`, `researching` o `supported` con `actor_refs` válidos;
+- `supported` y `contradicted` requieren `evidence_refs` no vacíos;
+- `contradicted` y `discarded` quedan en `WATCH | DISCARD` aunque exista actor ref;
+- preview de `PUBLIC_CONTRIBUTION_CANDIDATE` como compatibilidad/eligibilidad, nunca import automático;
+- fixtures cross-repo sanitizadas para un caso GitHub y una hipótesis territorial de agua en San Juan;
+- sin creación automática de `TargetAccount`, Relationship, outreach, application o contribution state.
+
+Un actor territorial investigable no se convierte por proximidad semántica en buyer, cliente o hiring target. Un handoff válido también puede terminar correctamente en cero acción.
+
 ---
 
 ## NEXT — V0.2E2 — Conversation-provider adapter design

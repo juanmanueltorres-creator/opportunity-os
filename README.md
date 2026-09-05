@@ -1,40 +1,54 @@
 # Opportunity OS
 
-**A local-first system for turning job search into an auditable workflow instead of a pile of tabs, generic CVs and forgotten follow-ups.**
+> **Run a job search like an investigation instead of a spam campaign.**
 
-Opportunity OS helps discover opportunities, separate real vacancies from interesting target companies, prepare recruiter-ready CVs using only verified evidence, preserve relationship context and keep external actions behind explicit human approval.
+Opportunity OS is a local-first system for deciding what is worth pursuing — and for keeping the evidence behind that decision visible.
 
-> **Automate repetition. Preserve evidence. Keep authority with the operator.**
+It can find and assess real job postings, track companies worth researching, prepare recruiter-ready CVs from verified facts, remember professional relationship context, inspect selected hiring-process email evidence, and follow bounded public contribution opportunities. It can also receive versioned research handoffs from other systems without turning a weak signal into a vacancy, hiring interest, or permission to contact someone.
+
+> **The system prepares. You decide. External action still requires explicit human intent.**
 
 Current package line: `0.2.0c1` · Python 3.12+ · open source · local/private state stays outside the repository.
 
 ---
 
-## What it does
+## Why this exists
+
+A real job search fragments quickly: job boards, company pages, CV versions, recruiter messages, old conversations, GitHub issues, follow-ups and notes about why something looked interesting in the first place.
+
+The hard part is not generating more activity. It is keeping four questions answerable:
+
+1. **What did I actually observe?**
+2. **What is still only a hypothesis or useful signal?**
+3. **What can I truthfully support with evidence?**
+4. **What, if anything, deserves a next step?**
+
+Opportunity OS keeps those layers separate so automation can remove repetition without manufacturing certainty.
+
+A company worth watching is not automatically a vacancy. A useful GitHub issue is not automatically employment interest. A research hypothesis is not automatically a customer. A reply is not permission to send another message.
+
+---
+
+## What it looks like in practice
 
 ```text
-public job sources / manual import
-            ↓
- normalize + deduplicate
-            ↓
-   opportunity radar
-      ↙           ↘
-real posting     target company
-      ↘           ↙
-   relationship context
-            ↓
- select verified evidence
-            ↓
- recruiter-ready CV
-            ↓
- outreach brief / draft state
-            ↓
-      human decision
-            ↓
- explicit external action
+something interesting
+        ↓
+is it real and relevant?
+        ↓
+what evidence do I actually have?
+        ↓
+┌────────────────┬──────────────────┬────────────────────┬────────────────────┐
+│ job posting    │ target company   │ public GitHub task │ research handoff   │
+│ assess / CV    │ research/context │ contribution path  │ actor / need review│
+└────────────────┴──────────────────┴────────────────────┴────────────────────┘
+        ↓
+prepare a defensible next step
+        ↓
+human decides what happens outside the system
 ```
 
-The system does **not** treat every company as a vacancy and does **not** treat every useful contact as permission to send a message.
+The system does **not** treat every company as a vacancy and does **not** treat every useful contact, contribution or research signal as permission to act.
 
 ### Today it can
 
@@ -47,6 +61,8 @@ The system does **not** treat every company as a vacancy and does **not** treat 
 | **Operator Observation Bridge** | preview and explicitly confirm external facts before importing them into local state |
 | **Selective Gmail read** | turn an explicitly selected Gmail message/thread into a constrained observation without mailbox sync |
 | **Process Email** | classify one selected inbound Gmail message into bounded ES/EN hiring-process evidence before any local import |
+| **Public Contributions** | observe an explicitly selected public GitHub issue/PR and keep contribution lifecycle separate from hiring semantics |
+| **Cross-repo Handoffs** | review versioned research handoffs as read-only evidence without automatic import or external action |
 | **Outreach Core** | separate contact resolution, draft identity, approval, send request and send authorization |
 | **Search Health** | project local discovery, qualification, outreach and outcome evidence into coverage-aware counts and conversion cohorts |
 
@@ -73,6 +89,41 @@ SPECULATIVE_OUTREACH
 That distinction prevents a common failure mode in job-search automation: turning weak signals into fake certainty.
 
 A target company never becomes a vacancy just because it scores well. A past conversation never becomes permission for another message just because enough time passed.
+
+---
+
+## Public work and research signals are different from hiring
+
+Opportunity OS can now review two additional kinds of evidence without collapsing them into the hiring funnel.
+
+### Public contribution path
+
+An explicitly selected public GitHub issue or pull request can be observed, normalized and previewed as contribution evidence. The contribution lifecycle stays separate from employment semantics.
+
+```text
+PUBLIC_CONTRIBUTION_ENTRY != JOB_OPENING
+PR_OPENED != EMPLOYMENT_INTEREST
+PR_MERGED != EMPLOYMENT_INTEREST
+GOOD_PROBLEM != AVAILABLE_PROBLEM
+```
+
+A useful public task can become proof of work or a contribution worth pursuing. It does not become a vacancy, recruiter interest or contact permission because it exists or because a PR was opened or merged.
+
+### Cross-repo research handoffs
+
+Versioned handoffs can carry bounded research context from systems such as Question Radar or Andes Context OS into a read-only Opportunity OS preview.
+
+```text
+handoff preview != import
+IMPORT_PUBLIC_CONTRIBUTION != automatic import
+PUBLIC_CONTRIBUTION_CANDIDATE != JOB_OPENING
+```
+
+An `ACTOR_NEED_HYPOTHESIS` remains research context. With the required state and actor references it may expose `RESEARCH_ACTOR`; otherwise the valid outcome can simply be `WATCH` or `DISCARD`. `contradicted` and `discarded` hypotheses do not regain research authority merely because an actor reference exists.
+
+The handoff layer does not create Target Accounts, relationship state, outreach state, application state or automatic contribution imports.
+
+See [`docs/PUBLIC_CONTRIBUTION_CORE_V1.md`](docs/PUBLIC_CONTRIBUTION_CORE_V1.md), [`docs/PUBLIC_CONTRIBUTION_INTAKE_V1.md`](docs/PUBLIC_CONTRIBUTION_INTAKE_V1.md) and [`docs/CROSS_REPO_HANDOFF_V01.md`](docs/CROSS_REPO_HANDOFF_V01.md).
 
 ---
 
@@ -311,13 +362,15 @@ For the operator workflow, see [`docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md`](docs/OPP
 
 ## Supported opportunity sources
 
-Current public/manual ingestion supports:
+Current public/manual job ingestion supports:
 
 - **Remotive**;
 - **Greenhouse Job Board API**;
 - **Lever Postings API**;
 - **Ashby Public Job Posting API**;
 - **manual import**.
+
+Public contribution observation is a separate path and works only from an explicitly selected public GitHub issue or pull request. Cross-repo handoffs are versioned read-only artifacts, not live RPC between repositories.
 
 Source failures are isolated: one unavailable source does not invalidate the others.
 
@@ -337,6 +390,9 @@ By design it does not:
 - turn a target company into a fake active vacancy;
 - convert time elapsed into automatic follow-up permission;
 - sync or dump an entire Gmail mailbox;
+- treat public GitHub activity as hiring interest;
+- turn a research handoff into a customer, relationship or outreach action automatically;
+- import a public contribution candidate automatically from a handoff preview;
 - publish private candidate profiles, CRM state or real recruiter data;
 - bypass CAPTCHAs or site controls;
 - buy/enrich contacts without explicit cost control;
@@ -386,6 +442,25 @@ transient FULL content → deterministic Process Email classification
         ↓
 zero/one OperatorObservation → existing Operator Bridge preview
 
+selected public GitHub issue / PR
+        ↓
+Contribution Observation Bridge
+        ↓
+read-only preview → explicit human-confirmed import
+        ↓
+Public Contribution Entry / lifecycle / proof of work
+
+Question Radar / Andes Context OS
+        ↓
+versioned handoff artifact
+        ↓
+read-only handoff preview
+        ↓
+RESEARCH_ACTOR / WATCH / DISCARD
+or contribution compatibility
+        ↓
+no automatic import / hiring authority / external action
+
 native state + reconstructed history
         ↓
 read-only Search Health projection
@@ -433,7 +508,7 @@ POST /api/v1/targets/radar/run
 GET  /api/v1/relationships/context
 ```
 
-Operator-import, Gmail-read and Process Email preview routes are disabled by default and appear only when their explicit feature flags are enabled. Search Health V1 is CLI + JSON only; it does not add a metrics API route.
+Operator-import, Gmail-read and Process Email preview routes are disabled by default and appear only when their explicit feature flags are enabled. Public contribution intake and cross-repo handoff V1 are CLI/domain paths rather than new FastAPI routes. Search Health V1 is CLI + JSON only; it does not add a metrics API route.
 
 ---
 
@@ -445,6 +520,7 @@ Real operator state is intentionally kept outside the public repository.
 - real CV facts/evidence are private;
 - recruiter/contact data stays outside the public core;
 - Relationship Memory is local SQLite;
+- public contribution state is local/private when imported;
 - historical Search Health evidence and generated reports are local/gitignored;
 - Gmail metadata observations retain only constrained metadata;
 - Process Email source body/subject/evidence remains transient and is not persisted by the classifier path;
@@ -468,13 +544,15 @@ Current verification includes:
 - private/generated-file guard;
 - recruiter PDF visual previews;
 - one-page / extractable-text / clickable-link checks;
-- offline runtime build and fresh-runner verification for Python 3.12 and 3.13.
+- offline runtime build and fresh-runner verification for Python 3.12 and 3.13;
+- contribution lifecycle, preview/import and GitHub read-only regressions;
+- cross-repo handoff contract, dogfood and authority-boundary regressions.
 
 Search Health adds regression coverage for strict historical imports, read-only source access, exact reconciliation, native evidence precedence, coverage propagation, conversion cohorts, deterministic JSON and aggregate-output privacy.
 
 Process Email adds regressions for one-message FULL content handling, MIME/size failures, bilingual classification, false-positive guards, relationship-aware projection, stale previews, idempotent confirmed import and source-text privacy in local SQLite.
 
-Recent production-path bugs — including a missing runtime PDF dependency, `3D` being misread as a numeric metric, language drift and legacy CV attachment selection — were turned into regression tests before their fixes were merged.
+Recent production-path bugs — including a missing runtime PDF dependency, `3D` being misread as a numeric metric, language drift, legacy CV attachment selection and invalid handoff actor/evidence states — were turned into regression tests before their fixes were merged.
 
 ---
 
@@ -491,6 +569,8 @@ The product-first README keeps the historical public contract explicit so releas
 - **Gmail Read Adapter V0.2E1**: it accepts a selected Gmail message/thread and produces an `OperatorObservation`; it does not create drafts, does not send, and does not import Relationship Memory.
 - **Process Email V1**: one selected inbound Gmail message can be read through the separate transient FULL-content surface, classified by versioned deterministic ES/EN rules, projected to zero/one `OperatorObservation`, and handed to the existing Operator Bridge preview. Source text is transient; persistence still requires explicit human confirmation/import.
 - **Search Health V1**: read-only CLI + aggregate JSON over typed native/reconstructed evidence. Coverage is explicit, historical state remains separate, and metrics do not authorize external actions.
+- **Public Contribution Core / Intake V1**: contribution state and proof of work remain separate from employment state; GitHub observation is read-only until an exact preview is explicitly confirmed for local import, and GitHub activity does not grant hiring or external-action authority.
+- **Cross-Repo Handoff V0.1**: handoff preview is read-only; `handoff preview != import`, `IMPORT_PUBLIC_CONTRIBUTION != automatic import`, and `PUBLIC_CONTRIBUTION_CANDIDATE != JOB_OPENING`. Territorial actor-need research remains research context rather than Target Account, relationship or outreach authority.
 
 The safety boundary remains explicit: CV Factory does not send email and does not submit applications. Opportunity OS does not create Gmail drafts automatically. Approval is not a send command.
 
@@ -503,6 +583,9 @@ Start here for deeper implementation detail:
 - [`ROADMAP.md`](ROADMAP.md) — capability history and future direction;
 - [`docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md`](docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md) — canonical operator/agent workflow;
 - [`docs/CV_ATTACHMENT_SELECTION.md`](docs/CV_ATTACHMENT_SELECTION.md) — exact recruiter CV attachment contract;
+- [`docs/PUBLIC_CONTRIBUTION_CORE_V1.md`](docs/PUBLIC_CONTRIBUTION_CORE_V1.md) — public contribution domain and epistemic boundary;
+- [`docs/PUBLIC_CONTRIBUTION_INTAKE_V1.md`](docs/PUBLIC_CONTRIBUTION_INTAKE_V1.md) — selected GitHub observation and explicit import contract;
+- [`docs/CROSS_REPO_HANDOFF_V01.md`](docs/CROSS_REPO_HANDOFF_V01.md) — versioned read-only research handoffs and authority boundary;
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — approved design specifications;
 - [`docs/superpowers/plans/`](docs/superpowers/plans/) — implementation plans.
 
@@ -510,7 +593,7 @@ Start here for deeper implementation detail:
 
 ## Principle
 
-**The system can automate finding, organizing, validating and preparing. The moment an action changes something outside the system, human intent must be explicit.**
+**Automate finding, organizing, validating and preparing. Keep uncertainty visible. When an action changes something outside the system, human intent must be explicit.**
 
 ## License
 
