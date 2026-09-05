@@ -106,6 +106,13 @@ class ActorNeedHypothesisCandidate(StrictHandoffModel):
         "discarded",
     ]
 
+    @field_validator("actor_refs")
+    @classmethod
+    def validate_actor_refs(cls, value: list[str]) -> list[str]:
+        if any(not item.strip() for item in value):
+            raise ValueError("actor_refs must contain only non-empty strings")
+        return value
+
 
 class PublicContributionCandidate(StrictHandoffModel):
     kind: Literal["PUBLIC_CONTRIBUTION_CANDIDATE"]

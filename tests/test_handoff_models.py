@@ -122,6 +122,15 @@ def test_parses_actor_need_candidate():
     assert handoff.source_freshness == SOURCE_FRESHNESS
 
 
+@pytest.mark.parametrize("invalid_actor_ref", ["", "   "])
+def test_actor_need_rejects_blank_actor_refs(invalid_actor_ref: str):
+    payload = deepcopy(ACTOR_NEED_HANDOFF)
+    payload["candidate"]["actor_refs"] = [invalid_actor_ref]
+
+    with pytest.raises(ValidationError, match="actor_refs"):
+        ResearchOpportunityHandoff.model_validate(payload)
+
+
 def test_parses_public_contribution_candidate():
     handoff = ResearchOpportunityHandoff.model_validate(deepcopy(PUBLIC_CANDIDATE_HANDOFF))
     assert isinstance(handoff.candidate, PublicContributionCandidate)
