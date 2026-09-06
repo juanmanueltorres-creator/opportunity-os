@@ -6,6 +6,22 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Coverage = Literal["COMPLETE", "PARTIAL", "UNKNOWN"]
+OutreachType = Literal[
+    "APPLICATION_ONLY",
+    "APPLICATION_PLUS_DIRECT",
+    "DIRECT_ONLY",
+    "NONE",
+]
+ExperimentOutcome = Literal[
+    "NO_RESPONSE",
+    "REPLY",
+    "RECRUITER",
+    "TECHNICAL",
+    "FINAL",
+    "OFFER",
+    "REJECTED",
+    "WITHDRAWN",
+]
 
 
 class StrictMetricsModel(BaseModel):
@@ -88,6 +104,29 @@ class CoverageSummary(StrictMetricsModel):
 class SourceSummary(StrictMetricsModel):
     name: str = Field(min_length=1)
     coverage: Coverage
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ExperimentCohort(StrictMetricsModel):
+    outreach_type: OutreachType
+    cases: int = Field(ge=0)
+    replies: int = Field(ge=0)
+    processes: int = Field(ge=0)
+    outcomes: dict[str, int] = Field(default_factory=dict)
+    evidence_usage: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("outcomes", "evidence_usage")
+    @classmethod
+    def counts_must_be_non_negative(cls, value: dict[str, int]) -> dict[str, int]:
+        if any(count < 0 for count in value.values()):
+            raise ValueError("experiment aggregate counts must be non-negative")
+        return value
+
+
+class ExperimentSummary(StrictMetricsModel):
+    report_version: Literal["search-health-experiments-v1"] = "search-health-experiments-v1"
+    coverage: Coverage
+    cohorts: list[ExperimentCohort] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
