@@ -13,6 +13,8 @@ class HistoricalImportResult:
     batch_inserted: bool
     observations_inserted: int
     observations_existing: int
+    experiments_inserted: int = 0
+    experiments_existing: int = 0
 
 
 def import_manifest_file(
@@ -40,11 +42,22 @@ def import_manifest_file(
         else:
             existing += 1
 
+    experiments_inserted = 0
+    experiments_existing = 0
+    for experiment in manifest.experiments:
+        _, was_inserted = repository.save_experiment(experiment)
+        if was_inserted:
+            experiments_inserted += 1
+        else:
+            experiments_existing += 1
+
     return HistoricalImportResult(
         batch_id=manifest.batch.batch_id,
         batch_inserted=batch_inserted,
         observations_inserted=inserted,
         observations_existing=existing,
+        experiments_inserted=experiments_inserted,
+        experiments_existing=experiments_existing,
     )
 
 
@@ -71,6 +84,8 @@ def main() -> int:
     print(f"batch_inserted={str(result.batch_inserted).lower()}")
     print(f"observations_inserted={result.observations_inserted}")
     print(f"observations_existing={result.observations_existing}")
+    print(f"experiments_inserted={result.experiments_inserted}")
+    print(f"experiments_existing={result.experiments_existing}")
     return 0
 
 
