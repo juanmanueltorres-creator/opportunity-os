@@ -10,14 +10,12 @@ from app.metrics.history import (
     SQLiteHistoricalRepository,
 )
 from app.metrics.import_history import import_manifest_file
-from app.metrics.models import ReportWindow
-from app.metrics.projection import MetricsInput, project_search_health
+from app.metrics.projection import MetricsInput, project_experiment_cohorts
 from app.metrics.sources import MetricFact, SourceRead
 
 UTC = timezone.utc
 START = datetime(2026, 9, 1, tzinfo=UTC)
 END = datetime(2026, 9, 30, tzinfo=UTC)
-WINDOW = ReportWindow(start=START, end=END)
 
 
 def _source(items=(), coverage="COMPLETE", *, basis="fixture"):
@@ -100,7 +98,7 @@ def test_manifest_import_persists_experiment_cases_idempotently(tmp_path):
     assert stored[0].case_id == "exp-1"
 
 
-def test_search_health_groups_experiment_funnel_by_outreach_type():
+def test_experiment_companion_groups_funnel_by_outreach_type_without_changing_v1():
     app_only = SimpleNamespace(
         case_id="exp-app-only",
         opportunity_id="opp-a",
@@ -154,10 +152,10 @@ def test_search_health_groups_experiment_funnel_by_outreach_type():
         ),
     )
 
-    report = project_search_health(inputs, WINDOW, generated_at=END)
-    cohorts = {cohort.outreach_type: cohort for cohort in report.experiments.cohorts}
+    summary = project_experiment_cohorts(inputs)
+    cohorts = {cohort.outreach_type: cohort for cohort in summary.cohorts}
 
-    assert report.experiments.coverage == "PARTIAL"
+    assert summary.coverage == "PARTIAL"
     assert cohorts["APPLICATION_ONLY"].cases == 1
     assert cohorts["APPLICATION_ONLY"].replies == 0
     assert cohorts["APPLICATION_ONLY"].processes == 0
