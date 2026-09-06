@@ -4,13 +4,13 @@ from datetime import datetime, timezone
 import json
 from types import SimpleNamespace
 
+from app.metrics.experiments import ExperimentInputs, project_experiment_cohorts
 from app.metrics.history import (
     HistoricalImportBatch,
     HistoricalImportManifest,
     SQLiteHistoricalRepository,
 )
 from app.metrics.import_history import import_manifest_file
-from app.metrics.projection import MetricsInput, project_experiment_cohorts
 from app.metrics.sources import MetricFact, SourceRead
 
 UTC = timezone.utc
@@ -138,21 +138,18 @@ def test_experiment_companion_groups_funnel_by_outreach_type_without_changing_v1
         link_confidence=1.0,
     )
 
-    inputs = MetricsInput(
-        opportunities=_source(),
-        qualifications=_source(),
-        packets=_source(),
-        outreach=_source(),
-        relationships=_source([reply, process]),
-        history=_source(coverage="UNKNOWN"),
-        experiments=_source(
-            [app_only, app_plus_direct],
-            coverage="PARTIAL",
-            basis="manual_experiment_cases",
-        ),
+    summary = project_experiment_cohorts(
+        ExperimentInputs(
+            experiments=_source(
+                [app_only, app_plus_direct],
+                coverage="PARTIAL",
+                basis="manual_experiment_cases",
+            ),
+            outreach=_source(),
+            relationships=_source([reply, process]),
+            history=_source(coverage="UNKNOWN"),
+        )
     )
-
-    summary = project_experiment_cohorts(inputs)
     cohorts = {cohort.outreach_type: cohort for cohort in summary.cohorts}
 
     assert summary.coverage == "PARTIAL"
@@ -165,3 +162,7 @@ def test_experiment_companion_groups_funnel_by_outreach_type_without_changing_v1
     assert cohorts["APPLICATION_PLUS_DIRECT"].replies == 1
     assert cohorts["APPLICATION_PLUS_DIRECT"].processes == 1
     assert cohorts["APPLICATION_PLUS_DIRECT"].outcomes == {"TECHNICAL": 1}
+    assert cohorts["APPLICATION_PLUS_DIRECT"].evidence_usage == {
+        "cv": 1,
+        "sanjuangeo": 1,
+    }
