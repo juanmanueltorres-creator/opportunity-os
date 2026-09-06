@@ -7,7 +7,11 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from app.metrics.models import StrictMetricsModel
+from app.metrics.models import (
+    ExperimentOutcome,
+    OutreachType,
+    StrictMetricsModel,
+)
 
 HistoricalKind = Literal[
     "DRAFT_OBSERVED",
@@ -49,6 +53,35 @@ class HistoricalObservation(StrictMetricsModel):
         return _require_aware(value, field_name="historical observation timestamp")
 
 
+class ExperimentCase(StrictMetricsModel):
+    case_id: str = Field(min_length=1)
+    opportunity_id: str | None = None
+    account_id: str | None = None
+    outreach_type: OutreachType
+    evidence_used: list[str] = Field(default_factory=list)
+    outcome: ExperimentOutcome | None = None
+    observed_at: datetime
+
+    @field_validator("observed_at")
+    @classmethod
+    def observed_at_must_be_aware(cls, value: datetime) -> datetime:
+        return _require_aware(value, field_name="experiment observed_at")
+
+    @field_validator("evidence_used")
+    @classmethod
+    def evidence_labels_must_be_bounded(cls, value: list[str]) -> list[str]:
+        cleaned = [item.strip() for item in value]
+        if any(not item or len(item) > 120 for item in cleaned):
+            raise ValueError("experiment evidence labels must be non-empty and <= 120 chars")
+        return cleaned
+
+    @model_validator(mode="after")
+    def requires_exact_lineage(self) -> "ExperimentCase":
+        if self.opportunity_id is None and self.account_id is None:
+            raise ValueError("experiment case requires opportunity_id or account_id")
+        return self
+
+
 class HistoricalImportBatch(StrictMetricsModel):
     batch_id: str = Field(min_length=1)
     provider: str = Field(min_length=1)
@@ -75,6 +108,7 @@ class HistoricalImportBatch(StrictMetricsModel):
 class HistoricalImportManifest(StrictMetricsModel):
     batch: HistoricalImportBatch
     observations: list[HistoricalObservation] = Field(default_factory=list)
+    experiments: list[ExperimentCase] = Field(default_factory=list)
 
 
 class SQLiteHistoricalRepository:
@@ -85,6 +119,13 @@ class SQLiteHistoricalRepository:
         connection = sqlite3.connect(self.path)
         connection.row_factory = sqlite3.Row
         return connection
+
+    def _table_exists(self, conn: sqlite3.Connection, table: str) -> bool:
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+            (table,),
+        ).fetchone()
+        return row is not None
 
     def initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -114,6 +155,21 @@ class SQLiteHistoricalRepository:
                     completed_at TEXT NOT NULL,
                     payload_json TEXT NOT NULL
                 )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS experiment_cases (
+                    case_id TEXT PRIMARY KEY,
+                    observed_at TEXT NOT NULL,
+                    payload_json TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_experiment_cases_time
+                ON experiment_cases(observed_at, case_id)
                 """
             )
 
@@ -175,6 +231,64 @@ class SQLiteHistoricalRepository:
             HistoricalObservation.model_validate_json(row["payload_json"])
             for row in rows
         ]
+
+    def get_experiment(self, case_id: str) -> ExperimentCase | None:
+        if not self.path.exists():
+            return None
+        with self._connect() as conn:
+            if not self._table_exists(conn, "experiment_cases"):
+                return None
+            row = conn.execute(
+                "SELECT payload_json FROM experiment_cases WHERE case_id = ? LIMIT 1",
+                (case_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return ExperimentCase.model_validate_json(row["payload_json"])
+
+    def save_experiment(
+        self, experiment: ExperimentCase
+    ) -> tuple[ExperimentCase, bool]:
+        existing = self.get_experiment(experiment.case_id)
+        if existing is not None:
+            if existing != experiment:
+                raise ValueError("experiment case_id conflict")
+            return existing, False
+
+        with self._connect() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO experiment_cases (case_id, observed_at, payload_json)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        experiment.case_id,
+                        experiment.observed_at.isoformat(),
+                        experiment.model_dump_json(),
+                    ),
+                )
+            except sqlite3.IntegrityError:
+                existing = self.get_experiment(experiment.case_id)
+                if existing is not None and existing == experiment:
+                    return existing, False
+                raise ValueError("experiment case_id conflict")
+        return experiment, True
+
+    def list_experiments(self) -> list[ExperimentCase]:
+        if not self.path.exists():
+            return []
+        with self._connect() as conn:
+            if not self._table_exists(conn, "experiment_cases"):
+                return []
+            rows = conn.execute(
+                """
+                SELECT payload_json
+                FROM experiment_cases
+                ORDER BY observed_at ASC, case_id ASC
+                """
+            ).fetchall()
+        return [ExperimentCase.model_validate_json(row["payload_json"]) for row in rows]
 
     def get_batch(self, batch_id: str) -> HistoricalImportBatch | None:
         if not self.path.exists():
