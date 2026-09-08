@@ -67,6 +67,7 @@ _STAGE_ADVANCED = (
     re.compile(r"\byou are moving to the next stage\b", re.I),
     re.compile(r"\bavanzaste a la siguiente etapa(?: del proceso)?\b", re.I),
     re.compile(r"\bpasaste a la siguiente etapa(?: del proceso)?\b", re.I),
+    re.compile(r"(?<!no )\bhas avanzado en el proceso\b", re.I),
 )
 _PROCESS_RESCHEDULE = (
     re.compile(r"\b(?:we need to )?reschedule your interview(?: to [^.]+)?", re.I),
@@ -93,6 +94,11 @@ _REJECTION = (
     re.compile(r"\bthis position has been filled\b", re.I),
     re.compile(r"\bno continuaremos con tu candidatura\b", re.I),
     re.compile(r"\bhemos decidido avanzar con otros (?:perfiles|candidatos)\b", re.I),
+    re.compile(
+        r"\bhemos decidido avanzar con candidaturas\s+que se ajustan m[aá]s "
+        r"a los requisitos de la posici[oó]n\b",
+        re.I,
+    ),
     re.compile(r"\bel puesto (?:ya )?ha sido cubierto\b", re.I),
 )
 _GENERIC_PROCESS = (
