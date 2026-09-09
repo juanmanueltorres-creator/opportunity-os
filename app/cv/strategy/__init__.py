@@ -1,3 +1,4 @@
+from app.cv.strategy.builder import build_cv_strategy
 from app.cv.strategy.models import (
     STRATEGY_VERSION,
     CoreMessage,
@@ -12,6 +13,7 @@ from app.cv.strategy.policy import (
 from app.cv.strategy.scoring import RankedRequirement, rank_supported_requirements
 
 __all__ = [
+    "build_cv_strategy",
     "STRATEGY_VERSION",
     "CoreMessage",
     "CVStrategy",
