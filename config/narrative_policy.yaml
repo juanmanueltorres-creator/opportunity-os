@@ -1,0 +1,25 @@
+version: narrative-policy-v1
+max_core_messages: 3
+positioning_message_importance: 10.0
+
+default_section_order:
+  - summary
+  - skills
+  - experience
+  - projects
+  - education
+  - languages
+  - links
+
+requirement_importance_weights:
+  mandatory: 3.0
+  preferred: 2.0
+  unknown: 1.0
+
+support_level_weights:
+  EXACT_VERIFIED: 3.0
+  APPROVED_ALIAS: 2.5
+  TAXONOMY_RELATED: 1.0
+  UNKNOWN: 0.0
+
+priority_requirement_bonus: 1.0
