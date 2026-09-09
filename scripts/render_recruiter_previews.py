@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from app.cv.layout import load_layout_profiles
 from app.cv.models import CVDocumentModel
 from app.cv.recruiter_models import RecruiterDocumentModel
 from app.cv.recruiter_policy import load_recruiter_policy
@@ -27,6 +28,7 @@ def render_previews(output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
     render_policy = load_render_policy("config/render_policy.yaml")
+    layout_profile = load_layout_profiles("config/layout_profiles.yaml")["compact_ats"]
     renderer = RenderCVTypstRenderer()
     qa = RecruiterQualityQA()
     outputs: list[Path] = []
@@ -39,6 +41,7 @@ def render_previews(output_dir: Path) -> list[Path]:
             source_document=source_document,
             output_path=output_path,
             policy=recruiter_policy,
+            layout_profile=layout_profile,
         )
         qa_result = qa.evaluate(
             render_result=render_result,
