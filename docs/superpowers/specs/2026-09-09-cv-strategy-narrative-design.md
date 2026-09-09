@@ -34,13 +34,14 @@ The new subsystem MUST:
 2. introduce an explicit per-opportunity CV strategy before recruiter-document composition;
 3. make the document communicate no more than a small number of coherent core messages;
 4. rank visible claims by strategy relevance, evidence strength, specificity, and impact rather than source order alone;
-5. penalize redundancy, generic language, unsupported seniority, and identity noise;
-6. keep user-specific career tracks outside the public core;
-7. keep rendering interchangeable and downstream of content decisions;
-8. validate semantic quality, narrative quality, visual quality, and ATS recoverability independently;
-9. retain RenderCV/Typst as a safe existing renderer while allowing additional renderers;
-10. remain reproducible through versioned policies, strategies, layout profiles, renderer versions, and QA results;
-11. evolve the existing pipeline incrementally rather than replacing it wholesale.
+5. penalize redundancy, generic language, unsupported identity noise, and verbosity;
+6. reject unsupported seniority/title inflation rather than merely scoring it lower;
+7. keep user-specific career tracks outside the public core;
+8. keep rendering interchangeable and downstream of content decisions;
+9. validate semantic quality, narrative quality, visual quality, and ATS recoverability independently;
+10. retain RenderCV/Typst as a safe existing renderer while allowing additional renderers;
+11. remain reproducible through versioned policies, strategies, layout profiles, renderer versions, and QA results;
+12. evolve the existing pipeline incrementally rather than replacing it wholesale.
 
 ## 3. Non-goals
 
@@ -52,6 +53,7 @@ The first version will NOT:
 - generate arbitrary decorative templates;
 - use photos, charts, skill bars, or other ATS-hostile visual elements in the default layouts;
 - allow an LLM to invent unsupported claims or seniority;
+- claim to reproduce the behavior of a specific commercial ATS vendor;
 - optimize directly for a single ATS vendor;
 - make user-specific career identities part of the public repository.
 
@@ -131,7 +133,7 @@ The core separation is:
 - **Validator:** whether claims remain evidence-safe.
 - **LayoutSelector:** how the narrative should be presented.
 - **Renderer:** how that layout becomes an artifact.
-- **QA layers:** whether the resulting artifact remains semantically, narratively, visually, and ATS valid.
+- **QA layers:** whether the resulting artifact remains semantically, narratively, visually, and ATS-recoverable.
 
 ## 6. CV strategy model
 
@@ -171,7 +173,7 @@ class CVStrategy(StrictCVModel):
 - Every core message MUST resolve to verified or otherwise permitted facts/evidence under the existing evidence contract.
 - A strategy MUST record explicit material gaps rather than silently papering over them.
 - `positioning` is a recruiter-facing framing, not permission to create a new unsupported title.
-- Unsupported seniority upgrades MUST be rejected or heavily penalized.
+- Unsupported seniority/title upgrades MUST be rejected by strategy validation.
 - A strategy MUST be deterministic for identical versioned inputs and policies unless a non-deterministic strategy provider is explicitly introduced later.
 
 ## 7. Strategy construction
@@ -203,10 +205,10 @@ An LLM may later propose strategy candidates, but a deterministic validator must
 
 The public core MUST remain candidate-agnostic.
 
-User-specific configuration belongs outside the public repository, for example:
+User-specific configuration belongs in an external/private runtime location that is not committed to the public repository. An illustrative local layout is:
 
 ```text
-private/
+<private-state-root>/
   profiles/
     <user>/
       tracks/
@@ -214,6 +216,8 @@ private/
         geospatial_domain.yaml
         operations_support.yaml
 ```
+
+If a developer chooses a path under the local checkout, that path MUST be gitignored and treated as private state. Public examples MUST use synthetic data only.
 
 A private track may express:
 
@@ -236,7 +240,7 @@ The public repository provides schemas, validation, examples with synthetic data
 
 ## 9. Narrative composition
 
-The existing recruiter compositor currently benefits from verified and supported claim ordering, but the new composer must explicitly rank claims against the strategy.
+The existing recruiter compositor benefits from verified and supported claim ordering, but the new composer must explicitly rank claims against the strategy.
 
 Proposed score family:
 
@@ -250,24 +254,28 @@ narrative_score =
   + recency_weight
   - redundancy_penalty
   - generic_language_penalty
-  - unsupported_seniority_penalty
   - competing_identity_penalty
   - verbosity_penalty
 ```
+
+Unsupported seniority/title inflation is not a score term. It is a validation failure.
 
 The exact numeric weights are policy, not model semantics. They MUST be versioned.
 
 ### Composition rules
 
-The composer MUST:
+The V1 composer MUST:
 
-- preserve only claims that already exist in the validated semantic document or are generated through an approved evidence-safe transformation path;
+- select and reorder only claims already present in the validated semantic document;
+- NOT mint new recruiter-facing claim text inside the narrative stage;
 - prioritize claims that support the strategy's core messages;
 - prevent one weak keyword match from displacing stronger direct evidence;
 - suppress generic claims when more specific evidence exists;
 - avoid repeating the same concept across summary, skills, projects, and experience unless repetition is policy-justified;
 - avoid exposing unrelated identities that compete with the selected positioning;
 - preserve enough context that a recruiter can understand chronology and role history without reading an exhaustive biography.
+
+Any future rewrite/transformation stage that creates new visible wording requires its own evidence-safe design and validation contract.
 
 ## 10. Narrative policy
 
@@ -293,10 +301,11 @@ bullet:
   hard_max_words: 32
 penalties:
   generic_claim: 0.8
-  unsupported_seniority: 1.0
   duplicate_concept: 0.7
   competing_identity: 0.8
 ```
+
+Seniority safety is enforced as validation, not a soft policy penalty.
 
 This policy replaces no existing validation initially. It is introduced alongside existing `RecruiterPolicy` and later participates in a controlled policy split.
 
@@ -326,7 +335,7 @@ Required checks:
 5. **Seniority safety:** visible titles/headlines must not imply unsupported seniority.
 6. **Scan view:** a reduced view containing headline, section headings, entry titles, and first bullet clauses should still communicate the strategy.
 
-A narrative failure MUST prevent `PREPARED`.
+A narrative failure MUST prevent `PREPARED` on the strategy-aware path.
 
 ## 12. Layout profiles
 
@@ -512,9 +521,11 @@ Required recovery categories:
 
 Critical identity fields must recover at 100%. Non-critical aggregate recovery thresholds are policy-controlled and versioned.
 
+This QA is explicitly a **recoverability proxy**: it verifies that structured information survives the render/parse round trip. It MUST NOT be described as proof that every commercial ATS will parse or rank the document identically.
+
 ## 19. ApplicationPacket changes
 
-`ApplicationPacket` should eventually add:
+`ApplicationPacket` will gain, incrementally as each stage becomes authoritative:
 
 ```text
 strategy_version
@@ -550,6 +561,7 @@ Examples:
 
 ```text
 strategy_core_message_unsupported
+strategy_unsupported_seniority
 narrative_off_strategy_ratio_exceeded
 narrative_competing_identity_limit_exceeded
 narrative_scanability_failed
@@ -597,11 +609,11 @@ tests/fixtures/cv_quality/
   ats_extraction_loss/
 ```
 
-A synthetic "identity soup" fixture should deliberately include several individually valid but mutually competing identity signals. It should pass semantic validation and fail narrative QA.
+A synthetic `identity_soup` fixture should deliberately include several individually valid but mutually competing identity signals. It should pass semantic validation and fail narrative QA.
 
-A "dense valid but unreadable" fixture should remain text-extractable and within page bounds while failing visual density/scanability thresholds.
+A `dense_valid_but_unreadable` fixture should remain text-extractable and within page bounds while failing visual density/scanability thresholds.
 
-These fixtures turn past failure modes into permanent regression protection.
+These fixtures turn known failure modes into permanent regression protection.
 
 ## 23. Proposed code structure
 
@@ -666,7 +678,7 @@ Exit criteria:
 
 - deterministic strategy from current pipeline inputs;
 - max-three-core-message invariant;
-- supported-seniority invariant;
+- unsupported seniority/title invariant enforced as a validation failure;
 - no production PDF change.
 
 ### PR 2 — Strategy-aware narrative composer
@@ -677,7 +689,8 @@ Exit criteria:
 
 - side-by-side comparison fixtures;
 - evidence/provenance invariants preserved;
-- strategy relevance affects ordering and inclusion.
+- strategy relevance affects ordering and inclusion;
+- no new visible claim text is minted by the narrative composer.
 
 ### PR 3 — Narrative QA
 
@@ -746,7 +759,8 @@ Exit criteria:
 
 - critical fields recover at required thresholds;
 - extraction-loss fixture fails;
-- round-trip result is written into `ApplicationPacket`.
+- round-trip result is written into `ApplicationPacket`;
+- documentation calls the check a recoverability proxy, not vendor ATS emulation.
 
 ## 25. Testing strategy
 
@@ -825,7 +839,7 @@ For every successful preparation, Opportunity-OS should eventually be able to an
 - what narrative, visual, and ATS QA scores were produced;
 - what exact versions and hashes reproduce the artifact.
 
-This extends the existing provenance model from "why is this claim true?" to also answer "why is this claim visible in this particular CV?"
+This extends the existing provenance model from `why is this claim true?` to also answer `why is this claim visible in this particular CV?`.
 
 ## 29. V1 definition of done
 
@@ -846,13 +860,13 @@ and obtain a CV pipeline result that is simultaneously:
 - adapted to the opportunity without unsupported title/seniority inflation;
 - visually professional under a defined layout profile;
 - readable in a recruiter scan view;
-- ATS-readable under round-trip recovery thresholds;
+- ATS-recoverable under round-trip recovery thresholds;
 - reproducible from versioned inputs and policies;
 - free of required user-private configuration in the public repository.
 
 Most importantly:
 
-> A PDF that passes structural/ATS extraction checks but fails narrative or visual quality MUST NOT be marked `PREPARED`.
+> A PDF that passes structural/text extraction checks but fails narrative or visual quality MUST NOT be marked `PREPARED`.
 
 ## 30. Architectural decision summary
 
@@ -871,7 +885,7 @@ Layout
   ↓
 Renderer
   ↓
-Semantic + Narrative + Visual + ATS QA
+Semantic + Narrative + Visual + ATS Recoverability QA
   ↓
 ApplicationPacket
 ```
