@@ -147,7 +147,14 @@ def test_reduction_rechecks_narrative_and_preserves_earlier_warnings(
         def __init__(self) -> None:
             self.calls = 0
 
-        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
+        def render(
+            self,
+            recruiter_document,
+            source_document,
+            output_path,
+            recruiter_policy,
+            layout_profile,
+        ):
             self.calls += 1
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
