@@ -109,6 +109,63 @@ def _editorial_claim_ids(recruiter: RecruiterDocumentModel) -> list[str]:
     return ordered
 
 
+def _scan_claim_ids(
+    recruiter: RecruiterDocumentModel,
+    *,
+    max_claims: int,
+) -> list[str]:
+    ordered: list[str] = []
+
+    def add(claim_id: str) -> None:
+        if claim_id and claim_id not in ordered:
+            ordered.append(claim_id)
+
+    add(recruiter.headline_claim_id)
+    for claim_id in recruiter.profile_claim_ids:
+        add(claim_id)
+    for group in recruiter.technology_groups:
+        if group.skill_claim_ids:
+            add(group.skill_claim_ids[0])
+    for entry in recruiter.experience_entries:
+        add(entry.primary_claim_id)
+        if entry.bullet_claim_ids:
+            add(entry.bullet_claim_ids[0])
+    if recruiter.project_entries:
+        for entry in recruiter.project_entries:
+            add(entry.primary_claim_id)
+            if entry.bullet_claim_ids:
+                add(entry.bullet_claim_ids[0])
+    else:
+        for claim_id in recruiter.selected_project_claim_ids:
+            add(claim_id)
+    return ordered[:max_claims]
+
+
+def _scanability_score(
+    *,
+    recruiter: RecruiterDocumentModel,
+    document: CVDocumentModel,
+    strategy: CVStrategy,
+    max_claims: int,
+) -> float:
+    if not strategy.core_messages:
+        return 1.0
+    scan_ids = _scan_claim_ids(recruiter, max_claims=max_claims)
+    recovered = 0
+    for message in strategy.core_messages:
+        if any(
+            _provenance_supports_refs(
+                document=document,
+                claim_id=claim_id,
+                fact_ids=set(message.fact_ids),
+                evidence_ids=set(message.evidence_ids),
+            )
+            for claim_id in scan_ids
+        ):
+            recovered += 1
+    return round(recovered / len(strategy.core_messages), 2)
+
+
 def _positioning_message(strategy: CVStrategy) -> CoreMessage | None:
     for message in strategy.core_messages:
         if message.id == "positioning":
@@ -225,12 +282,26 @@ class NarrativeQualityQA:
                     )
                 )
 
+        scanability_score = _scanability_score(
+            recruiter=recruiter_document,
+            document=source_document,
+            strategy=strategy,
+            max_claims=policy.max_scan_claims,
+        )
+        if scanability_score < policy.min_scanability_score:
+            errors.append(
+                _issue(
+                    "narrative_scanability_below_threshold",
+                    "The fast-scan view does not recover enough core narrative messages.",
+                )
+            )
+
         return NarrativeQAResult(
             valid=not errors,
             core_message_coverage=coverage,
             off_strategy_claim_ratio=off_strategy_ratio,
             competing_identity_count=len(competing_identity_ids),
-            scanability_score=1.0,
+            scanability_score=scanability_score,
             errors=errors,
             warnings=warnings,
         )
