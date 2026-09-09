@@ -203,6 +203,7 @@ class CVPreparationService:
                     *narrative_result.warnings,
                 ],
             )
+        narrative_warnings = list(narrative_result.warnings)
 
         application_id = self.id_factory()
         candidate_name = next(
@@ -219,7 +220,6 @@ class CVPreparationService:
         )
         final_recruiter_document = recruiter_document
         final_recruiter_validation = recruiter_validation
-        final_narrative_result = narrative_result
         final_render_result = None
         final_qa_result = None
         max_reductions = _max_reduction_actions(recruiter_document)
@@ -241,7 +241,7 @@ class CVPreparationService:
                     warnings=[
                         *validation.warnings,
                         *final_recruiter_validation.warnings,
-                        *final_narrative_result.warnings,
+                        *narrative_warnings,
                     ],
                 )
 
@@ -261,7 +261,7 @@ class CVPreparationService:
                     warnings=[
                         *validation.warnings,
                         *final_recruiter_validation.warnings,
-                        *final_narrative_result.warnings,
+                        *narrative_warnings,
                     ],
                 )
 
@@ -273,7 +273,7 @@ class CVPreparationService:
             combined_warnings = [
                 *validation.warnings,
                 *final_recruiter_validation.warnings,
-                *final_narrative_result.warnings,
+                *narrative_warnings,
                 *qa_result.warnings,
             ]
             if not _qa_failure_is_reducible(qa_result.errors):
@@ -320,7 +320,11 @@ class CVPreparationService:
                 return PreparationResult(
                     status="BLOCKED_VALIDATION",
                     errors=reduced_validation.errors,
-                    warnings=[*validation.warnings, *reduced_validation.warnings],
+                    warnings=[
+                        *validation.warnings,
+                        *reduced_validation.warnings,
+                        *narrative_warnings,
+                    ],
                 )
 
             reduced_narrative_result = self.narrative_qa.evaluate(
@@ -337,13 +341,14 @@ class CVPreparationService:
                     warnings=[
                         *validation.warnings,
                         *reduced_validation.warnings,
+                        *narrative_warnings,
                         *reduced_narrative_result.warnings,
                     ],
                 )
 
+            narrative_warnings.extend(reduced_narrative_result.warnings)
             final_recruiter_document = reduced_document
             final_recruiter_validation = reduced_validation
-            final_narrative_result = reduced_narrative_result
 
         if final_render_result is None or final_qa_result is None:
             _remove_partial_pdf(output_path)
@@ -354,7 +359,7 @@ class CVPreparationService:
                 warnings=[
                     *validation.warnings,
                     *final_recruiter_validation.warnings,
-                    *final_narrative_result.warnings,
+                    *narrative_warnings,
                 ],
             )
 
@@ -362,7 +367,7 @@ class CVPreparationService:
         combined_warnings = [
             *validation.warnings,
             *final_recruiter_validation.warnings,
-            *final_narrative_result.warnings,
+            *narrative_warnings,
             *final_qa_result.warnings,
         ]
         opportunity_snapshot_hash = canonical_sha256(
