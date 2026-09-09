@@ -23,3 +23,25 @@ support_level_weights:
   UNKNOWN: 0.0
 
 priority_requirement_bonus: 1.0
+
+max_off_strategy_claim_ratio: 0.35
+max_competing_identity_signals: 1
+min_scanability_score: 0.67
+
+generic_language_phrases:
+  en:
+    - results-driven
+    - passionate
+    - hard-working
+    - team player
+    - fast learner
+    - proactive
+    - detail-oriented
+  es:
+    - orientado a resultados
+    - apasionado
+    - trabajador
+    - trabajo en equipo
+    - aprendizaje rápido
+    - proactivo
+    - detallista
