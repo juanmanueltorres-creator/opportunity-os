@@ -1,0 +1,6 @@
+version: render-policy-v1
+page_size: A4
+preferred_pages: 1
+max_pages: 1
+min_body_font_pt: 9.0
+preferred_body_font_pt: 9.4

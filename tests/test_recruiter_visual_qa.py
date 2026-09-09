@@ -8,8 +8,8 @@ from app.cv.recruiter_models import (
     RecruiterRenderMetrics,
     RecruiterRenderResult,
 )
-from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
+from app.cv.render_policy import load_render_policy
 
 
 def _source_document() -> CVDocumentModel:
@@ -98,7 +98,7 @@ def test_isolated_bottom_note_is_hard_recruiter_failure(tmp_path):
         render_result=_render_result(pdf),
         recruiter_document=recruiter_document,
         source_document=source_document,
-        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        policy=load_render_policy("config/render_policy.yaml"),
     )
 
     assert result.valid is False

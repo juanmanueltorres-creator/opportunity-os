@@ -24,6 +24,7 @@ from app.cv.recruiter_models import RecruiterDocumentModel
 from app.cv.recruiter_policy import RecruiterPolicy, load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
 from app.cv.recruiter_validator import validate_recruiter_document
+from app.cv.render_policy import RenderPolicy, load_render_policy
 from app.cv.renderer import ATSRenderer
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 from app.cv.selector import select_evidence
@@ -39,6 +40,7 @@ from app.radar.taxonomy import TaxonomyResolver
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RECRUITER_POLICY_PATH = _PROJECT_ROOT / "config" / "recruiter_policy.yaml"
+_DEFAULT_RENDER_POLICY_PATH = _PROJECT_ROOT / "config" / "render_policy.yaml"
 _DEFAULT_NARRATIVE_POLICY_PATH = _PROJECT_ROOT / "config" / "narrative_policy.yaml"
 _REDUCIBLE_QA_CODES = {
     "recruiter_one_page_failed",
@@ -56,6 +58,7 @@ class CVPreparationService:
         recruiter_policy: RecruiterPolicy | None = None,
         recruiter_renderer: RenderCVTypstRenderer | None = None,
         recruiter_qa: RecruiterQualityQA | None = None,
+        render_policy: RenderPolicy | None = None,
         narrative_policy: NarrativePolicy | None = None,
         narrative_qa: NarrativeQualityQA | None = None,
     ) -> None:
@@ -68,6 +71,9 @@ class CVPreparationService:
         )
         self.recruiter_renderer = recruiter_renderer or RenderCVTypstRenderer()
         self.recruiter_qa = recruiter_qa or RecruiterQualityQA()
+        self.render_policy = render_policy or load_render_policy(
+            _DEFAULT_RENDER_POLICY_PATH
+        )
         self.narrative_policy = narrative_policy or load_narrative_policy(
             _DEFAULT_NARRATIVE_POLICY_PATH
         )
@@ -250,7 +256,7 @@ class CVPreparationService:
                     render_result,
                     final_recruiter_document,
                     document,
-                    self.recruiter_policy,
+                    self.render_policy,
                 )
             except (OSError, ValueError):
                 _remove_partial_pdf(output_path)
