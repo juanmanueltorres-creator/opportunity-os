@@ -11,6 +11,7 @@ from typing import Any
 import pymupdf as fitz
 import yaml
 
+from app.cv.layout import LayoutProfile
 from app.cv.models import CVDocumentModel, RenderedCVArtifact
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
@@ -21,7 +22,6 @@ from app.cv.recruiter_policy import RecruiterPolicy
 
 RENDERER_VERSION = "rendercv-typst-v1"
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_DESIGN_PATH = _PROJECT_ROOT / "config" / "rendercv_one_page.yaml"
 _FONTAWESOME_STUB_PATH = _PROJECT_ROOT / "config" / "typst_fontawesome_stub"
 _EMAIL_PATTERN = re.compile(
     r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}",
@@ -56,21 +56,19 @@ _SECTION_LABELS = {
 class RenderCVTypstRenderer:
     renderer_version = RENDERER_VERSION
 
-    def __init__(self, design_path: str | Path | None = None) -> None:
-        self.design_path = Path(design_path) if design_path else _DEFAULT_DESIGN_PATH
-
     def render(
         self,
         recruiter_document: RecruiterDocumentModel,
         source_document: CVDocumentModel,
         output_path: str | Path,
         policy: RecruiterPolicy,
+        layout_profile: LayoutProfile,
     ) -> RecruiterRenderResult:
         output = Path(output_path).resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
-        design = self.design_path.resolve()
 
         try:
+            design = _resolve_layout_design(layout_profile)
             payload = _build_rendercv_payload(
                 recruiter_document=recruiter_document,
                 source_document=source_document,
@@ -124,6 +122,18 @@ class RenderCVTypstRenderer:
             raise
         except Exception as exc:
             raise ValueError("RenderCV/Typst render failed") from exc
+
+
+def _resolve_layout_design(profile: LayoutProfile) -> Path:
+    root = _PROJECT_ROOT.resolve()
+    candidate = (root / profile.design_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("RenderCV/Typst render failed") from exc
+    if not candidate.is_file():
+        raise ValueError("RenderCV/Typst render failed")
+    return candidate
 
 
 def _render_pdf_in_process(
@@ -197,8 +207,7 @@ def _build_rendercv_payload(
 
     if recruiter_document.profile_claim_ids:
         sections[labels["profile"]] = [
-            claim_text(claim_id)
-            for claim_id in recruiter_document.profile_claim_ids
+            claim_text(claim_id) for claim_id in recruiter_document.profile_claim_ids
         ]
 
     if recruiter_document.technology_groups:
@@ -212,8 +221,7 @@ def _build_rendercv_payload(
                 {
                     "label": group_label,
                     "details": ", ".join(
-                        claim_text(claim_id)
-                        for claim_id in group.skill_claim_ids
+                        claim_text(claim_id) for claim_id in group.skill_claim_ids
                     ),
                 }
             )
@@ -262,8 +270,7 @@ def _build_rendercv_payload(
 
     if recruiter_document.link_claim_ids:
         sections[labels["links"]] = [
-            claim_text(claim_id)
-            for claim_id in recruiter_document.link_claim_ids
+            claim_text(claim_id) for claim_id in recruiter_document.link_claim_ids
         ]
 
     return {
