@@ -29,6 +29,7 @@ class NarrativePolicy(StrictCVModel):
     max_off_strategy_claim_ratio: float = Field(default=0.35, ge=0, le=1)
     max_competing_identity_signals: int = Field(default=1, ge=0)
     min_scanability_score: float = Field(default=0.67, ge=0, le=1)
+    max_scan_claims: int = Field(default=8, ge=1, le=24)
     generic_language_phrases: dict[str, list[str]] = Field(
         default_factory=lambda: {"en": [], "es": []}
     )
