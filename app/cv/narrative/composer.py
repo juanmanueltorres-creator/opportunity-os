@@ -18,6 +18,26 @@ def _normalize(value: str) -> str:
     return " ".join(value.casefold().split())
 
 
+def _validate_strategy_inputs(
+    *,
+    validation: ValidationResult,
+    selection: EvidenceSelection,
+    strategy: CVStrategy,
+) -> None:
+    if not validation.valid:
+        raise ValueError("narrative_requires_valid_semantic_document")
+    if strategy.application_track_id != selection.application_track_id:
+        raise ValueError("narrative_strategy_track_mismatch")
+
+    strategy_fact_ids = (
+        set(strategy.must_show_fact_ids)
+        | set(strategy.supporting_fact_ids)
+        | set(strategy.optional_fact_ids)
+    )
+    if not strategy_fact_ids.issubset(set(selection.selected_fact_ids)):
+        raise ValueError("narrative_strategy_fact_outside_selection")
+
+
 def _validated_claims(
     document: CVDocumentModel,
     validation: ValidationResult,
@@ -206,6 +226,12 @@ def compose_strategy_recruiter_document(
     strategy: CVStrategy,
     policy: RecruiterPolicy,
 ) -> RecruiterDocumentModel:
+    _validate_strategy_inputs(
+        validation=validation,
+        selection=selection,
+        strategy=strategy,
+    )
+
     claims = _validated_claims(document, validation)
     claim_by_id = {claim.claim_id: claim for claim in claims}
 
