@@ -48,3 +48,22 @@ def test_generic_receipt_description_is_not_application_ack() -> None:
     _, signals = _signals("Applications are received through our careers portal.")
 
     assert all(kind != "APPLICATION_ACKNOWLEDGED" for kind, _, _ in signals)
+
+
+def test_universia_has_avanzado_en_el_proceso_is_stage_advanced() -> None:
+    result, signals = _signals("¡Bien! Has avanzado en el proceso.")
+
+    assert result.disposition == "CLASSIFIED"
+    assert signals == [
+        ("STAGE_ADVANCED", "HIGH", "STAGE_ADVANCEMENT_EXPLICIT")
+    ]
+
+
+def test_universia_advancing_better_fit_applications_is_rejection() -> None:
+    result, signals = _signals(
+        "Tras revisar tu perfil, hemos decidido avanzar con candidaturas "
+        "que se ajustan más a los requisitos de la posición."
+    )
+
+    assert result.disposition == "CLASSIFIED"
+    assert signals == [("REJECTED", "HIGH", "REJECTION_EXPLICIT")]
