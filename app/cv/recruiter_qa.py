@@ -11,10 +11,12 @@ from app.cv.recruiter_models import (
     RecruiterQAResult,
     RecruiterRenderResult,
 )
-from app.cv.recruiter_policy import RecruiterPolicy
+from app.cv.render_policy import RenderPolicy
 
-_A4_WIDTH_POINTS = 595.276
-_A4_HEIGHT_POINTS = 841.89
+_PAGE_SIZES_POINTS = {
+    "A4": (595.276, 841.89),
+    "LETTER": (612.0, 792.0),
+}
 _PAGE_TOLERANCE_POINTS = 3.0
 _MAX_HEADLINE_LINES = 2
 _MIN_SUBSTANTIVE_CLAIMS = 8
@@ -29,7 +31,7 @@ class RecruiterQualityQA:
         render_result: RecruiterRenderResult,
         recruiter_document: RecruiterDocumentModel,
         source_document: CVDocumentModel,
-        policy: RecruiterPolicy,
+        policy: RenderPolicy,
     ) -> RecruiterQAResult:
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
@@ -52,23 +54,43 @@ class RecruiterQualityQA:
 
         try:
             page_count = len(document)
-            if page_count != policy.max_pages:
+            if policy.max_pages == 1 and page_count != 1:
                 errors.append(
                     _issue(
                         "recruiter_one_page_failed",
                         "Recruiter PDF must contain exactly one page.",
                     )
                 )
+            elif page_count > policy.max_pages:
+                errors.append(
+                    _issue(
+                        "recruiter_page_count_exceeded",
+                        "Recruiter PDF exceeds the configured maximum page count.",
+                    )
+                )
+            elif page_count > policy.preferred_pages:
+                warnings.append(
+                    _issue(
+                        "recruiter_preferred_page_count_exceeded",
+                        "Recruiter PDF exceeds the preferred page count.",
+                    )
+                )
 
             if page_count > 0:
+                expected_width, expected_height = _PAGE_SIZES_POINTS[policy.page_size]
                 for page in document:
                     width = float(page.rect.width)
                     height = float(page.rect.height)
-                    if not _is_a4(width, height):
+                    if not _is_page_size(
+                        width,
+                        height,
+                        expected_width=expected_width,
+                        expected_height=expected_height,
+                    ):
                         errors.append(
                             _issue(
                                 "recruiter_page_size_invalid",
-                                "Recruiter PDF page size must be A4.",
+                                f"Recruiter PDF page size must be {policy.page_size}.",
                             )
                         )
                         break
@@ -240,10 +262,16 @@ def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", normalized).strip().casefold()
 
 
-def _is_a4(width: float, height: float) -> bool:
+def _is_page_size(
+    width: float,
+    height: float,
+    *,
+    expected_width: float,
+    expected_height: float,
+) -> bool:
     return (
-        abs(width - _A4_WIDTH_POINTS) <= _PAGE_TOLERANCE_POINTS
-        and abs(height - _A4_HEIGHT_POINTS) <= _PAGE_TOLERANCE_POINTS
+        abs(width - expected_width) <= _PAGE_TOLERANCE_POINTS
+        and abs(height - expected_height) <= _PAGE_TOLERANCE_POINTS
     )
 
 
