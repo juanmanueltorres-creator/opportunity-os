@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add deterministic ATS-safe CV layout profiles selected from `CVStrategy` and consumed by the existing RenderCV/Typst renderer without changing recruiter-facing content.
+**Goal:** Add deterministic ATS-safe CV layout profiles selected from `CVStrategy` and consumed by the existing RenderCV/Typst renderer without changing recruiter-facing content or committing private candidate track configuration.
 
-**Architecture:** Introduce `app.cv.layout` as a presentation-only layer. A strict registry loader provides three versioned `LayoutProfile` values; `select_layout_profile()` resolves one profile from explicit strategy preference or stable application-track mapping; `CVPreparationService` selects exactly once and passes that profile to every render attempt; `RenderCVTypstRenderer` uses only the profile's repository-relative design file and never inspects strategy.
+**Architecture:** Introduce `app.cv.layout` as a presentation-only layer. A strict public registry provides three versioned profiles; `select_layout_profile()` resolves an explicit strategy preference first, then an injected privacy-safe `track_layout_map`, otherwise `compact_ats`. `CVPreparationService` selects exactly once per preparation run and passes the same profile to every render attempt. `RenderCVTypstRenderer` uses only the selected profile's repository-relative design file and never inspects strategy.
 
 **Tech Stack:** Python 3.12+, Pydantic v2, PyYAML, RenderCV 2.8.x, Typst, pytest, GitHub Actions.
 
@@ -13,18 +13,20 @@
 ## Global Constraints
 
 - `LAYOUT_PROFILE_VERSION` is exactly `layout-profile-v1`.
-- V1 profile IDs are exactly `technical_clean`, `operations_clean`, and `compact_ats`.
-- All V1 layouts remain single-column, text-first, and ATS-safe.
-- Layout code must not add, remove, rewrite, or reorder recruiter-facing claim IDs.
-- Layout code must not change provenance, `CVStrategy`, `RecruiterDocumentModel`, or narrative policy.
-- `RenderPolicy` remains the only authority for page size, preferred/max page count, and body-font constraints.
-- Explicit unknown `preferred_layout_profile_id` fails closed with `ValueError("layout_profile_unavailable")`; unknown track without explicit preference falls back to `compact_ats`.
-- The same selected profile is reused across every reduction-loop render attempt.
-- No ApplicationPacket schema, Gmail, outreach, send behavior, Visual QA, JSON Resume, or second-renderer changes belong in this plan.
+- V1 profile IDs are exactly `technical_clean`, `operations_clean`, `compact_ats`.
+- All V1 designs remain one-column, text-first, ATS-safe, Source Sans 3.
+- Layout must not add/remove/rewrite/reorder recruiter-facing claim IDs.
+- Layout must not change provenance, `CVStrategy`, `RecruiterDocumentModel`, or narrative policy.
+- `RenderPolicy` remains sole authority for page size, preferred/max pages, and body-font limits.
+- Explicit unavailable profile and injected mapping to unavailable profile fail closed with `ValueError("layout_profile_unavailable")`.
+- No explicit preference and no track mapping falls back to `compact_ats`.
+- Public code/config/tests must not contain Juan-specific/private track IDs.
+- The same profile is reused through reduction retries.
+- No Visual QA, JSON Resume, second renderer, ApplicationPacket, Gmail, outreach, or send changes belong in PR #47.
 
 ---
 
-### Task 1: Layout profile contract and public registry
+### Task 1: Layout profile model and registry
 
 **Files:**
 - Create: `app/cv/layout/__init__.py`
@@ -34,14 +36,13 @@
 - Create: `tests/test_cv_layout_profiles.py`
 
 **Interfaces:**
-- Produces: `LAYOUT_PROFILE_VERSION: str`
-- Produces: `LayoutProfile`
-- Produces: `load_layout_profiles(path: str | Path) -> dict[str, LayoutProfile]`
-- Later tasks consume the returned mapping by profile ID.
+- Produces `LAYOUT_PROFILE_VERSION`
+- Produces `LayoutProfile`
+- Produces `load_layout_profiles(path: str | Path) -> dict[str, LayoutProfile]`
 
-- [ ] **Step 1: Write the failing model/registry tests**
+- [ ] **Step 1: Write the failing tests**
 
-Create `tests/test_cv_layout_profiles.py` with tests covering the exact V1 contract:
+Create `tests/test_cv_layout_profiles.py`:
 
 ```python
 from pathlib import Path
@@ -52,7 +53,7 @@ from pydantic import ValidationError
 from app.cv.layout import LayoutProfile, load_layout_profiles
 
 
-def test_public_layout_registry_loads_all_v1_profiles() -> None:
+def test_public_registry_loads_exact_v1_profiles() -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
     assert list(profiles) == ["compact_ats", "operations_clean", "technical_clean"]
     assert profiles["technical_clean"].density == "comfortable"
@@ -60,7 +61,7 @@ def test_public_layout_registry_loads_all_v1_profiles() -> None:
     assert profiles["compact_ats"].ats_mode == "strict"
 
 
-def test_layout_profile_rejects_narrative_and_render_policy_fields() -> None:
+def test_profile_rejects_narrative_and_render_fields() -> None:
     with pytest.raises(ValidationError):
         LayoutProfile.model_validate({
             "version": "layout-profile-v1",
@@ -74,7 +75,7 @@ def test_layout_profile_rejects_narrative_and_render_policy_fields() -> None:
         })
 
 
-def test_layout_profile_rejects_wrong_version() -> None:
+def test_profile_rejects_wrong_version_and_path_escape() -> None:
     with pytest.raises(ValidationError):
         LayoutProfile(
             version="layout-profile-v2",
@@ -82,11 +83,18 @@ def test_layout_profile_rejects_wrong_version() -> None:
             design_path="config/layouts/technical_clean.yaml",
             density="comfortable",
             emphasis="technical",
-            ats_mode="strict",
+        )
+    with pytest.raises(ValidationError):
+        LayoutProfile(
+            version="layout-profile-v1",
+            id="technical_clean",
+            design_path="../private.yaml",
+            density="comfortable",
+            emphasis="technical",
         )
 
 
-def test_layout_registry_rejects_key_id_mismatch(tmp_path: Path) -> None:
+def test_registry_rejects_key_id_mismatch(tmp_path: Path) -> None:
     path = tmp_path / "profiles.yaml"
     path.write_text(
         "technical_clean:\n"
@@ -102,24 +110,22 @@ def test_layout_registry_rejects_key_id_mismatch(tmp_path: Path) -> None:
         load_layout_profiles(path)
 
 
-def test_layout_registry_requires_all_v1_profiles(tmp_path: Path) -> None:
+def test_registry_requires_all_v1_profiles(tmp_path: Path) -> None:
     path = tmp_path / "profiles.yaml"
     path.write_text("{}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="layout profile registry incomplete"):
         load_layout_profiles(path)
 ```
 
-- [ ] **Step 2: Run the new test file and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest tests/test_cv_layout_profiles.py -q
 ```
 
-Expected: collection/import failure because `app.cv.layout` does not exist.
+Expected: import/collection failure because `app.cv.layout` does not exist.
 
-- [ ] **Step 3: Implement the strict model and loader**
+- [ ] **Step 3: Implement the minimal model and loader**
 
 Create `app/cv/layout/models.py`:
 
@@ -186,8 +192,6 @@ def load_layout_profiles(path: str | Path) -> dict[str, LayoutProfile]:
     return dict(sorted(profiles.items()))
 ```
 
-Export these names from `app/cv/layout/__init__.py`.
-
 Create `config/layout_profiles.yaml`:
 
 ```yaml
@@ -216,9 +220,9 @@ compact_ats:
   ats_mode: strict
 ```
 
-- [ ] **Step 4: Run focused + full tests**
+Export model/loader from `app/cv/layout/__init__.py`.
 
-Run:
+- [ ] **Step 4: Verify GREEN**
 
 ```bash
 pytest tests/test_cv_layout_profiles.py -q
@@ -226,7 +230,7 @@ pytest -q
 python -m compileall app
 ```
 
-Expected: all PASS.
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -237,7 +241,7 @@ git commit -m "feat: add CV layout profile registry"
 
 ---
 
-### Task 2: Deterministic layout selector
+### Task 2: Privacy-safe deterministic selector
 
 **Files:**
 - Create: `app/cv/layout/selector.py`
@@ -245,14 +249,23 @@ git commit -m "feat: add CV layout profile registry"
 - Create: `tests/test_cv_layout_selector.py`
 
 **Interfaces:**
-- Consumes: `CVStrategy`, `Mapping[str, LayoutProfile]`
-- Produces: `select_layout_profile(*, strategy: CVStrategy, profiles: Mapping[str, LayoutProfile]) -> LayoutProfile`
-
-- [ ] **Step 1: Write selector tests before production code**
-
-Create `tests/test_cv_layout_selector.py` with a helper strategy and these assertions:
 
 ```python
+def select_layout_profile(
+    *,
+    strategy: CVStrategy,
+    profiles: Mapping[str, LayoutProfile],
+    track_layout_map: Mapping[str, str] | None = None,
+) -> LayoutProfile:
+```
+
+- [ ] **Step 1: Write failing selector tests with fictional public track IDs**
+
+Create `tests/test_cv_layout_selector.py`:
+
+```python
+import pytest
+
 from app.cv.layout import load_layout_profiles, select_layout_profile
 from app.cv.strategy.models import CVStrategy, CoreMessage
 
@@ -265,16 +278,14 @@ def _strategy(track: str, preferred: str | None = None) -> CVStrategy:
         target_company="Example Co",
         positioning="Verified Developer",
         recruiter_question="Can this candidate do the work?",
-        core_messages=[
-            CoreMessage(
-                id="positioning",
-                message="Verified Developer",
-                fact_ids=["fact:role"],
-                evidence_ids=[],
-                importance=10.0,
-                reason="validated positioning",
-            )
-        ],
+        core_messages=[CoreMessage(
+            id="positioning",
+            message="Verified Developer",
+            fact_ids=["fact:role"],
+            evidence_ids=[],
+            importance=10.0,
+            reason="validated positioning",
+        )],
         must_show_fact_ids=["fact:role"],
         supporting_fact_ids=[],
         optional_fact_ids=[],
@@ -284,57 +295,74 @@ def _strategy(track: str, preferred: str | None = None) -> CVStrategy:
     )
 
 
-def test_explicit_valid_layout_preference_wins() -> None:
+def test_explicit_valid_preference_wins_over_mapping() -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
     result = select_layout_profile(
-        strategy=_strategy("operations-support", "technical_clean"),
+        strategy=_strategy("ops", "technical_clean"),
         profiles=profiles,
+        track_layout_map={"ops": "operations_clean"},
     )
     assert result.id == "technical_clean"
 
 
-def test_explicit_unknown_layout_preference_fails_closed() -> None:
+def test_explicit_unknown_preference_fails_closed() -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
-    strategy = _strategy("operations-support").model_copy(
+    strategy = _strategy("ops").model_copy(
         update={"preferred_layout_profile_id": "missing_profile"}
     )
-    try:
+    with pytest.raises(ValueError, match="layout_profile_unavailable"):
         select_layout_profile(strategy=strategy, profiles=profiles)
-    except ValueError as exc:
-        assert str(exc) == "layout_profile_unavailable"
-    else:
-        raise AssertionError("explicit unknown layout must fail closed")
 
 
-def test_public_track_mapping_is_deterministic() -> None:
+def test_injected_track_mapping_selects_profile() -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
-    assert select_layout_profile(strategy=_strategy("software-data-decision"), profiles=profiles).id == "technical_clean"
-    assert select_layout_profile(strategy=_strategy("geospatial-mining-tech"), profiles=profiles).id == "technical_clean"
-    assert select_layout_profile(strategy=_strategy("operations-support"), profiles=profiles).id == "operations_clean"
-    assert select_layout_profile(strategy=_strategy("unknown-track"), profiles=profiles).id == "compact_ats"
+    mapping = {"tech": "technical_clean", "ops": "operations_clean"}
+    assert select_layout_profile(
+        strategy=_strategy("tech"), profiles=profiles, track_layout_map=mapping
+    ).id == "technical_clean"
+    assert select_layout_profile(
+        strategy=_strategy("ops"), profiles=profiles, track_layout_map=mapping
+    ).id == "operations_clean"
 
 
-def test_registry_insertion_order_does_not_change_selection() -> None:
+def test_absent_track_mapping_uses_compact_ats() -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
-    reversed_profiles = dict(reversed(list(profiles.items())))
-    strategy = _strategy("software-data-decision")
-    assert select_layout_profile(strategy=strategy, profiles=profiles) == select_layout_profile(
-        strategy=strategy,
-        profiles=reversed_profiles,
+    assert select_layout_profile(
+        strategy=_strategy("unknown"), profiles=profiles
+    ).id == "compact_ats"
+
+
+def test_mapping_to_missing_profile_fails_closed() -> None:
+    profiles = load_layout_profiles("config/layout_profiles.yaml")
+    with pytest.raises(ValueError, match="layout_profile_unavailable"):
+        select_layout_profile(
+            strategy=_strategy("tech"),
+            profiles=profiles,
+            track_layout_map={"tech": "missing_profile"},
+        )
+
+
+def test_mapping_insertion_order_does_not_change_selection() -> None:
+    profiles = load_layout_profiles("config/layout_profiles.yaml")
+    strategy = _strategy("tech")
+    first = {"tech": "technical_clean", "ops": "operations_clean"}
+    second = dict(reversed(list(first.items())))
+    assert select_layout_profile(
+        strategy=strategy, profiles=profiles, track_layout_map=first
+    ) == select_layout_profile(
+        strategy=strategy, profiles=profiles, track_layout_map=second
     )
 ```
 
-- [ ] **Step 2: Run and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest tests/test_cv_layout_selector.py -q
 ```
 
-Expected: import failure because `select_layout_profile` is not implemented/exported.
+Expected: import failure because selector is not implemented/exported.
 
-- [ ] **Step 3: Implement deterministic selection**
+- [ ] **Step 3: Implement selector**
 
 Create `app/cv/layout/selector.py`:
 
@@ -346,51 +374,43 @@ from collections.abc import Mapping
 from app.cv.layout.models import LayoutProfile
 from app.cv.strategy.models import CVStrategy
 
-_TRACK_PROFILE_MAP = {
-    "software-data-decision": "technical_clean",
-    "geospatial-mining-tech": "technical_clean",
-    "operations-support": "operations_clean",
-}
-
 
 def select_layout_profile(
     *,
     strategy: CVStrategy,
     profiles: Mapping[str, LayoutProfile],
+    track_layout_map: Mapping[str, str] | None = None,
 ) -> LayoutProfile:
     if strategy.preferred_layout_profile_id is not None:
-        try:
-            return profiles[strategy.preferred_layout_profile_id]
-        except KeyError as exc:
-            raise ValueError("layout_profile_unavailable") from exc
+        profile_id = strategy.preferred_layout_profile_id
+    else:
+        mapping = track_layout_map or {}
+        profile_id = mapping.get(strategy.application_track_id, "compact_ats")
 
-    profile_id = _TRACK_PROFILE_MAP.get(
-        strategy.application_track_id,
-        "compact_ats",
-    )
     try:
         return profiles[profile_id]
     except KeyError as exc:
         raise ValueError("layout_profile_unavailable") from exc
 ```
 
-Export from `app/cv/layout/__init__.py`.
+Export it from `app/cv/layout/__init__.py`.
 
-- [ ] **Step 4: Run focused + full tests and compile**
+- [ ] **Step 4: Verify GREEN and privacy**
 
 ```bash
 pytest tests/test_cv_layout_selector.py -q
 pytest -q
 python -m compileall app
+grep -R "software-data-decision\|geospatial-mining-tech\|operations-support" app config tests && exit 1 || true
 ```
 
-Expected: all PASS.
+Expected: tests PASS and grep finds no private track IDs.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add app/cv/layout tests/test_cv_layout_selector.py
-git commit -m "feat: select CV layout from strategy"
+git commit -m "feat: select CV layout from injected track mapping"
 ```
 
 ---
@@ -403,11 +423,10 @@ git commit -m "feat: select CV layout from strategy"
 - Create: `config/layouts/compact_ats.yaml`
 - Modify: `app/cv/renderers/rendercv_typst.py`
 - Modify: `tests/test_recruiter_renderer.py`
+- Modify: `tests/test_recruiter_theme_contract.py`
 - Create: `tests/test_cv_layout_renderer_contract.py`
 
 **Interfaces:**
-- Consumes: `LayoutProfile`
-- Changes renderer signature to:
 
 ```python
 def render(
@@ -420,9 +439,9 @@ def render(
 ) -> RecruiterRenderResult:
 ```
 
-- [ ] **Step 1: Add RED tests for explicit profile use and path safety**
+- [ ] **Step 1: Write RED tests**
 
-Create `tests/test_cv_layout_renderer_contract.py` by importing `_source_document` and `_recruiter_document` from `test_recruiter_renderer`, then assert:
+Create `tests/test_cv_layout_renderer_contract.py`:
 
 ```python
 from pathlib import Path
@@ -436,58 +455,56 @@ from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 from test_recruiter_renderer import _recruiter_document, _source_document
 
 
-def test_renderer_requires_and_uses_selected_layout_profile(tmp_path: Path) -> None:
-    profiles = load_layout_profiles("config/layout_profiles.yaml")
+def test_renderer_accepts_selected_layout_profile(tmp_path: Path) -> None:
+    profile = load_layout_profiles("config/layout_profiles.yaml")["technical_clean"]
     result = RenderCVTypstRenderer().render(
         recruiter_document=_recruiter_document(),
         source_document=_source_document(),
         output_path=tmp_path / "technical.pdf",
         policy=load_recruiter_policy("config/recruiter_policy.yaml"),
-        layout_profile=profiles["technical_clean"],
+        layout_profile=profile,
     )
     assert Path(result.artifact.path).is_file()
-    assert "Alex Example" in (PdfReader(result.artifact.path).pages[0].extract_text() or "")
 
 
-def test_renderer_rejects_missing_layout_design(tmp_path: Path) -> None:
+def test_renderer_rejects_missing_design(tmp_path: Path) -> None:
     profile = LayoutProfile(
         version="layout-profile-v1",
         id="technical_clean",
         design_path="config/layouts/missing.yaml",
         density="comfortable",
         emphasis="technical",
-        ats_mode="strict",
     )
     with pytest.raises(ValueError, match="RenderCV/Typst render failed"):
         RenderCVTypstRenderer().render(
-            recruiter_document=_recruiter_document(),
-            source_document=_source_document(),
-            output_path=tmp_path / "missing.pdf",
-            policy=load_recruiter_policy("config/recruiter_policy.yaml"),
-            layout_profile=profile,
+            _recruiter_document(),
+            _source_document(),
+            tmp_path / "missing.pdf",
+            load_recruiter_policy("config/recruiter_policy.yaml"),
+            profile,
         )
 
 
-def test_same_recruiter_content_is_extractable_across_all_profiles(tmp_path: Path) -> None:
+def test_same_content_is_extractable_across_all_profiles(tmp_path: Path) -> None:
     profiles = load_layout_profiles("config/layout_profiles.yaml")
     renderer = RenderCVTypstRenderer()
     policy = load_recruiter_policy("config/recruiter_policy.yaml")
-    expected = {"Alex Example", "Software & Operations Developer", "Python", "SQL"}
+    expected = ["Alex Example", "Software & Operations Developer", "Python", "SQL"]
     for profile in profiles.values():
         result = renderer.render(
-            recruiter_document=_recruiter_document(),
-            source_document=_source_document(),
-            output_path=tmp_path / f"{profile.id}.pdf",
-            policy=policy,
-            layout_profile=profile,
+            _recruiter_document(),
+            _source_document(),
+            tmp_path / f"{profile.id}.pdf",
+            policy,
+            profile,
         )
-        text = "\n".join(page.extract_text() or "" for page in PdfReader(result.artifact.path).pages)
-        assert expected.issubset(text)
+        text = "\n".join(
+            page.extract_text() or "" for page in PdfReader(result.artifact.path).pages
+        )
+        assert all(value in text for value in expected)
 ```
 
-The path-escape case remains covered at model validation level from Task 1.
-
-- [ ] **Step 2: Run and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest tests/test_cv_layout_renderer_contract.py -q
@@ -495,99 +512,40 @@ pytest tests/test_cv_layout_renderer_contract.py -q
 
 Expected: `TypeError` because current renderer does not accept `layout_profile`.
 
-- [ ] **Step 3: Create restrained ATS-safe design files**
+- [ ] **Step 3: Create the three restrained ATS-safe designs**
 
-Start from `config/rendercv_one_page.yaml` and create three valid RenderCV design YAML files under `config/layouts/`.
+Each file copies the structural settings from current `config/rendercv_one_page.yaml`: `theme: sb2nov`, A4, left alignment, `Source Sans 3`, footer/top-note off, connection icons off, external-link icons off, one-column sections.
 
-Use these exact physical differences while preserving one-column reading order:
+Use these profile differences:
 
-```yaml
-# technical_clean.yaml key differences
-page:
-  top_margin: 0.48in
-  bottom_margin: 0.48in
-  left_margin: 0.55in
-  right_margin: 0.55in
-typography:
-  line_spacing: 0.64em
-  font_size:
-    body: 10pt
-    name: 22pt
-    headline: 11pt
-    connections: 9.6pt
-    section_titles: 1.18em
-section_titles:
-  type: with_full_line
-  line_thickness: 0.5pt
-  space_above: 0.34cm
-  space_below: 0.18cm
-sections:
-  space_between_regular_entries: 0.48em
-  space_between_text_based_entries: 0.26em
-```
+| Setting | technical_clean | operations_clean | compact_ats |
+|---|---:|---:|---:|
+| top/bottom margin | 0.48in | 0.52in | 0.45in |
+| left/right margin | 0.55in | 0.58in | 0.50in |
+| line spacing | 0.64em | 0.62em | 0.56em |
+| body font | 10pt | 10pt | 9.6pt |
+| name font | 22pt | 21pt | 20pt |
+| headline | 11pt | 10.6pt | 10.4pt |
+| connections | 9.6pt | 9.5pt | 9.3pt |
+| section titles | 1.18em | 1.12em | 1.10em |
+| title line | 0.5pt | 0.4pt | 0.35pt |
+| title space above | 0.34cm | 0.30cm | 0.25cm |
+| title space below | 0.18cm | 0.16cm | 0.13cm |
+| regular entries | 0.48em | 0.52em | 0.38em |
+| text entries | 0.26em | 0.25em | 0.20em |
 
-```yaml
-# operations_clean.yaml key differences
-page:
-  top_margin: 0.52in
-  bottom_margin: 0.52in
-  left_margin: 0.58in
-  right_margin: 0.58in
-typography:
-  line_spacing: 0.62em
-  font_size:
-    body: 10pt
-    name: 21pt
-    headline: 10.6pt
-    connections: 9.5pt
-    section_titles: 1.12em
-section_titles:
-  type: with_full_line
-  line_thickness: 0.4pt
-  space_above: 0.30cm
-  space_below: 0.16cm
-sections:
-  space_between_regular_entries: 0.52em
-  space_between_text_based_entries: 0.25em
-```
+No profile introduces columns, bars, charts, sidebars, semantic icons, or color-dependent information.
 
-```yaml
-# compact_ats.yaml key differences
-page:
-  top_margin: 0.45in
-  bottom_margin: 0.45in
-  left_margin: 0.50in
-  right_margin: 0.50in
-typography:
-  line_spacing: 0.56em
-  font_size:
-    body: 9.6pt
-    name: 20pt
-    headline: 10.4pt
-    connections: 9.3pt
-    section_titles: 1.10em
-section_titles:
-  type: with_full_line
-  line_thickness: 0.35pt
-  space_above: 0.25cm
-  space_below: 0.13cm
-sections:
-  space_between_regular_entries: 0.38em
-  space_between_text_based_entries: 0.20em
-```
+- [ ] **Step 4: Implement safe design resolution and explicit renderer parameter**
 
-Every design must also preserve `show_footer: false`, `show_top_note: false`, `show_icons: false`, `show_external_link_icon: false`, left alignment, Source Sans 3, no external-link icons, and the same RenderCV theme/runtime compatibility as the current design.
-
-- [ ] **Step 4: Change renderer to resolve design from the profile**
-
-In `RenderCVTypstRenderer.render`, replace the constructor-selected default design path with a per-call profile argument. Resolve safely:
+In `app/cv/renderers/rendercv_typst.py` import `LayoutProfile`, remove renderer-owned default design selection, and add:
 
 ```python
 def _resolve_layout_design(profile: LayoutProfile) -> Path:
-    repository_root = _PROJECT_ROOT.resolve()
-    candidate = (repository_root / profile.design_path).resolve()
+    root = _PROJECT_ROOT.resolve()
+    candidate = (root / profile.design_path).resolve()
     try:
-        candidate.relative_to(repository_root)
+        candidate.relative_to(root)
     except ValueError as exc:
         raise ValueError("RenderCV/Typst render failed") from exc
     if not candidate.is_file():
@@ -595,24 +553,31 @@ def _resolve_layout_design(profile: LayoutProfile) -> Path:
     return candidate
 ```
 
-Use this path for `_configured_body_font_size()` and `_render_pdf_in_process()`.
+In `render(...)`, compute `design = _resolve_layout_design(layout_profile)` and use that path for both `_configured_body_font_size()` and `_render_pdf_in_process()`.
 
-Remove `_DEFAULT_DESIGN_PATH` and the renderer constructor's design selection; renderer must not own layout selection.
+- [ ] **Step 5: Migrate existing renderer callers/tests**
 
-- [ ] **Step 5: Migrate existing renderer tests to pass `compact_ats`**
-
-In `tests/test_recruiter_renderer.py`, create a helper:
+In `tests/test_recruiter_renderer.py`, add:
 
 ```python
+from app.cv.layout import load_layout_profiles
+
+
 def _layout_profile():
     return load_layout_profiles("config/layout_profiles.yaml")["compact_ats"]
 ```
 
-and pass `layout_profile=_layout_profile()` to every `RenderCVTypstRenderer().render(...)` invocation.
+Pass `layout_profile=_layout_profile()` to every direct `RenderCVTypstRenderer.render()` call.
 
-Update the current theme-contract test to inspect all three `config/layouts/*.yaml` files instead of only `config/rendercv_one_page.yaml`.
+Update `tests/test_recruiter_theme_contract.py` to inspect every `config/layouts/*.yaml` profile and assert:
 
-- [ ] **Step 6: Run renderer-focused and full gates**
+```python
+assert design["design"]["header"]["connections"]["show_icons"] is False
+assert design["design"]["links"]["show_external_link_icon"] is False
+assert design["design"]["typography"]["font_family"] == "Source Sans 3"
+```
+
+- [ ] **Step 6: Verify GREEN**
 
 ```bash
 pytest tests/test_cv_layout_renderer_contract.py tests/test_recruiter_renderer.py tests/test_recruiter_theme_contract.py -q
@@ -620,7 +585,7 @@ pytest -q
 python -m compileall app
 ```
 
-Expected: all PASS, with PDF text extractable for all profiles.
+Expected: PASS and extractable text across all profiles.
 
 - [ ] **Step 7: Commit**
 
@@ -631,42 +596,49 @@ git commit -m "feat: render recruiter CVs with layout profiles"
 
 ---
 
-### Task 4: Service wiring, reduction-loop stability, and CI previews
+### Task 4: Service wiring, stable reduction behavior, and previews
 
 **Files:**
 - Modify: `app/cv/service.py`
 - Modify: `scripts/render_recruiter_previews.py`
-- Modify: `tests/test_cv_service.py`
 - Create: `tests/test_cv_service_layout_profile.py`
-- Modify: any renderer test double in `tests/` whose `render()` signature must accept `layout_profile`
+- Modify: renderer doubles/callers in existing `tests/` as required by signature migration
 
 **Interfaces:**
-- `CVPreparationService.__init__` gains `layout_profiles: Mapping[str, LayoutProfile] | None = None`
-- Default registry loads from `config/layout_profiles.yaml`
-- The service calls `select_layout_profile(strategy=strategy, profiles=self.layout_profiles)` exactly once per preparation run.
-- The selected profile is passed unchanged to every renderer call, including reduction retries.
 
-- [ ] **Step 1: Write RED service tests with a capturing renderer**
-
-Create `tests/test_cv_service_layout_profile.py` using existing helpers from `test_cv_service`:
+`CVPreparationService.__init__` gains:
 
 ```python
-from pathlib import Path
+layout_profiles: Mapping[str, LayoutProfile] | None = None,
+track_layout_map: Mapping[str, str] | None = None,
+```
 
-from app.cv.layout import load_layout_profiles
-from app.cv.recruiter_models import RecruiterQAResult
-from app.cv.service import CVPreparationService
-from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
+Defaults:
 
+```python
+self.layout_profiles = (
+    dict(layout_profiles)
+    if layout_profiles is not None
+    else load_layout_profiles(_DEFAULT_LAYOUT_PROFILES_PATH)
+)
+self.track_layout_map = dict(track_layout_map or {})
+```
 
+- [ ] **Step 1: Write RED service tests**
+
+Create `tests/test_cv_service_layout_profile.py` using `NOW`, `LANGUAGE_DECISION`, `_assessment`, `_inputs`, `_resolver` from `test_cv_service`.
+
+Use a capturing wrapper:
+
+```python
 class CapturingRenderer:
     renderer_version = "capturing-layout-v1"
 
     def __init__(self) -> None:
-        self.profiles = []
+        self.profile_ids: list[str] = []
 
     def render(self, recruiter_document, source_document, output_path, policy, layout_profile):
-        self.profiles.append(layout_profile)
+        self.profile_ids.append(layout_profile.id)
         from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
         return RenderCVTypstRenderer().render(
             recruiter_document,
@@ -675,50 +647,52 @@ class CapturingRenderer:
             policy,
             layout_profile,
         )
-
-
-def test_service_selects_track_layout_and_passes_it_to_renderer(tmp_path: Path) -> None:
-    master, catalog, policy = _inputs()
-    renderer = CapturingRenderer()
-    result = CVPreparationService(
-        taxonomy_resolver=_resolver(),
-        id_factory=lambda: "app-layout",
-        recruiter_renderer=renderer,
-        layout_profiles=load_layout_profiles("config/layout_profiles.yaml"),
-    ).prepare(
-        assessment=_assessment(),
-        master_facts=master,
-        evidence_catalog=catalog,
-        policy=policy,
-        output_root=tmp_path,
-        now=NOW,
-        language_decision=LANGUAGE_DECISION,
-    )
-    assert result.status == "PREPARED"
-    assert len(renderer.profiles) >= 1
-    assert len({profile.id for profile in renderer.profiles}) == 1
 ```
 
-Add a fail-closed test by injecting a strategy preference through the existing assessment/track-config seam used in strategy tests; if the current service has no public track-config injection seam, use `monkeypatch` on `app.cv.service.build_cv_strategy` to return a copy with `preferred_layout_profile_id="missing_profile"`. Assert:
+Test injected fictional mapping:
 
 ```python
-assert result.status == "BLOCKED_RENDER"
-assert result.errors[0].code == "layout_profile_unavailable"
-assert not list(tmp_path.rglob("*.pdf"))
-assert renderer.profiles == []
+result = CVPreparationService(
+    taxonomy_resolver=_resolver(),
+    id_factory=lambda: "app-layout",
+    recruiter_renderer=renderer,
+    track_layout_map={"tech": "technical_clean"},
+).prepare(...)
+assert result.status == "PREPARED"
+assert set(renderer.profile_ids) == {"technical_clean"}
 ```
 
-Add/reuse an overflow/reduction test double from `tests/test_cv_service.py` to force two render attempts and assert both received the same profile object or the same profile ID.
+Test public default fallback with no mapping:
 
-- [ ] **Step 2: Run and verify RED**
+```python
+assert set(renderer.profile_ids) == {"compact_ats"}
+```
+
+Test fail-closed mapped profile:
+
+```python
+result = CVPreparationService(
+    taxonomy_resolver=_resolver(),
+    recruiter_renderer=renderer,
+    track_layout_map={"tech": "missing_profile"},
+).prepare(...)
+assert result.status == "BLOCKED_RENDER"
+assert result.errors[0].code == "layout_profile_unavailable"
+assert renderer.profile_ids == []
+assert not list(tmp_path.rglob("*.pdf"))
+```
+
+For reduction stability, reuse/extend the existing overflow QA/renderer fixture from `tests/test_cv_service.py` so two render attempts occur, then assert every captured profile ID is identical.
+
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest tests/test_cv_service_layout_profile.py -q
 ```
 
-Expected: constructor/signature failures because service does not yet accept or pass `layout_profiles`/`layout_profile`.
+Expected: constructor/signature failures because service does not yet accept/pass layout configuration.
 
-- [ ] **Step 3: Wire service selection before first render**
+- [ ] **Step 3: Wire selection exactly once**
 
 In `app/cv/service.py`:
 
@@ -729,27 +703,14 @@ from app.cv.layout import LayoutProfile, load_layout_profiles, select_layout_pro
 _DEFAULT_LAYOUT_PROFILES_PATH = _PROJECT_ROOT / "config" / "layout_profiles.yaml"
 ```
 
-Add constructor argument:
-
-```python
-layout_profiles: Mapping[str, LayoutProfile] | None = None,
-```
-
-and initialize:
-
-```python
-self.layout_profiles = dict(layout_profiles) if layout_profiles is not None else load_layout_profiles(
-    _DEFAULT_LAYOUT_PROFILES_PATH
-)
-```
-
-After strategy creation/composition and before any renderer call, resolve once:
+After strategy creation and Narrative QA, before output/render loop:
 
 ```python
 try:
     selected_layout_profile = select_layout_profile(
         strategy=strategy,
         profiles=self.layout_profiles,
+        track_layout_map=self.track_layout_map,
     )
 except ValueError as exc:
     if str(exc) != "layout_profile_unavailable":
@@ -758,19 +719,27 @@ except ValueError as exc:
         "BLOCKED_RENDER",
         code="layout_profile_unavailable",
         message="Selected CV layout profile is unavailable",
-        warnings=[*validation.warnings],
+        warnings=[
+            *validation.warnings,
+            *recruiter_validation.warnings,
+            *narrative_warnings,
+        ],
     )
 ```
 
-Then pass `selected_layout_profile` to every `self.recruiter_renderer.render(...)` call in the reduction loop. Do not re-select after reduction.
+Pass `selected_layout_profile` to every `self.recruiter_renderer.render(...)` invocation. Never call the selector again inside the reduction loop.
 
-- [ ] **Step 4: Update test doubles and preview script**
+- [ ] **Step 4: Migrate preview script and test doubles**
 
-Every custom recruiter renderer under `tests/` must accept the new trailing `layout_profile` parameter; behavior should otherwise remain unchanged.
+Every test renderer double must accept the new trailing `layout_profile` argument without changing unrelated behavior.
 
-Update `scripts/render_recruiter_previews.py` so it loads the public registry once and renders fictional preview coverage for all three profile IDs. Each produced PDF must still run through `RecruiterQualityQA` with `RenderPolicy`.
+Update `scripts/render_recruiter_previews.py` to load:
 
-Use filenames that make profile identity explicit, e.g.:
+```python
+profiles = load_layout_profiles("config/layout_profiles.yaml")
+```
+
+and render at least one fictional fixture with each profile. Use explicit filenames:
 
 ```text
 recruiter_software__technical_clean.pdf
@@ -778,9 +747,9 @@ recruiter_tech_operations__operations_clean.pdf
 recruiter_software__compact_ats.pdf
 ```
 
-At minimum, ensure every V1 profile is exercised once; duplicate fixture/profile combinations are unnecessary.
+Run every output through existing `RecruiterQualityQA` using `RenderPolicy`, not `RecruiterPolicy`.
 
-- [ ] **Step 5: Run focused service tests and entire CI-equivalent gate**
+- [ ] **Step 5: Run local/CI-equivalent verification**
 
 ```bash
 pytest tests/test_cv_service_layout_profile.py tests/test_cv_service.py tests/test_recruiter_renderer.py -q
@@ -788,13 +757,14 @@ pytest -q
 python -m compileall app
 git diff --check origin/main...HEAD
 python scripts/render_recruiter_previews.py --output-dir artifacts/ci/recruiter-preview
+grep -R "software-data-decision\|geospatial-mining-tech\|operations-support" app config tests && exit 1 || true
 ```
 
-Expected: all PASS; preview script generates at least three PDFs and no existing CV/outreach behavior regresses.
+Expected: all tests/compile/previews PASS and privacy grep empty.
 
-- [ ] **Step 6: Verify offline runtime and privacy gates through GitHub Actions**
+- [ ] **Step 6: Require final GitHub Actions gate on final head SHA**
 
-Push the final commit and require the PR-head workflow to pass:
+Require success for:
 
 ```text
 pytest
@@ -808,7 +778,7 @@ offline runtime verify Python 3.12
 offline runtime verify Python 3.13
 ```
 
-Do not mark the PR ready or merge while any job is pending or failed.
+Do not mark ready or merge with pending/failed jobs.
 
 - [ ] **Step 7: Commit**
 
@@ -823,10 +793,11 @@ git commit -m "feat: wire CV layout profiles into preparation"
 
 Before marking PR #47 ready:
 
-1. Compare changed files against the spec and confirm no Gmail/outreach/ApplicationPacket/Visual QA/JSON Resume code changed.
-2. Verify `CVStrategy` and `RecruiterDocumentModel` are not mutated by layout selection.
-3. Verify all three layouts are repository-relative, single-column RenderCV designs with no semantic iconography or multi-column reading order.
-4. Verify `RenderPolicy` remains the source of page/font constraints and is still passed only to `RecruiterQualityQA`.
-5. Verify explicit invalid layout preference blocks before renderer invocation.
-6. Verify one profile is selected per preparation run and reused through reduction retries.
-7. Require a fresh successful Actions run on the final PR head SHA before integration.
+1. Confirm changed source/config/tests contain no private candidate track IDs.
+2. Confirm `CVStrategy` and `RecruiterDocumentModel` are never mutated by layout selection.
+3. Confirm all three layouts are repository-relative, single-column, text-first RenderCV designs.
+4. Confirm `RenderPolicy` still owns page/font constraints and `RecruiterPolicy` still owns composition.
+5. Confirm invalid explicit or injected profile selection blocks before renderer invocation and leaves no PDF.
+6. Confirm one profile is selected per preparation run and reused through reduction retries.
+7. Confirm no Gmail/outreach/ApplicationPacket/Visual QA/JSON Resume/second-renderer code changed.
+8. Require a fresh successful Actions run on the final PR head SHA before integration.
