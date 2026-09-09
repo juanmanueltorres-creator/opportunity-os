@@ -6,28 +6,11 @@ design:
     bottom_margin: 0.45in
     left_margin: 0.50in
     right_margin: 0.50in
-    show_page_numbering: false
     show_footer: false
-  section_titles:
-    type: with_full_line
-    font_weight: 600
-    line_thickness: 0.35pt
-    space_above: 0.25cm
-    space_below: 0.13cm
-  links:
-    underline: false
-    use_external_link_icon: false
-    show_external_link_icon: false
-  header:
-    alignment: left
-    photo_position: none
-    connections:
-      show_icons: false
-      space_between_connections: 0.22cm
-      separator: " | "
-      use_urls_as_placeholders: false
-      make_connections_links: true
+    show_top_note: false
   typography:
+    line_spacing: 0.56em
+    alignment: left
     font_family: Source Sans 3
     font_size:
       body: 9.6pt
@@ -35,22 +18,23 @@ design:
       headline: 10.4pt
       connections: 9.3pt
       section_titles: 1.10em
-    bold:
-      name: 700
-      headline: 600
-      section_titles: 600
-    line_spacing: 0.56em
+  links:
+    underline: false
+    show_external_link_icon: false
+  header:
     alignment: left
-    date_and_location_column_alignment: right
+    space_below_name: 0.14cm
+    space_below_headline: 0.12cm
+    space_below_connections: 0.24cm
+    connections:
+      show_icons: false
+  section_titles:
+    type: with_full_line
+    line_thickness: 0.35pt
+    space_above: 0.25cm
+    space_below: 0.13cm
   sections:
+    allow_page_break: true
     space_between_regular_entries: 0.38em
     space_between_text_based_entries: 0.20em
     show_time_spans_in: []
-  entries:
-    short_second_row: true
-    degree_width: 1cm
-    date_and_location_width: 3.8cm
-    allow_page_break: false
-    allow_page_break_even_if_first: false
-settings:
-  show_top_note: false
