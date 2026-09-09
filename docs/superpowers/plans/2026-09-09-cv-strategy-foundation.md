@@ -4,21 +4,22 @@
 
 **Goal:** Add a deterministic, evidence-safe `CVStrategy` foundation that derives recruiter positioning, up to three core messages, explicit gaps, and fact priorities from the current Opportunity-OS CV pipeline without changing rendered PDFs or `ApplicationPacket` behavior.
 
-**Architecture:** PR1 adds a pure strategy layer downstream of the existing semantic CV and upstream of the future narrative composer. It introduces strict strategy models, a versioned narrative-policy slice used only for strategy construction, deterministic requirement scoring, and a rules-first `build_cv_strategy()` function. The existing `CVPreparationService`, recruiter compositor, RenderCV renderer, QA gates, CLI, and packet schema remain untouched in this PR.
+**Architecture:** PR1 adds a pure strategy layer downstream of semantic CV validation and upstream of the future narrative composer. It introduces strict strategy models, a versioned narrative-policy slice used only for strategy construction, deterministic requirement scoring, and a rules-first `build_cv_strategy()` function that requires a valid `ValidationResult`. The existing `CVPreparationService`, recruiter compositor, RenderCV renderer, QA gates, CLI, and packet schema remain untouched in this PR.
 
-**Tech Stack:** Python 3.12+, Pydantic v2, PyYAML, pytest; existing Opportunity-OS `RadarAssessment`, `EvidenceSelection`, `CVDocumentModel`, selector, and composer contracts.
+**Tech Stack:** Python 3.12+, Pydantic v2, PyYAML, pytest; existing Opportunity-OS `RadarAssessment`, `EvidenceSelection`, `CVDocumentModel`, `ValidationResult`, selector, composer, and semantic validator contracts.
 
 **Spec:** `docs/superpowers/specs/2026-09-09-cv-strategy-narrative-design.md`
 
 ## Global Constraints
 
 - Python runtime remains `>=3.12`.
-- Pydantic remains `>=2` and all new public models inherit `StrictCVModel` so unknown fields are rejected.
+- Pydantic remains `>=2`; all new public models inherit `StrictCVModel` so unknown fields are rejected.
 - `CVDocumentModel` remains the authoritative visible-claim/provenance model.
-- This plan MUST NOT modify `app/cv/service.py`, `app/cv/recruiter_composer.py`, renderer code, PDF layout, `ApplicationPacket`, CLI output, or any generated PDF behavior.
+- `build_cv_strategy()` MUST require a semantically valid `ValidationResult`; it may use only claim IDs present in `validated_claim_ids`.
+- This plan MUST NOT modify `app/cv/service.py`, `app/cv/recruiter_composer.py`, renderer code, PDF layout, `ApplicationPacket`, CLI output, or generated PDF behavior.
 - The strategy builder is rules-first and deterministic: identical normalized inputs and policy produce identical model dumps.
 - `CVStrategy.core_messages` contains between 1 and 3 messages; three is the hard maximum.
-- Candidate positioning MUST come from an existing evidence-backed headline claim in `CVDocumentModel`; opportunity title text is target context only and MUST NOT become candidate positioning automatically.
+- Candidate positioning MUST come from an existing validated `headline/headline` claim in `CVDocumentModel`; opportunity title text is target context only and MUST NOT become candidate positioning automatically.
 - Unsupported seniority/title inflation is a validation failure, not a ranking penalty.
 - User-private career configuration is represented by a generic schema only. No real user identity, career-track values, or private state is committed to the public repository.
 - Public tests use synthetic identities and synthetic evidence only.
@@ -51,7 +52,7 @@ tests/
 └── test_cv_strategy_pipeline_contract.py
 ```
 
-Do not modify existing production files in PR1. The integration contract is proven by tests that call the existing `select_evidence()` and `compose_cv()` before `build_cv_strategy()`.
+Do not modify existing production files in PR1. The integration contract is proven by tests that call the existing `select_evidence()`, `compose_cv()`, and `validate_cv()` before `build_cv_strategy()`.
 
 ---
 
@@ -77,7 +78,7 @@ Do not modify existing production files in PR1. The integration contract is prov
 
 - [ ] **Step 1: Write failing model-contract tests**
 
-Create `tests/test_cv_strategy_models.py` with these behaviors:
+Create `tests/test_cv_strategy_models.py`:
 
 ```python
 import pytest
@@ -182,8 +183,6 @@ def test_track_config_has_no_free_form_positioning_field() -> None:
 ```
 
 - [ ] **Step 2: Run the model tests and verify RED**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_models.py -q
@@ -292,7 +291,7 @@ class CVStrategy(StrictCVModel):
         return self
 ```
 
-Create `app/cv/strategy/__init__.py` initially with only model exports:
+Create `app/cv/strategy/__init__.py`:
 
 ```python
 from app.cv.strategy.models import (
@@ -312,8 +311,6 @@ __all__ = [
 
 - [ ] **Step 4: Run the model tests and verify GREEN**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_strategy_models.py -q
 ```
@@ -328,6 +325,7 @@ Create `tests/test_cv_strategy_policy.py`:
 from pathlib import Path
 
 import pytest
+import yaml
 
 from app.cv.strategy.policy import NarrativePolicy, load_narrative_policy
 
@@ -363,9 +361,8 @@ def _payload() -> dict:
 
 def test_narrative_policy_loads_default_contract(tmp_path: Path) -> None:
     path = tmp_path / "policy.yaml"
-    import yaml
-
     path.write_text(yaml.safe_dump(_payload(), sort_keys=False), encoding="utf-8")
+
     policy = load_narrative_policy(path)
 
     assert policy.version == "narrative-policy-v1"
@@ -398,8 +395,6 @@ def test_narrative_policy_rejects_unknown_fields() -> None:
 ```
 
 - [ ] **Step 6: Run policy tests and verify RED**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_policy.py -q
@@ -497,8 +492,6 @@ priority_requirement_bonus: 1.0
 Update `app/cv/strategy/__init__.py` to export `NarrativePolicy`, `NARRATIVE_POLICY_VERSION`, and `load_narrative_policy`.
 
 - [ ] **Step 8: Run focused Task 1 tests**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_models.py tests/test_cv_strategy_policy.py -q
@@ -681,8 +674,6 @@ def test_ranking_is_independent_of_requirement_input_order() -> None:
 
 - [ ] **Step 2: Run scoring tests and verify RED**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_strategy_scoring.py -q
 ```
@@ -772,8 +763,6 @@ Update `app/cv/strategy/__init__.py` to export `RankedRequirement` and `rank_sup
 
 - [ ] **Step 4: Run scoring tests and verify GREEN**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_strategy_scoring.py -q
 ```
@@ -781,8 +770,6 @@ python -m pytest tests/test_cv_strategy_scoring.py -q
 Expected: PASS.
 
 - [ ] **Step 5: Run Task 1 + Task 2 regression**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_models.py tests/test_cv_strategy_policy.py tests/test_cv_strategy_scoring.py -q
@@ -807,7 +794,7 @@ git commit -m "feat: rank CV strategy requirements deterministically"
 - Modify: `app/cv/strategy/__init__.py`
 
 **Interfaces:**
-- Consumes: `RadarAssessment`, `EvidenceSelection`, `CVDocumentModel`, `NarrativePolicy`, optional `StrategyTrackConfig`
+- Consumes: `RadarAssessment`, `EvidenceSelection`, `CVDocumentModel`, valid `ValidationResult`, `NarrativePolicy`, optional `StrategyTrackConfig`
 - Produces exactly:
 
 ```python
@@ -816,6 +803,7 @@ def build_cv_strategy(
     assessment: RadarAssessment,
     selection: EvidenceSelection,
     document: CVDocumentModel,
+    validation: ValidationResult,
     policy: NarrativePolicy,
     track_config: StrategyTrackConfig | None = None,
 ) -> CVStrategy:
@@ -823,11 +811,12 @@ def build_cv_strategy(
 ```
 
 - Builder does not accept free-form candidate positioning.
-- Builder does not mutate `document` or `selection`.
+- Builder does not mutate `document`, `validation`, or `selection`.
+- Builder raises `ValueError("strategy_requires_valid_semantic_document")` if semantic validation failed.
 
-- [ ] **Step 1: Write failing builder tests for positioning and gaps**
+- [ ] **Step 1: Write failing builder tests for semantic gating, positioning, and gaps**
 
-Create `tests/test_cv_strategy_builder.py`. Use a small direct semantic document rather than the full selector/composer pipeline; Task 4 covers full integration.
+Create `tests/test_cv_strategy_builder.py`:
 
 ```python
 from datetime import datetime, timezone
@@ -841,6 +830,8 @@ from app.cv.models import (
     CVEntry,
     EvidenceSelection,
     RequirementSupport,
+    ValidationIssue,
+    ValidationResult,
 )
 from app.cv.strategy.builder import build_cv_strategy
 from app.cv.strategy.models import StrategyTrackConfig
@@ -988,6 +979,17 @@ def _document() -> CVDocumentModel:
     )
 
 
+def _validation() -> ValidationResult:
+    return ValidationResult(
+        valid=True,
+        validated_claim_ids=[
+            "fact:role-data",
+            "fact:skill-python",
+            "fact:skill-sql",
+        ],
+    )
+
+
 def _selection() -> EvidenceSelection:
     return EvidenceSelection(
         application_track_id="tech",
@@ -1020,6 +1022,23 @@ def _selection() -> EvidenceSelection:
     )
 
 
+def test_strategy_requires_valid_semantic_document() -> None:
+    invalid = ValidationResult(
+        valid=False,
+        errors=[ValidationIssue(code="bad", message="synthetic failure")],
+        validated_claim_ids=[],
+    )
+
+    with pytest.raises(ValueError, match="strategy_requires_valid_semantic_document"):
+        build_cv_strategy(
+            assessment=_assessment(_requirement("Python", "mandatory")),
+            selection=_selection(),
+            document=_document(),
+            validation=invalid,
+            policy=_policy(),
+        )
+
+
 def test_target_seniority_does_not_become_candidate_positioning() -> None:
     strategy = build_cv_strategy(
         assessment=_assessment(
@@ -1029,6 +1048,7 @@ def test_target_seniority_does_not_become_candidate_positioning() -> None:
         ),
         selection=_selection(),
         document=_document(),
+        validation=_validation(),
         policy=_policy(),
     )
 
@@ -1047,6 +1067,7 @@ def test_strategy_uses_no_more_than_three_core_messages() -> None:
         ),
         selection=_selection(),
         document=_document(),
+        validation=_validation(),
         policy=_policy(),
     )
 
@@ -1057,7 +1078,24 @@ def test_strategy_uses_no_more_than_three_core_messages() -> None:
     ]
 
 
-def test_configured_positioning_must_reference_existing_headline_claim() -> None:
+def test_unvalidated_headline_cannot_be_selected_as_positioning() -> None:
+    validation = _validation().model_copy(
+        update={
+            "validated_claim_ids": ["fact:skill-python", "fact:skill-sql"],
+        }
+    )
+
+    with pytest.raises(ValueError, match="strategy_positioning_unavailable"):
+        build_cv_strategy(
+            assessment=_assessment(_requirement("Python", "mandatory")),
+            selection=_selection(),
+            document=_document(),
+            validation=validation,
+            policy=_policy(),
+        )
+
+
+def test_configured_positioning_must_reference_existing_validated_headline_claim() -> None:
     config = StrategyTrackConfig(
         id="tech",
         positioning_claim_id="fact:senior-bi-specialist",
@@ -1068,6 +1106,7 @@ def test_configured_positioning_must_reference_existing_headline_claim() -> None
             assessment=_assessment(_requirement("Python", "mandatory")),
             selection=_selection(),
             document=_document(),
+            validation=_validation(),
             policy=_policy(),
             track_config=config,
         )
@@ -1081,14 +1120,13 @@ def test_track_config_must_match_selected_application_track() -> None:
             assessment=_assessment(_requirement("Python", "mandatory")),
             selection=_selection(),
             document=_document(),
+            validation=_validation(),
             policy=_policy(),
             track_config=config,
         )
 ```
 
 - [ ] **Step 2: Run builder tests and verify RED**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_builder.py -q
@@ -1105,7 +1143,12 @@ from __future__ import annotations
 
 import re
 
-from app.cv.models import CVClaim, CVDocumentModel, EvidenceSelection
+from app.cv.models import (
+    CVClaim,
+    CVDocumentModel,
+    EvidenceSelection,
+    ValidationResult,
+)
 from app.cv.strategy.models import (
     STRATEGY_VERSION,
     CoreMessage,
@@ -1128,13 +1171,17 @@ def _message_id(value: str) -> str:
 
 def _resolve_positioning_claim(
     document: CVDocumentModel,
+    validation: ValidationResult,
     track_config: StrategyTrackConfig | None,
 ) -> CVClaim:
+    validated_ids = set(validation.validated_claim_ids)
     headlines = sorted(
         (
             claim
             for claim in document.claims
-            if claim.section == "headline" and claim.kind == "headline"
+            if claim.claim_id in validated_ids
+            and claim.section == "headline"
+            and claim.kind == "headline"
         ),
         key=lambda claim: claim.claim_id,
     )
@@ -1150,11 +1197,14 @@ def _resolve_positioning_claim(
 
 def _evidence_for_fact_ids(
     document: CVDocumentModel,
+    validated_claim_ids: set[str],
     fact_ids: list[str],
 ) -> list[str]:
     target = set(fact_ids)
     evidence: set[str] = set()
-    for provenance in document.provenance_map.values():
+    for claim_id, provenance in document.provenance_map.items():
+        if claim_id not in validated_claim_ids:
+            continue
         if target & set(provenance.fact_ids):
             evidence.update(provenance.evidence_ids)
     return sorted(evidence)
@@ -1183,13 +1233,21 @@ def build_cv_strategy(
     assessment: RadarAssessment,
     selection: EvidenceSelection,
     document: CVDocumentModel,
+    validation: ValidationResult,
     policy: NarrativePolicy,
     track_config: StrategyTrackConfig | None = None,
 ) -> CVStrategy:
+    if not validation.valid:
+        raise ValueError("strategy_requires_valid_semantic_document")
     if track_config is not None and track_config.id != selection.application_track_id:
         raise ValueError("strategy_track_config_mismatch")
 
-    positioning_claim = _resolve_positioning_claim(document, track_config)
+    validated_claim_ids = set(validation.validated_claim_ids)
+    positioning_claim = _resolve_positioning_claim(
+        document,
+        validation,
+        track_config,
+    )
     positioning_provenance = document.provenance_map[positioning_claim.claim_id]
     ranked = rank_supported_requirements(
         requirements=assessment.enrichment.requirements,
@@ -1207,7 +1265,7 @@ def build_cv_strategy(
             fact_ids=sorted(positioning_provenance.fact_ids),
             evidence_ids=sorted(positioning_provenance.evidence_ids),
             importance=policy.positioning_message_importance,
-            reason="Primary evidence-backed positioning claim",
+            reason="Primary validated evidence-backed positioning claim",
         )
     ]
     for candidate in ranked:
@@ -1220,7 +1278,13 @@ def build_cv_strategy(
                 fact_ids=sorted(candidate.support.fact_ids),
                 evidence_ids=sorted(
                     set(candidate.support.evidence_ids)
-                    | set(_evidence_for_fact_ids(document, candidate.support.fact_ids))
+                    | set(
+                        _evidence_for_fact_ids(
+                            document,
+                            validated_claim_ids,
+                            candidate.support.fact_ids,
+                        )
+                    )
                 ),
                 importance=candidate.score,
                 reason=candidate.support.explanation,
@@ -1286,44 +1350,13 @@ Update `app/cv/strategy/__init__.py` to export `build_cv_strategy`.
 
 - [ ] **Step 4: Run builder tests and verify GREEN**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_strategy_builder.py -q
 ```
 
 Expected: PASS.
 
-- [ ] **Step 5: Add explicit no-headline failure test**
-
-Append to `tests/test_cv_strategy_builder.py`:
-
-```python
-def test_strategy_requires_evidence_backed_headline_positioning() -> None:
-    document = _document().model_copy(
-        update={
-            "claims": [claim for claim in _document().claims if claim.kind != "headline"],
-            "entries": [entry for entry in _document().entries if entry.section != "headline"],
-            "provenance_map": {
-                key: value
-                for key, value in _document().provenance_map.items()
-                if key != "fact:role-data"
-            },
-        }
-    )
-
-    with pytest.raises(ValueError, match="strategy_positioning_unavailable"):
-        build_cv_strategy(
-            assessment=_assessment(_requirement("Python", "mandatory")),
-            selection=_selection(),
-            document=document,
-            policy=_policy(),
-        )
-```
-
-- [ ] **Step 6: Run all strategy-unit tests**
-
-Run:
+- [ ] **Step 5: Run all strategy-unit tests**
 
 ```bash
 python -m pytest tests/test_cv_strategy_models.py tests/test_cv_strategy_policy.py tests/test_cv_strategy_scoring.py tests/test_cv_strategy_builder.py -q
@@ -1331,7 +1364,7 @@ python -m pytest tests/test_cv_strategy_models.py tests/test_cv_strategy_policy.
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit Task 3**
+- [ ] **Step 6: Commit Task 3**
 
 ```bash
 git add app/cv/strategy/__init__.py app/cv/strategy/builder.py tests/test_cv_strategy_builder.py
@@ -1349,6 +1382,7 @@ git commit -m "feat: build evidence-safe CV strategies"
 **Interfaces:**
 - Consumes existing `select_evidence()` from `app/cv/selector.py`.
 - Consumes existing `compose_cv()` from `app/cv/composer.py`.
+- Consumes existing `validate_cv()` from `app/cv/validator.py`.
 - Consumes new `build_cv_strategy()`.
 - Proves PR1 works with actual current pipeline models without touching rendering.
 
@@ -1369,6 +1403,7 @@ from app.cv.models import (
 from app.cv.selector import select_evidence
 from app.cv.strategy.builder import build_cv_strategy
 from app.cv.strategy.policy import NarrativePolicy
+from app.cv.validator import validate_cv
 from app.models.domain import Opportunity
 from app.radar.models import (
     ConfidenceAssessment,
@@ -1517,15 +1552,24 @@ def _build(facts: list[MasterFact], requirements: list[Requirement]):
         policy=cv_policy,
         language="en",
     )
+    validation = validate_cv(
+        document=document,
+        master_facts=master,
+        evidence_catalog=catalog,
+        application_track_id="tech",
+        selection=selection,
+    )
+    assert validation.valid
     return build_cv_strategy(
         assessment=assessment,
         selection=selection,
         document=document,
+        validation=validation,
         policy=_narrative_policy(),
     )
 
 
-def test_current_selector_and_composer_feed_deterministic_strategy() -> None:
+def test_current_selector_composer_and_validator_feed_deterministic_strategy() -> None:
     facts = [
         _fact("identity", "identity", "Alex Example"),
         _fact("contact", "contact", "alex@example.test"),
@@ -1557,8 +1601,6 @@ def test_current_selector_and_composer_feed_deterministic_strategy() -> None:
 
 - [ ] **Step 2: Run the pipeline contract test**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_strategy_pipeline_contract.py -q
 ```
@@ -1566,8 +1608,6 @@ python -m pytest tests/test_cv_strategy_pipeline_contract.py -q
 Expected: PASS once Tasks 1–3 are complete.
 
 - [ ] **Step 3: Run all PR1-focused tests**
-
-Run:
 
 ```bash
 python -m pytest tests/test_cv_strategy_models.py tests/test_cv_strategy_policy.py tests/test_cv_strategy_scoring.py tests/test_cv_strategy_builder.py tests/test_cv_strategy_pipeline_contract.py -q
@@ -1577,8 +1617,6 @@ Expected: PASS with zero failures.
 
 - [ ] **Step 4: Run existing CV regression tests that PR1 must not disturb**
 
-Run:
-
 ```bash
 python -m pytest tests/test_cv_selector.py tests/test_cv_composer.py tests/test_recruiter_policy.py tests/test_application_prepare_cli.py -q
 ```
@@ -1586,8 +1624,6 @@ python -m pytest tests/test_cv_selector.py tests/test_cv_composer.py tests/test_
 Expected: PASS with zero failures. Any failure is a regression because PR1 is not allowed to change current preparation behavior.
 
 - [ ] **Step 5: Run the full repository test suite**
-
-Run:
 
 ```bash
 python -m pytest -q
@@ -1597,13 +1633,7 @@ Expected: exit code 0, zero failed tests.
 
 - [ ] **Step 6: Verify PR1 changed only strategy/config/tests/docs surfaces**
 
-Run:
-
-```bash
-git diff --name-only HEAD~3..HEAD
-```
-
-Before the final Task 4 commit, inspect the complete branch diff against the implementation base instead if commit count differs:
+Inspect the branch diff against the implementation base:
 
 ```bash
 git diff --name-only origin/main...HEAD
@@ -1660,12 +1690,13 @@ The reviewer should reject PR1 unless every item is true:
 - [ ] Every core message references fact IDs present in one of the strategy fact buckets.
 - [ ] Must-show, supporting, and optional fact buckets are disjoint.
 - [ ] `StrategyTrackConfig` does not allow arbitrary candidate positioning text.
-- [ ] Candidate positioning resolves only from an existing `headline/headline` claim with semantic provenance.
-- [ ] A target vacancy named `Senior ...` does not promote candidate positioning to `Senior ...` unless that exact supported headline claim already exists and is explicitly selected.
+- [ ] `build_cv_strategy()` refuses an invalid semantic `ValidationResult`.
+- [ ] Candidate positioning resolves only from an existing claim that is both `headline/headline` and present in `validated_claim_ids`.
+- [ ] A target vacancy named `Senior ...` does not promote candidate positioning to `Senior ...` unless that exact supported headline claim already exists, passes semantic validation, and is explicitly selected or selected by the normal deterministic rule.
 - [ ] Unsupported mandatory requirements remain explicit gaps and never become core messages.
 - [ ] Supported requirement ranking is deterministic and policy-versioned.
 - [ ] Input ordering of facts/requirements does not change the final strategy model dump.
-- [ ] Existing selector/composer can feed the builder directly.
+- [ ] Existing selector/composer/validator can feed the builder directly.
 - [ ] No production PDF path, recruiter compositor, renderer, CLI, or packet schema changes are included.
 - [ ] No personal/private candidate configuration is committed.
 - [ ] Full repository tests pass fresh after the final commit.
@@ -1684,4 +1715,4 @@ These requirements are part of the approved architecture but intentionally not i
 - ATS recoverability parser and round-trip comparison (PR9);
 - `ApplicationPacket` strategy/QA fields and packet-hash migration (added when those stages become authoritative).
 
-This scope boundary is deliberate: PR1 must create a useful, testable strategy API while leaving the currently working PDF preparation path unchanged.
+This scope boundary is deliberate: PR1 creates a useful, testable strategy API while leaving the currently working PDF preparation path unchanged.
