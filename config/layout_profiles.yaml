@@ -1,0 +1,23 @@
+technical_clean:
+  version: layout-profile-v1
+  id: technical_clean
+  design_path: config/layouts/technical_clean.yaml
+  density: comfortable
+  emphasis: technical
+  ats_mode: strict
+
+operations_clean:
+  version: layout-profile-v1
+  id: operations_clean
+  design_path: config/layouts/operations_clean.yaml
+  density: balanced
+  emphasis: experience
+  ats_mode: strict
+
+compact_ats:
+  version: layout-profile-v1
+  id: compact_ats
+  design_path: config/layouts/compact_ats.yaml
+  density: compact
+  emphasis: neutral
+  ats_mode: strict
