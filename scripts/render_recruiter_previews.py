@@ -8,6 +8,7 @@ from app.cv.models import CVDocumentModel
 from app.cv.recruiter_models import RecruiterDocumentModel
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
+from app.cv.render_policy import load_render_policy
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 
 _FIXTURES = ("recruiter_software", "recruiter_tech_operations")
@@ -24,7 +25,8 @@ def _load_fixture(name: str) -> tuple[RecruiterDocumentModel, CVDocumentModel]:
 
 def render_previews(output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    render_policy = load_render_policy("config/render_policy.yaml")
     renderer = RenderCVTypstRenderer()
     qa = RecruiterQualityQA()
     outputs: list[Path] = []
@@ -36,13 +38,13 @@ def render_previews(output_dir: Path) -> list[Path]:
             recruiter_document=recruiter_document,
             source_document=source_document,
             output_path=output_path,
-            policy=policy,
+            policy=recruiter_policy,
         )
         qa_result = qa.evaluate(
             render_result=render_result,
             recruiter_document=recruiter_document,
             source_document=source_document,
-            policy=policy,
+            policy=render_policy,
         )
         if not qa_result.valid:
             codes = ", ".join(issue.code for issue in qa_result.errors)
