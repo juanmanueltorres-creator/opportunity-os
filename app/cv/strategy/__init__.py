@@ -9,6 +9,7 @@ from app.cv.strategy.policy import (
     NarrativePolicy,
     load_narrative_policy,
 )
+from app.cv.strategy.scoring import RankedRequirement, rank_supported_requirements
 
 __all__ = [
     "STRATEGY_VERSION",
@@ -18,4 +19,6 @@ __all__ = [
     "NARRATIVE_POLICY_VERSION",
     "NarrativePolicy",
     "load_narrative_policy",
+    "RankedRequirement",
+    "rank_supported_requirements",
 ]
