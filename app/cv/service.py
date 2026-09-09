@@ -18,7 +18,8 @@ from app.cv.models import (
     PreparationResult,
     ValidationIssue,
 )
-from app.cv.recruiter_composer import compose_recruiter_document, reduce_recruiter_document
+from app.cv.narrative import NarrativeQualityQA, compose_strategy_recruiter_document
+from app.cv.recruiter_composer import reduce_recruiter_document
 from app.cv.recruiter_models import RecruiterDocumentModel
 from app.cv.recruiter_policy import RecruiterPolicy, load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
@@ -26,6 +27,7 @@ from app.cv.recruiter_validator import validate_recruiter_document
 from app.cv.renderer import ATSRenderer
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 from app.cv.selector import select_evidence
+from app.cv.strategy import NarrativePolicy, build_cv_strategy, load_narrative_policy
 from app.cv.track import (
     CVPreparationError,
     require_minimum_evidence,
@@ -37,6 +39,7 @@ from app.radar.taxonomy import TaxonomyResolver
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RECRUITER_POLICY_PATH = _PROJECT_ROOT / "config" / "recruiter_policy.yaml"
+_DEFAULT_NARRATIVE_POLICY_PATH = _PROJECT_ROOT / "config" / "narrative_policy.yaml"
 _REDUCIBLE_QA_CODES = {
     "recruiter_one_page_failed",
     "recruiter_overflow_detected",
@@ -53,6 +56,8 @@ class CVPreparationService:
         recruiter_policy: RecruiterPolicy | None = None,
         recruiter_renderer: RenderCVTypstRenderer | None = None,
         recruiter_qa: RecruiterQualityQA | None = None,
+        narrative_policy: NarrativePolicy | None = None,
+        narrative_qa: NarrativeQualityQA | None = None,
     ) -> None:
         self.taxonomy_resolver = taxonomy_resolver
         self.id_factory = id_factory or (lambda: str(uuid4()))
@@ -63,6 +68,10 @@ class CVPreparationService:
         )
         self.recruiter_renderer = recruiter_renderer or RenderCVTypstRenderer()
         self.recruiter_qa = recruiter_qa or RecruiterQualityQA()
+        self.narrative_policy = narrative_policy or load_narrative_policy(
+            _DEFAULT_NARRATIVE_POLICY_PATH
+        )
+        self.narrative_qa = narrative_qa or NarrativeQualityQA()
 
     def prepare(
         self,
@@ -143,10 +152,18 @@ class CVPreparationService:
             )
 
         try:
-            recruiter_document = compose_recruiter_document(
+            strategy = build_cv_strategy(
+                assessment=assessment,
+                selection=selection,
+                document=document,
+                validation=validation,
+                policy=self.narrative_policy,
+            )
+            recruiter_document = compose_strategy_recruiter_document(
                 document=document,
                 validation=validation,
                 selection=selection,
+                strategy=strategy,
                 policy=self.recruiter_policy,
             )
         except ValueError:
@@ -169,6 +186,24 @@ class CVPreparationService:
                 errors=recruiter_validation.errors,
                 warnings=[*validation.warnings, *recruiter_validation.warnings],
             )
+
+        narrative_result = self.narrative_qa.evaluate(
+            recruiter_document=recruiter_document,
+            source_document=document,
+            strategy=strategy,
+            policy=self.narrative_policy,
+        )
+        if not narrative_result.valid:
+            return PreparationResult(
+                status="BLOCKED_VALIDATION",
+                errors=narrative_result.errors,
+                warnings=[
+                    *validation.warnings,
+                    *recruiter_validation.warnings,
+                    *narrative_result.warnings,
+                ],
+            )
+        narrative_warnings = list(narrative_result.warnings)
 
         application_id = self.id_factory()
         candidate_name = next(
@@ -206,6 +241,7 @@ class CVPreparationService:
                     warnings=[
                         *validation.warnings,
                         *final_recruiter_validation.warnings,
+                        *narrative_warnings,
                     ],
                 )
 
@@ -225,6 +261,7 @@ class CVPreparationService:
                     warnings=[
                         *validation.warnings,
                         *final_recruiter_validation.warnings,
+                        *narrative_warnings,
                     ],
                 )
 
@@ -236,6 +273,7 @@ class CVPreparationService:
             combined_warnings = [
                 *validation.warnings,
                 *final_recruiter_validation.warnings,
+                *narrative_warnings,
                 *qa_result.warnings,
             ]
             if not _qa_failure_is_reducible(qa_result.errors):
@@ -282,9 +320,33 @@ class CVPreparationService:
                 return PreparationResult(
                     status="BLOCKED_VALIDATION",
                     errors=reduced_validation.errors,
-                    warnings=[*validation.warnings, *reduced_validation.warnings],
+                    warnings=[
+                        *validation.warnings,
+                        *reduced_validation.warnings,
+                        *narrative_warnings,
+                    ],
                 )
 
+            reduced_narrative_result = self.narrative_qa.evaluate(
+                recruiter_document=reduced_document,
+                source_document=document,
+                strategy=strategy,
+                policy=self.narrative_policy,
+            )
+            if not reduced_narrative_result.valid:
+                _remove_partial_pdf(output_path)
+                return PreparationResult(
+                    status="BLOCKED_VALIDATION",
+                    errors=reduced_narrative_result.errors,
+                    warnings=[
+                        *validation.warnings,
+                        *reduced_validation.warnings,
+                        *narrative_warnings,
+                        *reduced_narrative_result.warnings,
+                    ],
+                )
+
+            narrative_warnings.extend(reduced_narrative_result.warnings)
             final_recruiter_document = reduced_document
             final_recruiter_validation = reduced_validation
 
@@ -297,6 +359,7 @@ class CVPreparationService:
                 warnings=[
                     *validation.warnings,
                     *final_recruiter_validation.warnings,
+                    *narrative_warnings,
                 ],
             )
 
@@ -304,6 +367,7 @@ class CVPreparationService:
         combined_warnings = [
             *validation.warnings,
             *final_recruiter_validation.warnings,
+            *narrative_warnings,
             *final_qa_result.warnings,
         ]
         opportunity_snapshot_hash = canonical_sha256(

@@ -27,6 +27,7 @@ priority_requirement_bonus: 1.0
 max_off_strategy_claim_ratio: 0.35
 max_competing_identity_signals: 1
 min_scanability_score: 0.67
+max_scan_claims: 8
 
 generic_language_phrases:
   en:
