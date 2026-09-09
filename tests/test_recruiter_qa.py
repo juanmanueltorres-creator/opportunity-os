@@ -13,6 +13,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
+from app.cv.render_policy import load_render_policy
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 
 
@@ -178,7 +179,7 @@ def _evaluate(path: Path, *, body_font_size: float = 9.4):
         render_result=_render_result(path, body_font_size=body_font_size),
         recruiter_document=_recruiter_document(),
         source_document=_source_document(),
-        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        policy=load_render_policy("config/render_policy.yaml"),
     )
 
 
@@ -234,7 +235,7 @@ def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(t
         render_result=_render_result(pdf),
         recruiter_document=recruiter_document,
         source_document=source_document,
-        policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        policy=load_render_policy("config/render_policy.yaml"),
     )
 
     assert result.valid is False
@@ -242,21 +243,22 @@ def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(t
 
 
 def test_real_rendercv_pdf_survives_qa_and_two_independent_extractors(tmp_path):
-    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    render_policy = load_render_policy("config/render_policy.yaml")
     source_document = _golden_source_document()
     recruiter_document = _golden_recruiter_document()
     render_result = RenderCVTypstRenderer().render(
         recruiter_document=recruiter_document,
         source_document=source_document,
         output_path=tmp_path / "golden.pdf",
-        policy=policy,
+        policy=recruiter_policy,
     )
 
     qa_result = RecruiterQualityQA().evaluate(
         render_result=render_result,
         recruiter_document=recruiter_document,
         source_document=source_document,
-        policy=policy,
+        policy=render_policy,
     )
 
     assert qa_result.valid is True
