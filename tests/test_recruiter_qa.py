@@ -3,6 +3,7 @@ from pathlib import Path
 import pymupdf
 from pypdf import PdfReader
 
+from app.cv.layout import load_layout_profiles
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance, RenderedCVArtifact
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
@@ -252,6 +253,7 @@ def test_real_rendercv_pdf_survives_qa_and_two_independent_extractors(tmp_path):
         source_document=source_document,
         output_path=tmp_path / "golden.pdf",
         policy=recruiter_policy,
+        layout_profile=load_layout_profiles("config/layout_profiles.yaml")["compact_ats"],
     )
 
     qa_result = RecruiterQualityQA().evaluate(
