@@ -144,7 +144,11 @@ def test_service_invalid_mapped_profile_blocks_before_render(tmp_path: Path) -> 
     assert list(tmp_path.rglob("*.pdf")) == []
 
 
-def test_reduction_reuses_same_selected_layout_profile(tmp_path: Path) -> None:
+def test_reduction_reuses_same_selected_layout_profile(monkeypatch, tmp_path: Path) -> None:
+    def remove_contact(document, recruiter_policy, step):
+        return document.model_copy(update={"contact_claim_ids": []})
+
+    monkeypatch.setattr("app.cv.service.reduce_recruiter_document", remove_contact)
     renderer = CapturingRenderer()
     qa = FailOnceRecruiterQA()
     result = _prepare(
