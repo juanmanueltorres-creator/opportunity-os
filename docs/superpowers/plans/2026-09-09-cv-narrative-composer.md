@@ -1,9 +1,9 @@
 # CV Narrative Composer — PR2 Implementation Plan
 
-**Date:** 2026-09-09  
-**Base:** `main` at `aca84eeda0dc1cfb948769abb54f745218db750e`  
-**Target branch:** `feat/cv-narrative-composer`  
-**Parent design:** `docs/superpowers/specs/2026-09-09-cv-strategy-narrative-design.md`  
+**Date:** 2026-09-09
+**Base:** `main` at `aca84eeda0dc1cfb948769abb54f745218db750e`
+**Target branch:** `feat/cv-narrative-composer`
+**Parent design:** `docs/superpowers/specs/2026-09-09-cv-strategy-narrative-design.md`
 **Execution mode:** inline, TDD, GitHub Actions as verification environment
 
 ## Goal
