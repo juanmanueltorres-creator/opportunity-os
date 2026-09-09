@@ -2,27 +2,7 @@
 
 ## Goal
 
-Introduce a deterministic, ATS-safe presentation layer between `CVStrategy` and `RenderCVTypstRenderer` so Opportunity-OS can choose among a small set of role-appropriate visual layouts without changing claim selection, claim order, provenance, or render safety.
-
-## Why this exists
-
-The current CV pipeline can now decide what can be said, what should be said, whether the narrative is coherent, and whether the result passes a ten-second semantic scan. The remaining presentation problem is that the renderer still uses one fixed RenderCV design for every role. Layout choice must become explicit, testable, and separate from narrative policy.
-
-## Scope
-
-PR #47 introduces:
-
-1. A versioned `LayoutProfile` contract.
-2. Three public ATS-safe profiles:
-   - `technical_clean`
-   - `operations_clean`
-   - `compact_ats`
-3. A deterministic `LayoutSelector`.
-4. Service wiring that resolves one profile per prepared CV.
-5. Renderer wiring that uses the selected profile's design configuration.
-6. Tests proving layout selection cannot alter recruiter-facing claims or bypass existing semantic/narrative/render gates.
-
-PR #47 does **not** introduce Visual QA, a second renderer, JSON Resume, ATS round-trip QA, ApplicationPacket schema changes, Gmail/outreach behavior, or private candidate track configuration.
+Introduce a deterministic, ATS-safe presentation layer between `CVStrategy` and `RenderCVTypstRenderer` so Opportunity-OS can choose among a small set of visual layouts without changing claim selection, claim order, provenance, narrative strategy, or render safety.
 
 ## Architectural position
 
@@ -46,38 +26,51 @@ RecruiterQualityQA
 
 The layout layer is presentation-only. It cannot become a second narrative engine.
 
-## Core boundaries
+## Scope
+
+PR #47 introduces:
+
+1. A versioned `LayoutProfile` contract.
+2. Three public ATS-safe profiles:
+   - `technical_clean`
+   - `operations_clean`
+   - `compact_ats`
+3. A deterministic `LayoutSelector`.
+4. A privacy-safe injectable `track_layout_map` seam.
+5. Service wiring that resolves one profile per preparation run.
+6. Renderer wiring that consumes the selected profile's RenderCV design file.
+7. Tests proving layout selection cannot alter recruiter-facing claims or bypass semantic, narrative, render, or privacy gates.
+
+PR #47 does **not** introduce Visual QA, JSON Resume, a second renderer, ATS round-trip QA, `ApplicationPacket` schema changes, Gmail/outreach behavior, or private candidate configuration.
+
+## Ownership boundaries
 
 ### Narrative owns content
 
-`CVStrategy`, the narrative composer, and narrative QA remain authoritative for:
+`CVStrategy`, the narrative composer, and Narrative QA remain authoritative for:
 
-- which facts are selected;
-- which claims are visible;
-- recruiter-facing ordering of claims and sections;
-- core-message coverage;
-- positioning;
+- selected facts and visible claims;
+- recruiter-facing claim and section order;
+- positioning and core-message coverage;
 - must-show/supporting/optional evidence;
 - explicit gaps.
 
 ### Layout owns presentation
 
-`LayoutProfile` may control only physical/visual presentation parameters such as:
+`LayoutProfile` may control only presentation parameters such as:
 
 - RenderCV design file;
-- spacing/density class;
-- emphasis level;
-- typography scale intent;
-- section-separator style;
+- spacing/density intent;
+- heading emphasis;
+- typography intent;
 - conservative ATS presentation mode.
 
 A layout profile must not:
 
 - add, remove, rewrite, or reorder claim IDs;
-- change `RecruiterDocumentModel` content;
-- change evidence/provenance;
-- change `CVStrategy`;
-- override `RenderPolicy` page-size, page-count, or minimum-font constraints;
+- change `RecruiterDocumentModel`;
+- change provenance or `CVStrategy`;
+- override `RenderPolicy`;
 - mint recruiter-facing text.
 
 ### RenderPolicy remains physically authoritative
@@ -94,7 +87,7 @@ A layout profile must not:
 
 ## Versioned model
 
-Create `app/cv/layout/models.py` with:
+Create `app/cv/layout/models.py`:
 
 ```python
 LAYOUT_PROFILE_VERSION = "layout-profile-v1"
@@ -110,89 +103,85 @@ class LayoutProfile(StrictCVModel):
 
 Validation requirements:
 
-- `version` must equal `layout-profile-v1`;
-- `design_path` must be non-empty and repository-relative;
-- `ats_mode` must remain `strict` in V1;
-- no unknown fields;
+- `version == "layout-profile-v1"`;
+- `design_path` is non-empty and repository-relative;
+- absolute paths and `..` path traversal fail validation;
+- `ats_mode` remains `strict` in V1;
+- unknown fields fail;
 - profile IDs are closed to the three V1 values.
 
-The model intentionally does not contain section order, claim IDs, narrative weights, page count, or font minimums.
+The model intentionally contains no section order, claim IDs, narrative weights, page count, or font constraints.
 
 ## Public profile registry
 
-Create `config/layout_profiles.yaml` as the single public registry for V1.
-
-Required IDs and intended behavior:
+Create `config/layout_profiles.yaml` as the public V1 registry. It must contain exactly the three V1 profile IDs and point to separate design files under `config/layouts/`.
 
 ### `technical_clean`
 
-Purpose: software, data, geospatial, engineering, and technical-product roles.
+For technical/software/data/geospatial contexts when selected by an authorized runtime mapping or explicit strategy preference.
 
 Visual intent:
 
 - clear hierarchy;
 - comfortable but efficient spacing;
-- stronger visual grouping for technology and selected projects;
-- one-column ATS-safe structure;
-- no sidebars, charts, icons as semantic carriers, progress bars, skill meters, or multi-column reading order.
+- stronger heading emphasis;
+- single-column, text-first, ATS-safe structure.
 
 ### `operations_clean`
 
-Purpose: operations, support, field-support, production, and process-oriented roles.
+For operations/support/process contexts when selected by an authorized runtime mapping or explicit strategy preference.
 
 Visual intent:
 
-- traditional chronological reading;
-- stronger emphasis on experience entries;
+- traditional, conservative hierarchy;
 - balanced spacing;
-- conservative one-column ATS-safe structure;
-- fewer visual cues that privilege projects over work history.
+- experience-friendly visual rhythm;
+- single-column, text-first, ATS-safe structure.
 
 ### `compact_ats`
 
-Purpose: universal fallback and highly conservative ATS contexts.
+Universal public fallback.
 
 Visual intent:
 
 - compact density;
 - neutral emphasis;
 - maximum simplicity;
-- one-column layout;
-- no decorative layout features that could reduce parser recoverability.
+- single-column, text-first, ATS-safe structure.
 
-Each profile points to a separate RenderCV design file under `config/layouts/`.
+## Privacy-safe layout selection contract
 
-## Layout selection contract
+Private candidate track IDs must **not** be committed to the public repository. The public core therefore does not contain a hardcoded mapping from Juan-specific/private track names to layouts.
 
-Create `app/cv/layout/selector.py` with:
+Create:
 
 ```python
 def select_layout_profile(
     *,
     strategy: CVStrategy,
     profiles: Mapping[str, LayoutProfile],
+    track_layout_map: Mapping[str, str] | None = None,
 ) -> LayoutProfile:
 ```
 
 Selection order is deterministic:
 
 1. If `strategy.preferred_layout_profile_id` is present:
-   - it must exist in the profile registry;
+   - it must exist in `profiles`;
    - return it;
-   - otherwise fail closed with `ValueError("layout_profile_unavailable")`.
-2. Otherwise use the public track mapping:
-   - `software-data-decision` → `technical_clean`
-   - `geospatial-mining-tech` → `technical_clean`
-   - `operations-support` → `operations_clean`
-3. Any other track → `compact_ats`.
+   - otherwise raise `ValueError("layout_profile_unavailable")`.
+2. Otherwise, if `track_layout_map` contains `strategy.application_track_id`:
+   - resolve the mapped profile ID;
+   - if that profile ID is unavailable, raise `ValueError("layout_profile_unavailable")`.
+3. Otherwise return `compact_ats`.
 
-The selector must never infer from free-form job-title keywords. V1 selection is based only on explicit strategy preference or the stable application-track ID.
+The selector must never infer layout from job-title keywords, free-form text, candidate identity, environment variables, or hidden global state.
 
-Private candidate configuration remains outside the public repository. Public mapping may reference the generic public track IDs already used by the CV system, but must not commit Juan-specific evidence, personal claims, or private track metadata.
+The public default `track_layout_map` is empty. A private runtime may inject mappings outside the public repository, for example from a gitignored/private configuration layer. Tests use fictional public fixture IDs such as `tech` and `ops`; they do not commit private candidate track names.
 
 ## Loader contract
 
-Create `app/cv/layout/policy.py` or an equivalently focused loader module with:
+Create:
 
 ```python
 def load_layout_profiles(path: str | Path) -> dict[str, LayoutProfile]:
@@ -200,18 +189,15 @@ def load_layout_profiles(path: str | Path) -> dict[str, LayoutProfile]:
 
 Requirements:
 
-- YAML root must be a mapping;
-- every key must equal the contained profile `id`;
-- duplicate IDs are impossible by construction;
-- all three V1 profiles must be present;
-- unexpected profile IDs fail validation;
-- returned mapping is deterministic by profile ID.
+- YAML root is a mapping;
+- every key equals contained profile `id`;
+- all and only the three V1 profile IDs are present;
+- unexpected IDs fail through model validation;
+- return mapping sorted by profile ID for deterministic iteration.
 
 ## Renderer integration
 
-`RenderCVTypstRenderer` currently accepts a renderer-level design path at construction time. PR #47 changes the render contract so the selected layout profile is explicit for each render.
-
-Preferred interface:
+Change the renderer contract so layout is explicit per render:
 
 ```python
 def render(
@@ -224,174 +210,140 @@ def render(
 ) -> RecruiterRenderResult:
 ```
 
-The renderer resolves `layout_profile.design_path` against the repository root and renders using that design.
+The renderer resolves `layout_profile.design_path` against repository root.
 
 Fail-closed requirements:
 
 - missing design file → `ValueError("RenderCV/Typst render failed")`;
-- path escaping the repository root → fail;
-- invalid profile → rejected before renderer invocation by model/loader;
-- no fallback from a missing explicit profile to another profile inside the renderer.
+- path escaping repository root → fail;
+- no renderer-level fallback from an explicit profile to another profile;
+- renderer never inspects `CVStrategy`.
 
-The renderer must not inspect `CVStrategy` directly. Selection is upstream.
+The rendered payload must be identical across profiles for the same `RecruiterDocumentModel` and source document; only the design file differs.
 
 ## Service integration
 
-`CVPreparationService` gains injected layout-profile registry support:
+`CVPreparationService` gains:
 
 ```python
 layout_profiles: Mapping[str, LayoutProfile] | None = None
+track_layout_map: Mapping[str, str] | None = None
 ```
 
-Default registry loads from `config/layout_profiles.yaml`.
+Defaults:
 
-After strategy creation and before render, service resolves exactly one layout profile:
+- `layout_profiles` loads `config/layout_profiles.yaml`;
+- `track_layout_map` defaults to `{}`.
 
-```text
-strategy
-  ↓
-select_layout_profile(...)
-  ↓
-selected LayoutProfile
-  ↓
-renderer.render(..., layout_profile=selected_profile)
-```
+After strategy creation and Narrative QA, but before first render, the service resolves exactly one layout profile and stores it in a local variable for the entire preparation run.
 
-If layout selection fails, preparation returns a deterministic blocked result rather than silently falling back from an invalid explicit preference.
-
-Recommended code/message:
+If selection raises `layout_profile_unavailable`, preparation returns:
 
 - status: `BLOCKED_RENDER`
 - issue code: `layout_profile_unavailable`
 - message: `Selected CV layout profile is unavailable`
 
-An unknown track without an explicit profile is not an error; it deterministically selects `compact_ats`.
+The renderer must not be called and no PDF may remain.
 
 ## Reduction-loop behavior
 
-The same selected layout profile must be used for every render attempt in one preparation run, including reduction retries.
-
-A reduction may remove optional recruiter-document content according to existing policy, but it must not trigger a new layout selection. This prevents physical overflow from silently changing the visual identity of the CV.
-
-## Existing QA compatibility
-
-PR #47 must preserve all existing gates:
-
-- semantic validation;
-- recruiter-document validation;
-- Narrative QA;
-- ten-second scan;
-- RenderPolicy constraints;
-- recruiter PDF QA;
-- reduction-loop narrative revalidation;
-- offline runtime checks.
-
-No gate may be weakened to make a layout profile pass.
+The same selected `LayoutProfile` is reused for every render attempt, including reduction retries. A reduction may change optional recruiter content according to existing policy, but may not trigger layout re-selection.
 
 ## RenderCV design constraints
 
-All three V1 design files must remain:
+All V1 design files remain:
 
 - single-column;
 - text-first;
-- ATS-safe;
 - no rasterized text;
-- no semantic information conveyed only by color/iconography;
-- no rating bars or visual skill meters;
-- no charts;
-- no decorative sidebars;
-- no absolute-positioned content that changes reading order;
-- compatible with the current offline RenderCV/Typst runtime.
+- no semantic information conveyed only by color or iconography;
+- no skill meters, charts, sidebars, or multi-column reading order;
+- compatible with the current offline RenderCV/Typst runtime;
+- `Source Sans 3`;
+- no connection icons or external-link icons.
 
-Differences between profiles should be restrained to typography, spacing, section separators, heading emphasis, and density. PR #47 is not a redesign contest; Visual QA in the next PR will measure whether these differences actually improve the output.
+Differences are restrained to margins, spacing, heading emphasis, and typography scale. Visual quality scoring belongs to PR #48.
 
 ## Determinism requirements
 
-For the same:
+For the same strategy, profile registry, track-layout mapping, recruiter document, source document, and policies, profile selection and design choice are identical regardless of mapping insertion order.
 
-- `CVStrategy`;
-- layout profile registry;
-- `RecruiterDocumentModel`;
-- source document;
-- policies;
-
-layout selection and renderer design choice must be identical regardless of input mapping insertion order.
-
-No current date, randomness, LLM call, environment-specific preference, or job-title keyword inference may influence profile selection.
+No current date, randomness, LLM call, job-title keyword inference, or private hardcoded track name may influence public-core selection.
 
 ## Test strategy
 
-### Model/registry tests
+### Model/registry
 
 Prove:
 
-- all 3 profiles load;
-- unknown fields fail;
-- wrong version fails;
+- all three profiles load;
+- wrong version and unknown fields fail;
 - key/id mismatch fails;
-- missing required V1 profile fails;
-- no profile can contain narrative/physical-policy fields such as `section_order`, `max_pages`, `min_body_font_pt`, or claim IDs.
+- incomplete registry fails;
+- narrative and RenderPolicy fields are rejected;
+- path traversal/absolute paths fail.
 
-### Selector tests
+### Selector
 
 Prove:
 
 - explicit valid preference wins;
 - explicit invalid preference fails closed;
-- `software-data-decision` selects `technical_clean`;
-- `geospatial-mining-tech` selects `technical_clean`;
-- `operations-support` selects `operations_clean`;
-- unknown track selects `compact_ats`;
-- selection is deterministic under registry input-order reversal.
+- injected fictional `tech -> technical_clean` and `ops -> operations_clean` mappings work;
+- absent mapping falls back to `compact_ats`;
+- injected mapping to missing profile fails closed;
+- registry and mapping insertion order do not change result;
+- no private track IDs exist in public source/config/tests.
 
-### Renderer tests
+### Renderer
 
 Prove:
 
-- selected design path is actually used;
+- selected design is used;
 - missing design fails;
-- repository path escape fails;
-- payload claim IDs/text are unchanged across profiles;
-- current ATS-safe metrics continue to be produced.
+- repository path escape is rejected by model/renderer boundary;
+- identity/headline/skills remain extractable across all profiles;
+- ATS-safe render metrics remain available.
 
-### Service tests
+### Service
 
 Prove:
 
-- service passes one selected profile to the renderer;
-- the same profile is reused after a reduction retry;
-- invalid explicit profile blocks before PDF creation;
-- renderer is not called when profile selection blocks;
-- existing preparation behavior remains unchanged when no explicit profile exists.
+- service passes selected profile to renderer;
+- private-style mapping can be injected without being committed as data;
+- same profile is reused after a reduction retry;
+- invalid explicit or mapped profile blocks before PDF creation;
+- with no mapping/preference, current public fixture track falls back to `compact_ats`.
 
 ### CI previews
 
-The preview script renders at least one fictional CV with each V1 profile and still passes RecruiterQualityQA. Human preview artifacts remain supplemental; CI correctness does not depend on subjective visual approval in PR #47.
+Render at least one fictional PDF per V1 profile and pass `RecruiterQualityQA` with existing `RenderPolicy`. Human preview artifacts are supplemental; PR #47 has no subjective Visual QA gate.
 
 ## Non-goals
 
-PR #47 explicitly does not:
+PR #47 does not:
 
-- decide whether a layout is visually beautiful;
-- calculate whitespace/density quality metrics;
-- introduce Visual QA issue codes;
-- change claim composition or section-order logic;
+- decide visual beauty;
+- calculate whitespace/density quality;
+- modify narrative ordering;
 - export JSON Resume;
-- add React-PDF or another renderer;
-- emulate a commercial ATS;
-- change Gmail/outreach/application-send behavior;
-- alter `ApplicationPacket` schema.
-
-Those belong to later roadmap items.
+- add another renderer;
+- emulate commercial ATS software;
+- change Gmail/outreach/send behavior;
+- alter `ApplicationPacket` schema;
+- commit Juan-specific/private track configuration.
 
 ## Success criteria
 
 PR #47 is complete when:
 
-1. all three V1 layout profiles exist and validate;
-2. selection is deterministic and fail-closed for invalid explicit preferences;
-3. `CVPreparationService` resolves exactly one profile per preparation run;
-4. the renderer consumes that profile without owning selection logic;
-5. the same recruiter content renders through all profiles without claim mutation;
-6. existing semantic, narrative, render, privacy, preview, and offline-runtime test suites remain green;
-7. no Gmail, outreach, ApplicationPacket, Visual QA, JSON Resume, or second-renderer behavior changes.
+1. all three V1 profiles exist and validate;
+2. selection is deterministic and privacy-safe;
+3. invalid explicit or injected mappings fail closed;
+4. the public core contains no Juan-specific/private track IDs;
+5. `CVPreparationService` resolves exactly one profile per preparation run;
+6. the same profile survives reduction retries;
+7. renderer consumes the profile without owning selection logic;
+8. recruiter content is unchanged across profiles;
+9. all semantic, narrative, render, privacy, preview, and offline-runtime CI gates remain green;
+10. no Gmail, outreach, ApplicationPacket, Visual QA, JSON Resume, or second-renderer behavior changes.
