@@ -22,9 +22,6 @@ class RecruiterSkillGroup(StrictCVModel):
 
 class RecruiterPolicy(StrictCVModel):
     version: str = Field(min_length=1)
-    max_pages: int = Field(gt=0)
-    min_body_font_pt: float = Field(ge=9.0)
-    preferred_body_font_pt: float = Field(gt=0)
     max_projects: int = Field(ge=1, le=4)
     max_experience_entries: int = Field(ge=1, le=5)
     max_experience_bullets: int = Field(ge=0, le=1)
@@ -35,13 +32,7 @@ class RecruiterPolicy(StrictCVModel):
     skill_groups: dict[str, RecruiterSkillGroup] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_one_page_contract(self) -> "RecruiterPolicy":
-        if self.max_pages != 1:
-            raise ValueError("max_pages must be exactly 1")
-        if self.preferred_body_font_pt < self.min_body_font_pt:
-            raise ValueError(
-                "preferred_body_font_pt must be greater than or equal to min_body_font_pt"
-            )
+    def validate_contract(self) -> "RecruiterPolicy":
         if self.version != RECRUITER_POLICY_VERSION:
             raise ValueError(
                 f"unsupported recruiter policy version: {self.version}"
