@@ -16,6 +16,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
+from app.cv.render_policy import load_render_policy
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
 
 
@@ -273,19 +274,20 @@ def test_golden_fixture_shapes_match_approved_reference_contract() -> None:
     ["recruiter_software", "recruiter_tech_operations"],
 )
 def test_golden_recruiter_profiles_are_exactly_one_page(fixture_name, tmp_path):
-    policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
+    render_policy = load_render_policy("config/render_policy.yaml")
     recruiter_document, source_document = _load_golden_fixture(fixture_name)
     render_result = RenderCVTypstRenderer().render(
         recruiter_document=recruiter_document,
         source_document=source_document,
         output_path=tmp_path / f"{fixture_name}.pdf",
-        policy=policy,
+        policy=recruiter_policy,
     )
     qa_result = RecruiterQualityQA().evaluate(
         render_result=render_result,
         recruiter_document=recruiter_document,
         source_document=source_document,
-        policy=policy,
+        policy=render_policy,
     )
 
     assert qa_result.valid
