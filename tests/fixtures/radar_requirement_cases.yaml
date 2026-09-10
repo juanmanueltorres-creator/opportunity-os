@@ -31,3 +31,57 @@
       value: Inglés
       importance: preferred
       source_text: "Inglés será un plus."
+
+- id: english_experience_preferred_suffix
+  title: Software Engineer
+  description: "3+ years of software development experience preferred."
+  expected:
+    - kind: experience
+      value: 3+ years of software development experience
+      importance: preferred
+      source_text: "3+ years of software development experience preferred."
+
+- id: english_experience_preferred_prefix
+  title: Software Engineer
+  description: "Ideally 3 years of Python development experience."
+  expected:
+    - kind: experience
+      value: 3 years of Python development experience
+      importance: preferred
+      source_text: "Ideally 3 years of Python development experience."
+
+- id: spanish_experience_preferred_suffix
+  title: Desarrollador Python
+  description: "3 años de experiencia en Python deseables."
+  expected:
+    - kind: experience
+      value: 3 años de experiencia en Python
+      importance: preferred
+      source_text: "3 años de experiencia en Python deseables."
+
+- id: spanish_experience_preferred_prefix
+  title: Desarrollador Backend
+  description: "Será un plus contar con 3 años de experiencia backend."
+  expected:
+    - kind: experience
+      value: contar con 3 años de experiencia backend
+      importance: preferred
+      source_text: "Será un plus contar con 3 años de experiencia backend."
+
+- id: english_experience_mandatory_both_cues
+  title: Software Engineer
+  description: "Minimum 3 years of software development experience required."
+  expected:
+    - kind: experience
+      value: 3 years of software development experience
+      importance: mandatory
+      source_text: "Minimum 3 years of software development experience required."
+
+- id: spanish_experience_mandatory_both_cues
+  title: Desarrollador Full Stack
+  description: "Mínimo 3 años de experiencia excluyente."
+  expected:
+    - kind: experience
+      value: 3 años de experiencia
+      importance: mandatory
+      source_text: "Mínimo 3 años de experiencia excluyente."

@@ -24,11 +24,13 @@ def _fixture():
         CVClaim(claim_id="project:legacy-first", section="projects", kind="project", text="Generic Dashboard"),
         CVClaim(claim_id="project:strategy-first", section="projects", kind="project", text="Decision Support API"),
         CVClaim(claim_id="bullet:wrong-project", section="projects", kind="bullet", text="Unrelated project detail."),
-        CVClaim(claim_id="bullet:strategy-project", section="projects", kind="bullet", text="Connected verified operational data to a decision workflow."),
+        CVClaim(claim_id="bullet:strategy-project", section="projects", kind="bullet", text="Mapped the operational decision bottleneck and evidence boundary."),
+        CVClaim(claim_id="bullet:strategy-project-2", section="projects", kind="bullet", text="Connected verified operational data to a deterministic decision workflow."),
         CVClaim(claim_id="experience:legacy-first", section="experience", kind="organization", text="Example Support | 2022–2023"),
         CVClaim(claim_id="experience:strategy-first", section="experience", kind="organization", text="Example Operations | 2024–Present"),
         CVClaim(claim_id="bullet:legacy-exp", section="experience", kind="bullet", text="Handled routine support requests."),
-        CVClaim(claim_id="bullet:strategy-exp", section="experience", kind="bullet", text="Automated operational reporting and troubleshooting workflows."),
+        CVClaim(claim_id="bullet:strategy-exp", section="experience", kind="bullet", text="Mapped recurring reporting and troubleshooting bottlenecks."),
+        CVClaim(claim_id="bullet:strategy-exp-2", section="experience", kind="bullet", text="Automated operational reporting and troubleshooting workflows."),
         CVClaim(claim_id="fact:education", section="education", kind="education", text="BSc Applied Sciences"),
         CVClaim(claim_id="fact:language", section="languages", kind="language", text="Spanish — Native"),
         CVClaim(claim_id="fact:github", section="links", kind="link", text="github.com/example"),
@@ -46,10 +48,12 @@ def _fixture():
         "project:strategy-first": ClaimProvenance(fact_ids=["project-decision"], evidence_ids=["module-decision"]),
         "bullet:wrong-project": ClaimProvenance(fact_ids=["project-generic"]),
         "bullet:strategy-project": ClaimProvenance(fact_ids=["project-decision"], evidence_ids=["module-decision"]),
+        "bullet:strategy-project-2": ClaimProvenance(fact_ids=["project-decision"], evidence_ids=["module-decision"]),
         "experience:legacy-first": ClaimProvenance(fact_ids=["employment-support"]),
         "experience:strategy-first": ClaimProvenance(fact_ids=["employment-ops"], evidence_ids=["module-ops"]),
         "bullet:legacy-exp": ClaimProvenance(fact_ids=["employment-support"]),
         "bullet:strategy-exp": ClaimProvenance(fact_ids=["employment-ops"], evidence_ids=["module-ops"]),
+        "bullet:strategy-exp-2": ClaimProvenance(fact_ids=["employment-ops"], evidence_ids=["module-ops"]),
         "fact:education": ClaimProvenance(fact_ids=["education"]),
         "fact:language": ClaimProvenance(fact_ids=["language"]),
         "fact:github": ClaimProvenance(fact_ids=["github"]),
@@ -196,12 +200,19 @@ def test_skills_keep_policy_caps_and_visible_text_deduplication() -> None:
     assert sum(len(group.skill_claim_ids) for group in recruiter.technology_groups) <= 24
 
 
-def test_project_and_experience_bullets_require_overlapping_provenance() -> None:
+def test_project_and_experience_bullets_keep_two_ranked_overlapping_claims() -> None:
     _, recruiter = _compose()
     assert recruiter.project_entries[0].primary_claim_id == "project:strategy-first"
-    assert recruiter.project_entries[0].bullet_claim_ids == ["bullet:strategy-project"]
+    assert recruiter.project_entries[0].bullet_claim_ids == [
+        "bullet:strategy-project",
+        "bullet:strategy-project-2",
+    ]
+    assert "bullet:wrong-project" not in recruiter.project_entries[0].bullet_claim_ids
     assert recruiter.experience_entries[0].primary_claim_id == "experience:strategy-first"
-    assert recruiter.experience_entries[0].bullet_claim_ids == ["bullet:strategy-exp"]
+    assert recruiter.experience_entries[0].bullet_claim_ids == [
+        "bullet:strategy-exp",
+        "bullet:strategy-exp-2",
+    ]
 
 
 def test_output_never_mints_claim_ids_and_is_deterministic() -> None:
