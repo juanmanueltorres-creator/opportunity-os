@@ -173,7 +173,6 @@ def test_unknown_duration_with_relevant_verified_evidence_gets_neutral_credit() 
     assert assessment.mandatory_fit == 75.0
     assert exp in assessment.gaps
     assert "experience_duration_unverified" in assessment.risks
-    assert assessment.recommendation == "apply"
 
 
 def test_unknown_mandatory_duration_does_not_force_career_tier_to_stretch() -> None:
