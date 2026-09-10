@@ -7,6 +7,7 @@ import yaml
 from pypdf import PdfReader
 
 import app.cv.renderers.rendercv_typst as rendercv_renderer_module
+from app.cv.layout import load_layout_profiles
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
@@ -18,6 +19,10 @@ from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
 from app.cv.render_policy import load_render_policy
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
+
+
+def _layout_profile():
+    return load_layout_profiles("config/layout_profiles.yaml")["compact_ats"]
 
 
 def _source_document() -> CVDocumentModel:
@@ -177,6 +182,7 @@ def test_recruiter_renderer_does_not_spawn_rendercv_cli_subprocess(tmp_path, mon
         source_document=_source_document(),
         output_path=tmp_path / "cv.pdf",
         policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        layout_profile=_layout_profile(),
     )
 
     assert Path(result.artifact.path).is_file()
@@ -188,6 +194,7 @@ def test_rendercv_renderer_outputs_one_a4_page_with_extractable_text(tmp_path):
         source_document=_source_document(),
         output_path=tmp_path / "cv.pdf",
         policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        layout_profile=_layout_profile(),
     )
 
     reader = PdfReader(result.artifact.path)
@@ -214,6 +221,7 @@ def test_rendercv_renderer_includes_approved_project_description(tmp_path):
         source_document=_source_document(),
         output_path=tmp_path / "cv-project-description.pdf",
         policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        layout_profile=_layout_profile(),
     )
 
     text = "\n".join(
@@ -228,18 +236,21 @@ def test_identical_recruiter_document_produces_identical_pdf_bytes(tmp_path):
     policy = load_recruiter_policy("config/recruiter_policy.yaml")
     source_document = _source_document()
     recruiter_document = _recruiter_document()
+    layout_profile = _layout_profile()
 
     first = renderer.render(
         recruiter_document=recruiter_document,
         source_document=source_document,
         output_path=tmp_path / "a.pdf",
         policy=policy,
+        layout_profile=layout_profile,
     )
     second = renderer.render(
         recruiter_document=recruiter_document,
         source_document=source_document,
         output_path=tmp_path / "b.pdf",
         policy=policy,
+        layout_profile=layout_profile,
     )
 
     assert (tmp_path / "a.pdf").read_bytes() == (tmp_path / "b.pdf").read_bytes()
@@ -282,6 +293,7 @@ def test_golden_recruiter_profiles_are_exactly_one_page(fixture_name, tmp_path):
         source_document=source_document,
         output_path=tmp_path / f"{fixture_name}.pdf",
         policy=recruiter_policy,
+        layout_profile=_layout_profile(),
     )
     qa_result = RecruiterQualityQA().evaluate(
         render_result=render_result,
@@ -307,6 +319,7 @@ def test_golden_ground_truth_survives_two_extractors(fixture_name, tmp_path):
         source_document=source_document,
         output_path=output,
         policy=policy,
+        layout_profile=_layout_profile(),
     )
 
     pypdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(output).pages)

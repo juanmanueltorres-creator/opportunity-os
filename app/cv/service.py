@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -8,6 +9,7 @@ from uuid import uuid4
 from app.cv.composer import COMPOSER_VERSION, compose_cv
 from app.cv.filename import build_cv_filename
 from app.cv.hashing import canonical_sha256
+from app.cv.layout import LayoutProfile, load_layout_profiles, select_layout_profile
 from app.cv.layout_qa import LayoutQA
 from app.cv.loaders import validate_catalog_against_facts
 from app.cv.models import (
@@ -42,6 +44,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RECRUITER_POLICY_PATH = _PROJECT_ROOT / "config" / "recruiter_policy.yaml"
 _DEFAULT_RENDER_POLICY_PATH = _PROJECT_ROOT / "config" / "render_policy.yaml"
 _DEFAULT_NARRATIVE_POLICY_PATH = _PROJECT_ROOT / "config" / "narrative_policy.yaml"
+_DEFAULT_LAYOUT_PROFILES_PATH = _PROJECT_ROOT / "config" / "layout_profiles.yaml"
 _REDUCIBLE_QA_CODES = {
     "recruiter_one_page_failed",
     "recruiter_overflow_detected",
@@ -61,6 +64,8 @@ class CVPreparationService:
         render_policy: RenderPolicy | None = None,
         narrative_policy: NarrativePolicy | None = None,
         narrative_qa: NarrativeQualityQA | None = None,
+        layout_profiles: Mapping[str, LayoutProfile] | None = None,
+        track_layout_map: Mapping[str, str] | None = None,
     ) -> None:
         self.taxonomy_resolver = taxonomy_resolver
         self.id_factory = id_factory or (lambda: str(uuid4()))
@@ -78,6 +83,12 @@ class CVPreparationService:
             _DEFAULT_NARRATIVE_POLICY_PATH
         )
         self.narrative_qa = narrative_qa or NarrativeQualityQA()
+        self.layout_profiles = (
+            dict(layout_profiles)
+            if layout_profiles is not None
+            else load_layout_profiles(_DEFAULT_LAYOUT_PROFILES_PATH)
+        )
+        self.track_layout_map = dict(track_layout_map or {})
 
     def prepare(
         self,
@@ -211,6 +222,26 @@ class CVPreparationService:
             )
         narrative_warnings = list(narrative_result.warnings)
 
+        try:
+            selected_layout_profile = select_layout_profile(
+                strategy=strategy,
+                profiles=self.layout_profiles,
+                track_layout_map=self.track_layout_map,
+            )
+        except ValueError as exc:
+            if str(exc) != "layout_profile_unavailable":
+                raise
+            return _blocked(
+                "BLOCKED_RENDER",
+                code="layout_profile_unavailable",
+                message="Selected CV layout profile is unavailable",
+                warnings=[
+                    *validation.warnings,
+                    *recruiter_validation.warnings,
+                    *narrative_warnings,
+                ],
+            )
+
         application_id = self.id_factory()
         candidate_name = next(
             claim.text for claim in document.claims if claim.kind == "identity"
@@ -237,6 +268,7 @@ class CVPreparationService:
                     document,
                     output_path,
                     self.recruiter_policy,
+                    selected_layout_profile,
                 )
             except (OSError, ValueError):
                 _remove_partial_pdf(output_path)

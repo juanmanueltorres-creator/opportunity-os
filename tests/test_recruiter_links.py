@@ -1,5 +1,6 @@
 import pymupdf
 
+from app.cv.layout import load_layout_profiles
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance
 from app.cv.recruiter_models import RecruiterDocumentModel
 from app.cv.recruiter_policy import load_recruiter_policy
@@ -43,6 +44,7 @@ def test_recruiter_pdf_contains_clickable_email_and_web_link(tmp_path):
         source_document=_source_document(),
         output_path=output,
         policy=load_recruiter_policy("config/recruiter_policy.yaml"),
+        layout_profile=load_layout_profiles("config/layout_profiles.yaml")["compact_ats"],
     )
 
     document = pymupdf.open(output)

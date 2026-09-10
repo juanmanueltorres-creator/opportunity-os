@@ -32,6 +32,16 @@ def test_offline_verifier_enforces_language_decision_contract() -> None:
     assert "offline application language mismatch" in text
 
 
+def test_offline_verifier_requires_one_preview_per_layout_profile() -> None:
+    text = Path("scripts/verify_offline_runtime.py").read_text(encoding="utf-8")
+
+    assert "_EXPECTED_PREVIEW_NAMES" in text
+    assert "recruiter_software__technical_clean.pdf" in text
+    assert "recruiter_tech_operations__operations_clean.pdf" in text
+    assert "recruiter_software__compact_ats.pdf" in text
+    assert "preview_names != _EXPECTED_PREVIEW_NAMES" in text
+
+
 def test_recruiter_renderer_uses_non_deprecated_pymupdf_import() -> None:
     text = Path("app/cv/renderers/rendercv_typst.py").read_text(encoding="utf-8")
 

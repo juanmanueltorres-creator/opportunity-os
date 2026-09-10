@@ -321,7 +321,14 @@ def test_recruiter_render_failure_is_blocked_and_partial_pdf_removed(tmp_path: P
     class BrokenRecruiterRenderer:
         renderer_version = "rendercv-typst-v1"
 
-        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
+        def render(
+            self,
+            recruiter_document,
+            source_document,
+            output_path,
+            recruiter_policy,
+            layout_profile,
+        ):
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"partial")
@@ -482,7 +489,14 @@ def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_docume
     class ConstantRecruiterRenderer:
         renderer_version = "rendercv-typst-v1"
 
-        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
+        def render(
+            self,
+            recruiter_document,
+            source_document,
+            output_path,
+            recruiter_policy,
+            layout_profile,
+        ):
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             payload = b"constant fictional recruiter pdf"
@@ -550,7 +564,14 @@ def test_prepare_blocks_when_recruiter_output_is_two_pages(tmp_path: Path) -> No
     class TwoPageRecruiterRenderer:
         renderer_version = "rendercv-typst-v1"
 
-        def render(self, recruiter_document, source_document, output_path, recruiter_policy):
+        def render(
+            self,
+            recruiter_document,
+            source_document,
+            output_path,
+            recruiter_policy,
+            layout_profile,
+        ):
             path = Path(output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             document = pymupdf.open()

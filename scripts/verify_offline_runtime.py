@@ -28,6 +28,11 @@ _PAGE_TOLERANCE_POINTS = 3.0
 _EXPECTED_RENDERER_VERSION = "rendercv-typst-v1"
 _EXPECTED_LANGUAGE = "es"
 _EXPECTED_LANGUAGE_BASIS = "market_location"
+_EXPECTED_PREVIEW_NAMES = {
+    "recruiter_software__technical_clean.pdf",
+    "recruiter_tech_operations__operations_clean.pdf",
+    "recruiter_software__compact_ats.pdf",
+}
 _NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 
 
@@ -324,8 +329,12 @@ def verify_runtime(output_dir: Path) -> list[Path]:
     finally:
         os.chdir(previous_cwd)
 
-    if len(previews) != 2:
-        raise RuntimeError(f"offline recruiter smoke expected two fictional previews, got {len(previews)}")
+    preview_names = {output.name for output in previews}
+    if preview_names != _EXPECTED_PREVIEW_NAMES:
+        raise RuntimeError(
+            "offline recruiter smoke preview set mismatch: "
+            f"expected={sorted(_EXPECTED_PREVIEW_NAMES)!r} actual={sorted(preview_names)!r}"
+        )
     for output in previews:
         verify_recruiter_pdf(output)
     return [*previews, canonical_pdf]
