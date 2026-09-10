@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Callable
 from uuid import uuid4
 
+from app.cv.ats.parser import LocalResumeParser, ResumeParserAdapter
+from app.cv.ats.policy import ATSRoundTripPolicy, load_ats_roundtrip_policy
+from app.cv.ats.roundtrip_qa import ATSRoundTripQA
 from app.cv.composer import COMPOSER_VERSION, compose_cv
 from app.cv.filename import build_cv_filename
 from app.cv.hashing import canonical_sha256
@@ -48,6 +51,9 @@ _DEFAULT_RENDER_POLICY_PATH = _PROJECT_ROOT / "config" / "render_policy.yaml"
 _DEFAULT_NARRATIVE_POLICY_PATH = _PROJECT_ROOT / "config" / "narrative_policy.yaml"
 _DEFAULT_VISUAL_POLICY_PATH = _PROJECT_ROOT / "config" / "visual_policy.yaml"
 _DEFAULT_LAYOUT_PROFILES_PATH = _PROJECT_ROOT / "config" / "layout_profiles.yaml"
+_DEFAULT_ATS_ROUNDTRIP_POLICY_PATH = (
+    _PROJECT_ROOT / "config" / "ats_roundtrip_policy.yaml"
+)
 _REDUCIBLE_QA_CODES = {
     "recruiter_one_page_failed",
     "recruiter_overflow_detected",
@@ -73,6 +79,9 @@ class CVPreparationService:
         narrative_qa: NarrativeQualityQA | None = None,
         visual_policy: VisualPolicy | None = None,
         visual_qa: VisualQualityQA | None = None,
+        ats_parser: ResumeParserAdapter | None = None,
+        ats_qa: ATSRoundTripQA | None = None,
+        ats_policy: ATSRoundTripPolicy | None = None,
         layout_profiles: Mapping[str, LayoutProfile] | None = None,
         track_layout_map: Mapping[str, str] | None = None,
     ) -> None:
@@ -96,6 +105,11 @@ class CVPreparationService:
             _DEFAULT_VISUAL_POLICY_PATH
         )
         self.visual_qa = visual_qa or VisualQualityQA()
+        self.ats_parser = ats_parser or LocalResumeParser()
+        self.ats_qa = ats_qa or ATSRoundTripQA()
+        self.ats_policy = ats_policy or load_ats_roundtrip_policy(
+            _DEFAULT_ATS_ROUNDTRIP_POLICY_PATH
+        )
         self.layout_profiles = (
             dict(layout_profiles)
             if layout_profiles is not None
@@ -273,6 +287,7 @@ class CVPreparationService:
         final_render_result = None
         final_qa_result = None
         final_visual_result = None
+        final_ats_result = None
         max_reductions = _max_reduction_actions(recruiter_document)
 
         for reduction_index in range(max_reductions + 1):
@@ -341,9 +356,44 @@ class CVPreparationService:
                     )
 
                 if visual_result.valid:
+                    ats_base_warnings = [
+                        *validation.warnings,
+                        *final_recruiter_validation.warnings,
+                        *narrative_warnings,
+                        *qa_result.warnings,
+                        *visual_result.warnings,
+                    ]
+                    try:
+                        parsed_resume = self.ats_parser.parse(
+                            render_result.artifact.path
+                        )
+                        ats_result = self.ats_qa.evaluate(
+                            recruiter_document=final_recruiter_document,
+                            source_document=document,
+                            parsed_resume=parsed_resume,
+                            policy=self.ats_policy,
+                        )
+                    except (OSError, ValueError):
+                        _remove_partial_pdf(output_path)
+                        return _blocked(
+                            "BLOCKED_RENDER",
+                            code="ats_roundtrip_qa_failed",
+                            message="Recruiter CV ATS recoverability validation failed",
+                            warnings=ats_base_warnings,
+                        )
+
+                    if not ats_result.valid:
+                        _remove_partial_pdf(output_path)
+                        return PreparationResult(
+                            status="BLOCKED_RENDER",
+                            errors=ats_result.errors,
+                            warnings=[*ats_base_warnings, *ats_result.warnings],
+                        )
+
                     final_render_result = render_result
                     final_qa_result = qa_result
                     final_visual_result = visual_result
+                    final_ats_result = ats_result
                     break
 
                 attempt_errors = visual_result.errors
@@ -447,6 +497,7 @@ class CVPreparationService:
             final_render_result is None
             or final_qa_result is None
             or final_visual_result is None
+            or final_ats_result is None
         ):
             _remove_partial_pdf(output_path)
             return _blocked(
@@ -467,6 +518,7 @@ class CVPreparationService:
             *narrative_warnings,
             *final_qa_result.warnings,
             *final_visual_result.warnings,
+            *final_ats_result.warnings,
         ]
         opportunity_snapshot_hash = canonical_sha256(
             assessment.opportunity.model_dump(mode="json")
@@ -491,6 +543,8 @@ class CVPreparationService:
             cv_document_version=document.document_version,
             recruiter_policy_version=self.recruiter_policy.version,
             renderer_version=artifact.renderer_version,
+            ats_policy_version=self.ats_policy.version,
+            ats_qa=final_ats_result,
             selected_fact_ids=selection.selected_fact_ids,
             selected_evidence_ids=selection.selected_evidence_ids,
             unresolved_gaps=selection.unsupported_requirements,
@@ -531,6 +585,12 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict:
         "cv_document_version": packet.cv_document_version,
         "recruiter_policy_version": packet.recruiter_policy_version,
         "renderer_version": packet.renderer_version,
+        "ats_policy_version": packet.ats_policy_version,
+        "ats_qa": (
+            packet.ats_qa.model_dump(mode="json")
+            if packet.ats_qa is not None
+            else None
+        ),
         "selected_fact_ids": packet.selected_fact_ids,
         "selected_evidence_ids": packet.selected_evidence_ids,
         "unresolved_gaps": packet.unresolved_gaps,

@@ -8,6 +8,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.service import CVPreparationService
 from app.cv.visual_models import VisualMetrics, VisualQAResult
+from cv_ats_test_doubles import PassingATSParser, PassingATSQA
 from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
 
 
@@ -111,6 +112,13 @@ def _prepare(service: CVPreparationService, tmp_path: Path):
     )
 
 
+def _synthetic_pdf_ats_kwargs():
+    return {
+        "ats_parser": PassingATSParser(),
+        "ats_qa": PassingATSQA(),
+    }
+
+
 def test_service_passes_injected_track_layout_to_renderer(tmp_path: Path) -> None:
     renderer = CapturingRenderer()
     result = _prepare(
@@ -121,6 +129,7 @@ def test_service_passes_injected_track_layout_to_renderer(tmp_path: Path) -> Non
             recruiter_qa=PassingRecruiterQA(),
             visual_qa=PassingVisualQA(),
             track_layout_map={"tech": "technical_clean"},
+            **_synthetic_pdf_ats_kwargs(),
         ),
         tmp_path,
     )
@@ -138,6 +147,7 @@ def test_service_without_mapping_uses_compact_ats(tmp_path: Path) -> None:
             recruiter_renderer=renderer,
             recruiter_qa=PassingRecruiterQA(),
             visual_qa=PassingVisualQA(),
+            **_synthetic_pdf_ats_kwargs(),
         ),
         tmp_path,
     )
@@ -181,6 +191,7 @@ def test_reduction_reuses_same_selected_layout_profile(monkeypatch, tmp_path: Pa
             recruiter_qa=qa,
             visual_qa=PassingVisualQA(),
             track_layout_map={"tech": "operations_clean"},
+            **_synthetic_pdf_ats_kwargs(),
         ),
         tmp_path,
     )

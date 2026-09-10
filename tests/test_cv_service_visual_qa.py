@@ -9,6 +9,7 @@ from app.cv.recruiter_models import RecruiterQAResult, RecruiterRenderMetrics, R
 from app.cv.service import CVPreparationService
 from app.cv.visual_models import VisualMetrics, VisualQAResult
 from app.cv.visual_policy import load_visual_policy
+from cv_ats_test_doubles import PassingATSParser, PassingATSQA
 from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
 
 
@@ -156,6 +157,8 @@ def _service(*, visual_qa, renderer=None, narrative_qa=None) -> CVPreparationSer
         "visual_qa": visual_qa,
         "visual_policy": load_visual_policy("config/visual_policy.yaml"),
         "track_layout_map": {"tech": "technical_clean"},
+        "ats_parser": PassingATSParser(),
+        "ats_qa": PassingATSQA(),
     }
     if narrative_qa is not None:
         kwargs["narrative_qa"] = narrative_qa

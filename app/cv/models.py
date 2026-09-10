@@ -290,6 +290,8 @@ class ApplicationPacket(StrictCVModel):
     cv_document_version: str = Field(min_length=1)
     recruiter_policy_version: str = Field(min_length=1)
     renderer_version: str = Field(min_length=1)
+    ats_policy_version: str | None = Field(default=None, min_length=1)
+    ats_qa: Any | None = None
     selected_fact_ids: list[str] = Field(default_factory=list)
     selected_evidence_ids: list[str] = Field(default_factory=list)
     unresolved_gaps: list[str] = Field(default_factory=list)
@@ -308,17 +310,35 @@ class ApplicationPacket(StrictCVModel):
 
         return RecruiterDocumentModel.model_validate(value)
 
+    @field_validator("ats_qa", mode="before")
+    @classmethod
+    def ats_qa_must_be_typed(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        from app.cv.ats.models import ATSRoundTripQAResult
+
+        return ATSRoundTripQAResult.model_validate(value)
+
     @field_validator("created_at")
     @classmethod
     def created_at_must_be_aware(cls, value: datetime) -> datetime:
         return _require_aware(value, field_name="created_at")
 
     @model_validator(mode="after")
-    def validate_language_contract(self) -> "ApplicationPacket":
+    def validate_packet_contracts(self) -> "ApplicationPacket":
         if self.language_decision.language != self.cv_document.language:
             raise ValueError(
                 "packet language decision must match CV document language"
             )
+        if (self.ats_policy_version is None) != (self.ats_qa is None):
+            raise ValueError(
+                "ATS policy version and ATS QA result must be present together"
+            )
+        if (
+            self.ats_qa is not None
+            and self.ats_policy_version != self.ats_qa.policy_version
+        ):
+            raise ValueError("ATS policy version must match ATS QA result")
         return self
 
 

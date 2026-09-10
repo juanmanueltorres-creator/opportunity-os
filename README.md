@@ -148,8 +148,16 @@ RenderCV/Typst
       ↓
 RecruiterQualityQA
       ↓
+VisualQualityQA
+      ↓
+LocalResumeParser
+      ↓
+ATS Round-Trip QA
+      ↓
 ApplicationPacket
 ```
+
+ATS Round-Trip QA is a **recoverability proxy** over the rendered PDF: it checks whether expected candidate content survives extraction in the expected semantic regions. It is **not vendor ATS emulation** and **does not guarantee commercial ATS ranking** or vendor-specific parsing behavior.
 
 The canonical recruiter artifact is:
 

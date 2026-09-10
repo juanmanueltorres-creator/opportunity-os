@@ -11,6 +11,7 @@ from app.cv.recruiter_models import (
 from app.cv.service import CVPreparationService
 from app.cv.strategy.policy import load_narrative_policy
 from app.cv.visual_models import VisualMetrics, VisualQAResult
+from cv_ats_test_doubles import PassingATSParser, PassingATSQA
 from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
 
 
@@ -89,6 +90,8 @@ def _service(
     }
     if recruiter_renderer is not None:
         kwargs["recruiter_renderer"] = recruiter_renderer
+        kwargs["ats_parser"] = PassingATSParser()
+        kwargs["ats_qa"] = PassingATSQA()
     if recruiter_qa is not None:
         kwargs["recruiter_qa"] = recruiter_qa
     if visual_qa is not None:
