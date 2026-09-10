@@ -1,0 +1,6 @@
+{
+  "case": "ats_extraction_loss",
+  "description": "Synthetic parser output where one critical skill disappears from the Technology section.",
+  "parsed_technology": ["Python"],
+  "expected_issue_code": "ats_roundtrip_skill_recovery_low"
+}
