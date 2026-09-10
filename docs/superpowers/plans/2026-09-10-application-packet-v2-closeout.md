@@ -59,9 +59,9 @@ def test_v2_rejects_strategy_version_mismatch():
         ApplicationPacket.model_validate(payload)
 
 
-def test_v2_rejects_layout_identity_mismatch():
+def test_v2_rejects_unsupported_layout_version():
     payload = complete_v2_payload()
-    payload["layout_profile_id"] = "operations_clean"
+    payload["layout_profile_version"] = "layout-profile-v999"
     with pytest.raises(ValidationError):
         ApplicationPacket.model_validate(payload)
 ```
@@ -104,13 +104,13 @@ Extend `validate_packet_contracts()` so:
 v1: new strategy/layout/narrative/visual fields must all be absent; existing ATS pair may remain present for compatibility.
 v2: every new audit field plus the ATS pair must be present.
 strategy_version == strategy.strategy_version.
-layout_profile_id == the persisted selected profile id represented by the packet fields.
-layout_profile_version is non-empty and versioned.
+narrative_policy_version matches the supported NarrativePolicy version.
+layout_profile_id is a supported LayoutProfileId and layout_profile_version matches the supported LayoutProfile version.
 narrative_qa.valid, visual_qa.valid, ats_qa.valid are true.
 ats_policy_version == ats_qa.policy_version.
 ```
 
-The layout profile object itself is not persisted, so id/version validity is enforced by service integration plus supported-value typing where available; no renderer behavior changes.
+The exact equality of `layout_profile_id/layout_profile_version` to the profile selected for a particular preparation is an orchestration invariant and is tested in Task 2, because the packet does not persist the `LayoutProfile` object itself.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**
 
