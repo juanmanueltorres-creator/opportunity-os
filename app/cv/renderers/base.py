@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from app.cv.layout import LayoutProfile
 from app.cv.models import CVDocumentModel
 from app.cv.recruiter_models import RecruiterDocumentModel, RecruiterRenderResult
 from app.cv.recruiter_policy import RecruiterPolicy
@@ -17,4 +18,5 @@ class RecruiterRenderer(Protocol):
         source_document: CVDocumentModel,
         output_path: str | Path,
         policy: RecruiterPolicy,
+        layout_profile: LayoutProfile,
     ) -> RecruiterRenderResult: ...
