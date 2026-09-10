@@ -33,6 +33,32 @@ _EXPERIENCE_CONTEXT_STOPWORDS = {
     "experience", "experiencia", "least", "minimum", "minimo", "mínimo",
     "of", "or", "the", "y", "year", "years",
 }
+_ROLE_TOKEN_ALIASES = {
+    "engineering": "engineer",
+    "engineers": "engineer",
+    "ingenieria": "engineer",
+    "ingeniería": "engineer",
+    "ingeniero": "engineer",
+    "ingeniera": "engineer",
+    "developer": "develop",
+    "developers": "develop",
+    "development": "develop",
+    "desarrollador": "develop",
+    "desarrolladora": "develop",
+    "desarrollo": "develop",
+    "management": "manager",
+    "gestion": "manager",
+    "gestión": "manager",
+}
+_ROLE_TOKEN_STOPWORDS = {
+    "a", "and", "as", "como", "de", "del", "en", "experience", "experiencia",
+    "hacia", "in", "jr", "junior", "of", "position", "posición", "posicion",
+    "principal", "role", "roles", "rol", "senior", "sr", "staff", "the",
+    "transition", "transicion", "transición", "toward", "towards", "y",
+}
+_ROLE_HEAD_TOKENS = {
+    "analyst", "architect", "develop", "engineer", "lead", "manager", "scientist",
+}
 
 
 def assess_career(
@@ -73,6 +99,17 @@ def assess_career(
         }
     )
     base = assess_opportunity(score_opportunity, track_profile, now=assessment_time)
+    domain_fit, matched_domains = _career_domain_fit(opportunity, enrichment, track)
+    evidence_requirements = _career_evidence_requirements(mandatory, preferred)
+    if evidence_requirements:
+        evidence_fit, selected_evidence = _career_evidence_fit(
+            evidence_requirements,
+            track,
+            resolver,
+            matched_domains,
+        )
+    else:
+        evidence_fit, selected_evidence = base.evidence_fit, base.evidence
 
     target_requirements = mandatory if mandatory else preferred
     target_resolutions = mandatory_resolutions if mandatory else preferred_resolutions
@@ -94,6 +131,11 @@ def assess_career(
         else:
             gaps.append(requirement.value)
 
+    if mandatory:
+        for requirement, (_, multiplier, _) in zip(preferred, preferred_resolutions):
+            if requirement.kind == "skill" and multiplier > 0.0:
+                _append_unique(strengths, requirement.value)
+
     risks = list(base.risks)
     for requirement, (_, _, experience_status) in zip(
         mandatory,
@@ -108,16 +150,16 @@ def assess_career(
 
     overall_score = round(
         0.40 * mandatory_fit
-        + 0.20 * base.domain_fit
-        + 0.20 * base.evidence_fit
+        + 0.20 * domain_fit
+        + 0.20 * evidence_fit
         + 0.10 * base.location_fit
         + 0.10 * base.freshness_fit,
         1,
     )
     recommendation = _recommend(overall_score, risks)
     explanation = (
-        f"mandatory={mandatory_fit:.1f}; domain={base.domain_fit:.1f}; "
-        f"evidence={base.evidence_fit:.1f}; location={base.location_fit:.1f}; "
+        f"mandatory={mandatory_fit:.1f}; domain={domain_fit:.1f}; "
+        f"evidence={evidence_fit:.1f}; location={base.location_fit:.1f}; "
         f"freshness={base.freshness_fit:.1f}; matched={strengths}; "
         f"gaps={gaps}; risks={risks}"
     )
@@ -126,14 +168,14 @@ def assess_career(
         opportunity_id=opportunity.id,
         overall_score=overall_score,
         mandatory_fit=mandatory_fit,
-        domain_fit=base.domain_fit,
-        evidence_fit=base.evidence_fit,
+        domain_fit=domain_fit,
+        evidence_fit=evidence_fit,
         location_fit=base.location_fit,
         freshness_fit=base.freshness_fit,
         strengths=strengths,
         gaps=gaps,
         risks=risks,
-        evidence=base.evidence,
+        evidence=selected_evidence,
         recommendation=recommendation,
         explanation=explanation,
     )
@@ -289,15 +331,21 @@ def _resolved_terms(
     candidate_skills = _verified_candidate_skills(track)
     for requirement in requirements:
         resolved = resolver.resolve_skill(requirement.value, candidate_skills)
+        matched_value = resolved.matched_skill
         multiplier = resolved.multiplier
         if (
             requirement.exactness == "exact_product"
             and resolved.level == SkillMatchLevel.TAXONOMY_RELATED
         ):
             multiplier = 0.0
-        resolutions.append((resolved.matched_skill, multiplier))
-        if multiplier > 0.0 and resolved.matched_skill is not None:
-            terms.append(resolved.matched_skill)
+        if multiplier == 0.0 and requirement.exactness != "exact_product":
+            role_match = _match_candidate_role(requirement.value, track.roles)
+            if role_match is not None:
+                matched_value = role_match
+                multiplier = 1.0
+        resolutions.append((matched_value, multiplier))
+        if multiplier > 0.0 and matched_value is not None:
+            terms.append(matched_value)
         else:
             terms.append(requirement.value)
     return terms, resolutions
@@ -322,6 +370,138 @@ def _resolved_career_requirements(
         status, score = _career_experience_support(requirement, track)
         resolutions.append((requirement.value if score > 0.0 else None, score, status))
     return resolutions
+
+
+def _career_evidence_requirements(
+    mandatory: list[Requirement],
+    preferred: list[Requirement],
+) -> list[Requirement]:
+    mandatory_skills = [requirement for requirement in mandatory if requirement.kind == "skill"]
+    if mandatory_skills:
+        return mandatory_skills
+    return [requirement for requirement in preferred if requirement.kind == "skill"]
+
+
+def _career_domain_fit(
+    opportunity: Opportunity,
+    enrichment: OpportunityEnrichment,
+    track: CandidateTrack,
+) -> tuple[float, set[str]]:
+    """Treat CAREER domains as compatibility signals, not a candidate-completeness ratio."""
+
+    if not track.domains:
+        return 50.0, set()
+    corpus = " ".join(
+        [
+            opportunity.title,
+            opportunity.description,
+            *(requirement.value for requirement in enrichment.requirements),
+        ]
+    )
+    matched = {
+        _normalize(domain)
+        for domain in track.domains
+        if _contains_phrase(corpus, domain)
+    }
+    if matched:
+        return 100.0, matched
+    return 50.0, set()
+
+
+def _career_evidence_fit(
+    requirements: list[Requirement],
+    track: CandidateTrack,
+    resolver: TaxonomyResolver,
+    matched_domains: set[str],
+) -> tuple[float, list[EvidenceItem]]:
+    """Measure verified evidence coverage for CAREER capabilities, including role-backed ones."""
+
+    if not requirements:
+        return 50.0, []
+
+    covered: set[int] = set()
+    selected: list[EvidenceItem] = []
+    for evidence in track.evidence:
+        if not evidence.verified:
+            continue
+        supported_indexes = {
+            index
+            for index, requirement in enumerate(requirements)
+            if _evidence_supports_career_requirement(
+                requirement, evidence, track, resolver, matched_domains
+            )
+        }
+        if not supported_indexes:
+            continue
+        covered.update(supported_indexes)
+        selected.append(evidence)
+
+    return round(len(covered) / len(requirements) * 100.0, 1), selected
+
+
+def _evidence_supports_career_requirement(
+    requirement: Requirement,
+    evidence: EvidenceItem,
+    track: CandidateTrack,
+    resolver: TaxonomyResolver,
+    matched_domains: set[str],
+) -> bool:
+    resolved = resolver.resolve_skill(requirement.value, evidence.skills)
+    multiplier = resolved.multiplier
+    if (
+        requirement.exactness == "exact_product"
+        and resolved.level == SkillMatchLevel.TAXONOMY_RELATED
+    ):
+        multiplier = 0.0
+    if multiplier > 0.0:
+        return True
+
+    if requirement.exactness == "exact_product":
+        return False
+    if _match_candidate_role(requirement.value, track.roles) is None:
+        return False
+    if evidence.type not in {"project", "experience"}:
+        return False
+    evidence_domains = {_normalize(domain) for domain in evidence.domains}
+    return bool(matched_domains and evidence_domains.intersection(matched_domains))
+
+
+def _match_candidate_role(term: str, candidate_roles: list[str]) -> str | None:
+    target_tokens = _role_tokens(term)
+    if len(target_tokens) < 2 or not target_tokens.intersection(_ROLE_HEAD_TOKENS):
+        return None
+
+    for role in candidate_roles:
+        role_tokens = _role_tokens(role)
+        if len(role_tokens) < 2 or not role_tokens.intersection(_ROLE_HEAD_TOKENS):
+            continue
+        overlap = target_tokens.intersection(role_tokens)
+        if len(overlap) < 2:
+            continue
+        if target_tokens == role_tokens:
+            return role
+        if target_tokens.issubset(role_tokens) or role_tokens.issubset(target_tokens):
+            return role
+    return None
+
+
+def _role_tokens(value: str) -> set[str]:
+    tokens = {
+        _ROLE_TOKEN_ALIASES.get(token, token)
+        for token in re.findall(r"[^\W\d_]+", value.casefold(), flags=re.UNICODE)
+        if token not in _ROLE_TOKEN_STOPWORDS
+    }
+    return {token for token in tokens if len(token) >= 2}
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    normalized_phrase = _normalize(phrase)
+    if not normalized_phrase:
+        return False
+    return re.search(
+        rf"(?<!\w){re.escape(normalized_phrase)}(?!\w)",
+        _normalize(text),
+    ) is not None
 
 
 def _minimum_experience_years(value: str) -> float | None:
