@@ -145,3 +145,18 @@ def test_readme_describes_ats_roundtrip_as_recoverability_proxy_only() -> None:
     assert "recoverability proxy" in text
     assert "not vendor ats emulation" in text
     assert "does not guarantee commercial ats ranking" in text
+
+
+def test_strategy_narrative_architecture_is_closed_as_implemented_v2() -> None:
+    text = Path(
+        "docs/superpowers/specs/2026-09-09-cv-strategy-narrative-design.md"
+    ).read_text(encoding="utf-8")
+    folded = text.casefold()
+
+    assert "**status:** implemented" in folded
+    assert "applicationpacket v2" in folded
+    assert "recoverability proxy" in folded
+    assert "rendercv/typst remains the default renderer" in folded
+    assert "optional human-first renderer" in folded
+    assert "not vendor ats emulation" in folded
+    assert "does not guarantee commercial ats ranking" in folded
