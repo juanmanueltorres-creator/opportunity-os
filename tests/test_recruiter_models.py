@@ -7,6 +7,7 @@ from app.cv.models import RenderedCVArtifact
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
     RecruiterExperienceEntry,
+    RecruiterProjectEntry,
     RecruiterRenderMetrics,
     RecruiterRenderResult,
     TechnologyGroup,
@@ -67,6 +68,33 @@ def test_recruiter_document_accepts_project_entry_with_one_approved_bullet():
     assert "approved:project-1-bullet" in document.all_claim_ids()
 
 
+def test_recruiter_entries_accept_two_approved_bullets():
+    project = RecruiterProjectEntry(
+        primary_claim_id="fact:project-1",
+        bullet_claim_ids=["approved:project-bullet-1", "approved:project-bullet-2"],
+    )
+    experience = RecruiterExperienceEntry(
+        primary_claim_id="fact:employment-1",
+        bullet_claim_ids=["approved:experience-bullet-1", "approved:experience-bullet-2"],
+    )
+
+    assert len(project.bullet_claim_ids) == 2
+    assert len(experience.bullet_claim_ids) == 2
+
+
+@pytest.mark.parametrize("entry_cls", [RecruiterProjectEntry, RecruiterExperienceEntry])
+def test_recruiter_entries_reject_more_than_two_visible_bullets(entry_cls):
+    with pytest.raises(ValidationError):
+        entry_cls(
+            primary_claim_id="fact:entry-1",
+            bullet_claim_ids=[
+                "approved:bullet-1",
+                "approved:bullet-2",
+                "approved:bullet-3",
+            ],
+        )
+
+
 def test_project_entries_are_canonical_when_legacy_project_ids_also_exist():
     document = RecruiterDocumentModel(
         document_version="recruiter-doc-v1",
@@ -94,14 +122,6 @@ def test_technology_group_rejects_more_than_twenty_four_skill_claims():
         TechnologyGroup(
             label_id="software_data",
             skill_claim_ids=[f"fact:skill-{index}" for index in range(25)],
-        )
-
-
-def test_experience_entry_rejects_more_than_one_visible_bullet():
-    with pytest.raises(ValidationError):
-        RecruiterExperienceEntry(
-            primary_claim_id="fact:employment-1",
-            bullet_claim_ids=["approved:bullet-1", "approved:bullet-2"],
         )
 
 
