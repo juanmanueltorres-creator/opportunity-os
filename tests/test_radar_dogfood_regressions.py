@@ -118,7 +118,7 @@ def test_verified_evidence_skills_count_as_candidate_skills() -> None:
     assert assessment.strengths == ["Linux"]
 
 
-def test_mandatory_numeric_experience_is_not_ignored_by_career_score() -> None:
+def test_unsupported_numeric_experience_remains_an_explicit_gap() -> None:
     track = CandidateTrack(
         id="career",
         label="Career",
@@ -139,15 +139,57 @@ def test_mandatory_numeric_experience_is_not_ignored_by_career_score() -> None:
 
     assert assessment.mandatory_fit == 50.0
     assert exp in assessment.gaps
-    assert "mandatory_experience_unverified" in assessment.risks
+    assert "experience_duration_unverified" not in assessment.risks
+    assert "experience_duration_below_posting" not in assessment.risks
 
 
-def test_unverified_mandatory_numeric_experience_caps_career_tier_at_stretch() -> None:
+def test_unknown_duration_with_relevant_verified_evidence_gets_neutral_credit() -> None:
+    evidence = EvidenceItem(
+        label="Production software platform",
+        type="project",
+        skills=["Python", "PostgreSQL"],
+        domains=["software"],
+        verified=True,
+    )
     track = CandidateTrack(
         id="career",
         label="Career",
         intents=["CAREER"],
-        skills=["Python"],
+        skills=["Python", "PostgreSQL"],
+        evidence=[evidence],
+        accepted_work_modes=["remote"],
+    )
+    exp = "4+ years of software development experience"
+
+    assessment = assess_career(
+        opportunity(),
+        enrichment([requirement("Python"), requirement(exp, kind="experience")]),
+        profile(track),
+        track,
+        resolver(),
+        now=NOW,
+    )
+
+    assert assessment.mandatory_fit == 75.0
+    assert exp in assessment.gaps
+    assert "experience_duration_unverified" in assessment.risks
+    assert assessment.recommendation == "apply"
+
+
+def test_unknown_mandatory_duration_does_not_force_career_tier_to_stretch() -> None:
+    evidence = EvidenceItem(
+        label="Production software platform",
+        type="project",
+        skills=["Python", "PostgreSQL"],
+        domains=["software"],
+        verified=True,
+    )
+    track = CandidateTrack(
+        id="career",
+        label="Career",
+        intents=["CAREER"],
+        skills=["Python", "PostgreSQL"],
+        evidence=[evidence],
         accepted_work_modes=["remote"],
     )
     exp = "4+ years of software development experience"
@@ -167,12 +209,13 @@ def test_unverified_mandatory_numeric_experience_caps_career_tier_at_stretch() -
         TrackCareerAssessment(track_id="career", assessment=assessment),
         None,
         confidence(),
-        policy=RadarPolicy(medium_fit=30.0, stretch_fit=20.0, high_fit=90.0),
+        policy=RadarPolicy(medium_fit=30.0, stretch_fit=20.0, high_fit=95.0),
         scoring_version="test",
         alias_registry_version="test",
     )
 
-    assert ranked.intent_tiers["CAREER"] == "STRETCH"
+    assert ranked.intent_tiers["CAREER"] == "MEDIUM"
+    assert ranked.selected_intent == "CAREER"
 
 
 def test_preferred_numeric_experience_does_not_create_mandatory_risk() -> None:
@@ -194,7 +237,41 @@ def test_preferred_numeric_experience_does_not_create_mandatory_risk() -> None:
         now=NOW,
     )
 
-    assert "mandatory_experience_unverified" not in assessment.risks
+    assert "experience_duration_unverified" not in assessment.risks
+    assert "experience_duration_below_posting" not in assessment.risks
+
+
+def test_partial_verified_duration_gets_ratio_credit_and_stays_a_gap() -> None:
+    evidence = EvidenceItem(
+        label="2 years software engineering",
+        type="experience",
+        skills=["Python"],
+        domains=["software"],
+        verified=True,
+    )
+    track = CandidateTrack(
+        id="career",
+        label="Career",
+        intents=["CAREER"],
+        skills=["Python"],
+        evidence=[evidence],
+        accepted_work_modes=["remote"],
+    )
+    exp = "3+ years of software development experience"
+
+    assessment = assess_career(
+        opportunity(),
+        enrichment([requirement("Python"), requirement(exp, kind="experience")]),
+        profile(track),
+        track,
+        resolver(),
+        now=NOW,
+    )
+
+    assert assessment.mandatory_fit == 83.3
+    assert exp in assessment.gaps
+    assert "experience_duration_below_posting" in assessment.risks
+    assert "experience_duration_unverified" not in assessment.risks
 
 
 def test_verified_relevant_experience_can_satisfy_numeric_minimum() -> None:
@@ -226,7 +303,9 @@ def test_verified_relevant_experience_can_satisfy_numeric_minimum() -> None:
 
     assert assessment.mandatory_fit == 100.0
     assert exp in assessment.strengths
-    assert "mandatory_experience_unverified" not in assessment.risks
+    assert exp not in assessment.gaps
+    assert "experience_duration_unverified" not in assessment.risks
+    assert "experience_duration_below_posting" not in assessment.risks
 
 
 def test_irrelevant_experience_does_not_satisfy_numeric_minimum() -> None:
@@ -258,4 +337,5 @@ def test_irrelevant_experience_does_not_satisfy_numeric_minimum() -> None:
 
     assert assessment.mandatory_fit == 50.0
     assert exp in assessment.gaps
-    assert "mandatory_experience_unverified" in assessment.risks
+    assert "experience_duration_unverified" not in assessment.risks
+    assert "experience_duration_below_posting" not in assessment.risks
