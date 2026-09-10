@@ -1,8 +1,16 @@
 # CV Strategy, Narrative Composition, Layout, and Quality Architecture
 
 **Date:** 2026-09-09
-**Status:** Proposed for implementation after review
+**Status:** Implemented
 **Scope:** Opportunity-OS CV preparation pipeline
+
+## Implementation status
+
+This architecture is implemented. `ApplicationPacket v2` closes the auditability boundary by persisting and hashing the exact strategy, narrative policy, selected layout identity, final Narrative QA, Visual QA, and ATS round-trip QA that passed the preparation pipeline.
+
+Strategy construction, strategy-aware narrative composition, Narrative QA, layout selection, Visual QA, and ATS round-trip QA are authoritative gates. JSON Resume export is implemented as a renderer-independent projection. The ReportLab path is an **optional human-first renderer**; **RenderCV/Typst remains the default renderer**.
+
+ATS round-trip QA is a **recoverability proxy**, **not vendor ATS emulation**, and **does not guarantee commercial ATS ranking**.
 
 ## 1. Problem statement
 

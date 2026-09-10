@@ -248,6 +248,7 @@ class CVPreparationService:
                 ],
             )
         narrative_warnings = list(narrative_result.warnings)
+        final_narrative_result = narrative_result
 
         try:
             selected_layout_profile = select_layout_profile(
@@ -490,6 +491,7 @@ class CVPreparationService:
                 )
 
             narrative_warnings.extend(reduced_narrative_result.warnings)
+            final_narrative_result = reduced_narrative_result
             final_recruiter_document = reduced_document
             final_recruiter_validation = reduced_validation
 
@@ -498,6 +500,7 @@ class CVPreparationService:
             or final_qa_result is None
             or final_visual_result is None
             or final_ats_result is None
+            or final_narrative_result is None
         ):
             _remove_partial_pdf(output_path)
             return _blocked(
@@ -524,6 +527,7 @@ class CVPreparationService:
             assessment.opportunity.model_dump(mode="json")
         )
         packet = ApplicationPacket(
+            packet_schema_version="application-packet-v2",
             application_id=application_id,
             opportunity_id=assessment.opportunity.id,
             opportunity_snapshot_hash=opportunity_snapshot_hash,
@@ -543,6 +547,13 @@ class CVPreparationService:
             cv_document_version=document.document_version,
             recruiter_policy_version=self.recruiter_policy.version,
             renderer_version=artifact.renderer_version,
+            strategy_version=strategy.strategy_version,
+            strategy=strategy,
+            narrative_policy_version=self.narrative_policy.version,
+            layout_profile_id=selected_layout_profile.id,
+            layout_profile_version=selected_layout_profile.version,
+            narrative_qa=final_narrative_result,
+            visual_qa=final_visual_result,
             ats_policy_version=self.ats_policy.version,
             ats_qa=final_ats_result,
             selected_fact_ids=selection.selected_fact_ids,
@@ -585,6 +596,26 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict:
         "cv_document_version": packet.cv_document_version,
         "recruiter_policy_version": packet.recruiter_policy_version,
         "renderer_version": packet.renderer_version,
+        "packet_schema_version": packet.packet_schema_version,
+        "strategy_version": packet.strategy_version,
+        "strategy": (
+            packet.strategy.model_dump(mode="json")
+            if packet.strategy is not None
+            else None
+        ),
+        "narrative_policy_version": packet.narrative_policy_version,
+        "layout_profile_id": packet.layout_profile_id,
+        "layout_profile_version": packet.layout_profile_version,
+        "narrative_qa": (
+            packet.narrative_qa.model_dump(mode="json")
+            if packet.narrative_qa is not None
+            else None
+        ),
+        "visual_qa": (
+            packet.visual_qa.model_dump(mode="json")
+            if packet.visual_qa is not None
+            else None
+        ),
         "ats_policy_version": packet.ats_policy_version,
         "ats_qa": (
             packet.ats_qa.model_dump(mode="json")

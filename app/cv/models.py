@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -73,6 +73,10 @@ PreparationStatus = Literal[
     "BLOCKED_RENDER",
 ]
 OutputLanguage = Literal["es", "en"]
+ApplicationPacketSchemaVersion = Literal[
+    "application-packet-v1",
+    "application-packet-v2",
+]
 
 
 class StrictCVModel(BaseModel):
@@ -271,6 +275,7 @@ class LayoutQAResult(StrictCVModel):
 
 class ApplicationPacket(StrictCVModel):
     status: Literal["PREPARED"] = "PREPARED"
+    packet_schema_version: ApplicationPacketSchemaVersion = "application-packet-v1"
     application_id: str = Field(min_length=1)
     opportunity_id: str = Field(min_length=1)
     opportunity_snapshot_hash: str = Field(min_length=64, max_length=64)
@@ -290,6 +295,13 @@ class ApplicationPacket(StrictCVModel):
     cv_document_version: str = Field(min_length=1)
     recruiter_policy_version: str = Field(min_length=1)
     renderer_version: str = Field(min_length=1)
+    strategy_version: str | None = Field(default=None, min_length=1)
+    strategy: Any | None = None
+    narrative_policy_version: str | None = Field(default=None, min_length=1)
+    layout_profile_id: str | None = Field(default=None, min_length=1)
+    layout_profile_version: str | None = Field(default=None, min_length=1)
+    narrative_qa: Any | None = None
+    visual_qa: Any | None = None
     ats_policy_version: str | None = Field(default=None, min_length=1)
     ats_qa: Any | None = None
     selected_fact_ids: list[str] = Field(default_factory=list)
@@ -309,6 +321,44 @@ class ApplicationPacket(StrictCVModel):
         from app.cv.recruiter_models import RecruiterDocumentModel
 
         return RecruiterDocumentModel.model_validate(value)
+
+    @field_validator("strategy", mode="before")
+    @classmethod
+    def strategy_must_be_typed(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        from app.cv.strategy.models import CVStrategy
+
+        return CVStrategy.model_validate(value)
+
+    @field_validator("narrative_qa", mode="before")
+    @classmethod
+    def narrative_qa_must_be_typed(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        from app.cv.narrative.models import NarrativeQAResult
+
+        return NarrativeQAResult.model_validate(value)
+
+    @field_validator("visual_qa", mode="before")
+    @classmethod
+    def visual_qa_must_be_typed(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        from app.cv.visual_models import VisualQAResult
+
+        return VisualQAResult.model_validate(value)
+
+    @field_validator("layout_profile_id")
+    @classmethod
+    def layout_profile_id_must_be_supported(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from app.cv.layout.models import LayoutProfileId
+
+        if value not in get_args(LayoutProfileId):
+            raise ValueError("unsupported layout profile id")
+        return value
 
     @field_validator("ats_qa", mode="before")
     @classmethod
@@ -339,6 +389,40 @@ class ApplicationPacket(StrictCVModel):
             and self.ats_policy_version != self.ats_qa.policy_version
         ):
             raise ValueError("ATS policy version must match ATS QA result")
+
+        v2_fields = (
+            self.strategy_version,
+            self.strategy,
+            self.narrative_policy_version,
+            self.layout_profile_id,
+            self.layout_profile_version,
+            self.narrative_qa,
+            self.visual_qa,
+        )
+        if self.packet_schema_version == "application-packet-v1":
+            if any(value is not None for value in v2_fields):
+                raise ValueError("v1 packet cannot contain v2 audit fields")
+            return self
+
+        if any(value is None for value in (*v2_fields, self.ats_policy_version, self.ats_qa)):
+            raise ValueError("v2 packet requires complete audit state")
+
+        if self.strategy_version != self.strategy.strategy_version:
+            raise ValueError("strategy version must match strategy")
+
+        from app.cv.layout.models import LAYOUT_PROFILE_VERSION
+        from app.cv.strategy.policy import NARRATIVE_POLICY_VERSION
+
+        if self.narrative_policy_version != NARRATIVE_POLICY_VERSION:
+            raise ValueError("unsupported narrative policy version")
+        if self.layout_profile_version != LAYOUT_PROFILE_VERSION:
+            raise ValueError("unsupported layout profile version")
+        if not self.narrative_qa.valid:
+            raise ValueError("prepared v2 packet requires valid narrative QA")
+        if not self.visual_qa.valid:
+            raise ValueError("prepared v2 packet requires valid visual QA")
+        if not self.ats_qa.valid:
+            raise ValueError("prepared v2 packet requires valid ATS QA")
         return self
 
 
