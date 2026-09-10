@@ -26,12 +26,21 @@ MANDATORY_CUES = (
 )
 PREFERRED_CUES = (
     "preferred",
+    "ideally",
     "nice to have",
+    "a plus",
     "bonus",
+    "desirable",
+    "desired",
     "preferido",
+    "preferida",
+    "preferentemente",
+    "idealmente",
     "deseable",
+    "deseables",
     "será un plus",
     "sera un plus",
+    "valoramos",
 )
 MANDATORY_SECTION_HEADINGS = {"lo que buscamos"}
 PREFERRED_SECTION_HEADINGS = {"valoraremos"}
@@ -384,35 +393,69 @@ def _sentences(text: str) -> list[str]:
     return [chunk.strip() for chunk in chunks if chunk.strip()]
 
 
+def _has_prefix_cue(core: str, cue: str) -> bool:
+    return re.match(
+        rf"^{re.escape(cue)}(?:\s|:|–|—|-|$)",
+        core,
+        flags=re.IGNORECASE,
+    ) is not None
+
+
+def _has_suffix_cue(core: str, cue: str) -> bool:
+    return re.search(
+        rf"(?:^|\s){re.escape(cue)}$",
+        core,
+        flags=re.IGNORECASE,
+    ) is not None
+
+
+def _strip_boundary_requirement_cues(core: str) -> str:
+    result = core.strip()
+    all_cues = tuple(sorted(set((*MANDATORY_CUES, *PREFERRED_CUES)), key=len, reverse=True))
+    changed = True
+    while result and changed:
+        changed = False
+        for cue in all_cues:
+            if _has_prefix_cue(result, cue):
+                remainder = result[len(cue) :].lstrip(" :–—-").strip()
+                if remainder != result:
+                    result = remainder
+                    changed = True
+                    break
+            if _has_suffix_cue(result, cue):
+                result = re.sub(
+                    rf"(?:\s+|^){re.escape(cue)}$",
+                    "",
+                    result,
+                    flags=re.IGNORECASE,
+                ).rstrip(" :–—-").strip()
+                changed = True
+                break
+    return result
+
+
 def _parse_explicit_requirement_sentence(sentence: str) -> tuple[str, str] | None:
     core = sentence.strip().rstrip(".!?").strip()
-    lowered = core.casefold()
+    if not core:
+        return None
 
-    prefix_patterns = (
-        ("mandatory", MANDATORY_CUES),
-        ("preferred", PREFERRED_CUES),
+    mandatory_match = any(
+        _has_prefix_cue(core, cue) or _has_suffix_cue(core, cue)
+        for cue in MANDATORY_CUES
     )
-    for importance, cues in prefix_patterns:
-        for cue in sorted(cues, key=len, reverse=True):
-            cue_cf = cue.casefold()
-            if lowered.startswith(cue_cf):
-                remainder = core[len(cue) :].lstrip(" :–—-").strip()
-                if remainder:
-                    return remainder, importance
+    preferred_match = any(
+        _has_prefix_cue(core, cue) or _has_suffix_cue(core, cue)
+        for cue in PREFERRED_CUES
+    )
 
-    for cue in sorted(MANDATORY_CUES, key=len, reverse=True):
-        pattern = rf"^(?P<body>.+?)\s+{re.escape(cue)}$"
-        match = re.match(pattern, core, flags=re.IGNORECASE)
-        if match and match.group("body").strip():
-            return match.group("body").strip(), "mandatory"
+    if not mandatory_match and not preferred_match:
+        return None
 
-    for cue in sorted(PREFERRED_CUES, key=len, reverse=True):
-        pattern = rf"^(?P<body>.+?)\s+{re.escape(cue)}$"
-        match = re.match(pattern, core, flags=re.IGNORECASE)
-        if match and match.group("body").strip():
-            return match.group("body").strip(), "preferred"
-
-    return None
+    importance = "mandatory" if mandatory_match else "preferred"
+    body = _strip_boundary_requirement_cues(core)
+    if not body:
+        return None
+    return body, importance
 
 
 def _split_requirement_terms(body: str) -> list[str]:
