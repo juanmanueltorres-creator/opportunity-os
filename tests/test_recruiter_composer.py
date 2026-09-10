@@ -23,15 +23,28 @@ def _source_fixture():
         CVClaim(claim_id="fact:sql", section="skills", kind="skill", text="SQL"),
         CVClaim(claim_id="fact:qgis", section="skills", kind="skill", text="QGIS"),
         CVClaim(claim_id="fact:project-1", section="projects", kind="project", text="Mapping Console"),
+        CVClaim(
+            claim_id="approved:project-1-bullet",
+            section="projects",
+            kind="bullet",
+            text="Rendered inspectable territorial evidence for operators.",
+        ),
         CVClaim(claim_id="fact:project-2", section="projects", kind="project", text="Fleet Simulator"),
         CVClaim(
             claim_id="approved:project-2-bullet",
             section="projects",
             kind="bullet",
-            text="Deterministic route simulation with auditable vehicle state.",
+            text="Modeled route constraints before implementation.",
+        ),
+        CVClaim(
+            claim_id="approved:project-2-bullet-2",
+            section="projects",
+            kind="bullet",
+            text="Implemented deterministic route simulation with auditable vehicle state.",
         ),
         CVClaim(claim_id="fact:employment-1", section="experience", kind="organization", text="Example Operations | 2024–Present"),
-        CVClaim(claim_id="approved:employment-1-bullet", section="experience", kind="bullet", text="Improved inventory and workflow visibility."),
+        CVClaim(claim_id="approved:employment-1-bullet", section="experience", kind="bullet", text="Mapped the inventory workflow and its operational bottlenecks."),
+        CVClaim(claim_id="approved:employment-1-bullet-2", section="experience", kind="bullet", text="Improved inventory and workflow visibility with an auditable process."),
         CVClaim(claim_id="fact:education", section="education", kind="education", text="BSc Applied Sciences"),
         CVClaim(claim_id="fact:language", section="languages", kind="language", text="Spanish — Native"),
         CVClaim(claim_id="fact:github", section="links", kind="link", text="github.com/example"),
@@ -46,17 +59,31 @@ def _source_fixture():
         "fact:sql": ClaimProvenance(fact_ids=["sql"]),
         "fact:qgis": ClaimProvenance(fact_ids=["qgis"]),
         "fact:project-1": ClaimProvenance(fact_ids=["project-1"]),
+        "approved:project-1-bullet": ClaimProvenance(
+            fact_ids=["project-1"],
+            approved_claim_id="project-1-bullet",
+        ),
         "fact:project-2": ClaimProvenance(fact_ids=["project-2"], evidence_ids=["module-fleet"]),
         "approved:project-2-bullet": ClaimProvenance(
             fact_ids=["project-2"],
             evidence_ids=["module-fleet"],
             approved_claim_id="project-2-bullet",
         ),
+        "approved:project-2-bullet-2": ClaimProvenance(
+            fact_ids=["project-2"],
+            evidence_ids=["module-fleet"],
+            approved_claim_id="project-2-bullet-2",
+        ),
         "fact:employment-1": ClaimProvenance(fact_ids=["employment-1"]),
         "approved:employment-1-bullet": ClaimProvenance(
             fact_ids=["employment-1"],
             evidence_ids=["module-ops"],
             approved_claim_id="employment-1-bullet",
+        ),
+        "approved:employment-1-bullet-2": ClaimProvenance(
+            fact_ids=["employment-1"],
+            evidence_ids=["module-ops"],
+            approved_claim_id="employment-1-bullet-2",
         ),
         "fact:education": ClaimProvenance(fact_ids=["education"]),
         "fact:language": ClaimProvenance(fact_ids=["language"]),
@@ -161,7 +188,7 @@ def test_target_supported_project_precedes_fallback_project():
     ]
 
 
-def test_project_bullet_is_associated_only_by_overlapping_provenance():
+def test_project_bullets_preserve_two_ranked_overlapping_claims():
     document, validation, selection = _source_fixture()
 
     recruiter = compose_recruiter_document(
@@ -174,13 +201,17 @@ def test_project_bullet_is_associated_only_by_overlapping_provenance():
     assert len(recruiter.project_entries) == 2
     assert recruiter.project_entries[0].primary_claim_id == "fact:project-2"
     assert recruiter.project_entries[0].bullet_claim_ids == [
-        "approved:project-2-bullet"
+        "approved:project-2-bullet",
+        "approved:project-2-bullet-2",
     ]
     assert recruiter.project_entries[1].primary_claim_id == "fact:project-1"
-    assert recruiter.project_entries[1].bullet_claim_ids == []
+    assert recruiter.project_entries[1].bullet_claim_ids == [
+        "approved:project-1-bullet"
+    ]
+    assert "approved:project-1-bullet" not in recruiter.project_entries[0].bullet_claim_ids
 
 
-def test_experience_bullet_is_associated_only_by_overlapping_provenance():
+def test_experience_bullets_preserve_two_ranked_overlapping_claims():
     document, validation, selection = _source_fixture()
 
     recruiter = compose_recruiter_document(
@@ -193,7 +224,8 @@ def test_experience_bullet_is_associated_only_by_overlapping_provenance():
     assert len(recruiter.experience_entries) == 1
     assert recruiter.experience_entries[0].primary_claim_id == "fact:employment-1"
     assert recruiter.experience_entries[0].bullet_claim_ids == [
-        "approved:employment-1-bullet"
+        "approved:employment-1-bullet",
+        "approved:employment-1-bullet-2",
     ]
 
 
@@ -259,3 +291,42 @@ def test_reduction_trims_canonical_project_entries_and_keeps_legacy_ids_in_sync(
         "fact:project-2",
         "fact:project-1",
     ]
+
+
+def test_reduction_trims_secondary_narrative_before_primary_project_depth():
+    document, validation, selection = _source_fixture()
+    recruiter = compose_recruiter_document(
+        document=document,
+        validation=validation,
+        selection=selection,
+        policy=_policy(),
+    )
+    focused = recruiter.model_copy(
+        update={
+            "link_claim_ids": [],
+            "technology_groups": [],
+            "profile_claim_ids": [],
+            "education_claim_ids": recruiter.education_claim_ids[:1],
+            "experience_entries": recruiter.experience_entries[:1],
+            "project_entries": recruiter.project_entries[:2],
+            "selected_project_claim_ids": [
+                entry.primary_claim_id for entry in recruiter.project_entries[:2]
+            ],
+        }
+    )
+
+    after_first_trim = reduce_recruiter_document(focused, _policy(), step=0)
+    assert after_first_trim.project_entries[0].bullet_claim_ids == [
+        "approved:project-2-bullet",
+        "approved:project-2-bullet-2",
+    ]
+    assert after_first_trim.project_entries[1].bullet_claim_ids == [] or len(
+        after_first_trim.project_entries[1].bullet_claim_ids
+    ) == 1
+
+    after_all_trims = reduce_recruiter_document(focused, _policy(), step=100)
+    assert after_all_trims.project_entries[0].bullet_claim_ids == [
+        "approved:project-2-bullet"
+    ]
+    assert all(len(entry.bullet_claim_ids) <= 1 for entry in after_all_trims.project_entries)
+    assert all(len(entry.bullet_claim_ids) <= 1 for entry in after_all_trims.experience_entries)

@@ -159,12 +159,16 @@ def _overlapping_bullet_ids(
     ranked_bullets: list[CVClaim],
     document: CVDocumentModel,
     used_bullets: set[str],
+    max_bullets: int,
 ) -> list[str]:
     primary = document.provenance_map.get(primary_claim_id)
-    if primary is None:
+    if primary is None or max_bullets <= 0:
         return []
     primary_facts = set(primary.fact_ids)
+    selected: list[str] = []
     for bullet in ranked_bullets:
+        if len(selected) >= max_bullets:
+            break
         if bullet.claim_id in used_bullets:
             continue
         provenance = document.provenance_map.get(bullet.claim_id)
@@ -172,8 +176,8 @@ def _overlapping_bullet_ids(
             continue
         if primary_facts & set(provenance.fact_ids):
             used_bullets.add(bullet.claim_id)
-            return [bullet.claim_id]
-    return []
+            selected.append(bullet.claim_id)
+    return selected
 
 
 def _project_entries(
@@ -181,6 +185,7 @@ def _project_entries(
     projects: list[CVClaim],
     bullets: list[CVClaim],
     document: CVDocumentModel,
+    max_bullets: int,
 ) -> list[RecruiterProjectEntry]:
     used: set[str] = set()
     return [
@@ -191,6 +196,7 @@ def _project_entries(
                 ranked_bullets=bullets,
                 document=document,
                 used_bullets=used,
+                max_bullets=max_bullets,
             ),
         )
         for project in projects
@@ -202,6 +208,7 @@ def _experience_entries(
     primary_claims: list[CVClaim],
     bullets: list[CVClaim],
     document: CVDocumentModel,
+    max_bullets: int,
 ) -> list[RecruiterExperienceEntry]:
     used: set[str] = set()
     return [
@@ -212,6 +219,7 @@ def _experience_entries(
                 ranked_bullets=bullets,
                 document=document,
                 used_bullets=used,
+                max_bullets=max_bullets,
             ),
         )
         for primary in primary_claims
@@ -271,6 +279,7 @@ def compose_strategy_recruiter_document(
         projects=projects,
         bullets=project_bullets,
         document=document,
+        max_bullets=policy.max_project_bullets,
     )
 
     experience_primary = [
@@ -287,6 +296,7 @@ def compose_strategy_recruiter_document(
         primary_claims=experience_primary,
         bullets=experience_bullets,
         document=document,
+        max_bullets=policy.max_experience_bullets,
     )
 
     education_claim_ids = [

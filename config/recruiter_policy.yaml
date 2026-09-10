@@ -1,7 +1,8 @@
 version: recruiter-policy-v1
 max_projects: 4
+max_project_bullets: 2
 max_experience_entries: 5
-max_experience_bullets: 1
+max_experience_bullets: 2
 max_skill_groups: 4
 max_skill_tokens: 24
 max_profile_claims: 3

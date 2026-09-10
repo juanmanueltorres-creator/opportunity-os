@@ -77,23 +77,34 @@ def assess_career(
     target_requirements = mandatory if mandatory else preferred
     target_resolutions = mandatory_resolutions if mandatory else preferred_resolutions
     mandatory_fit = _weighted_requirement_fit(target_resolutions)
-    strengths = [
-        requirement.value
-        for requirement, (_, multiplier) in zip(target_requirements, target_resolutions)
-        if multiplier > 0.0
-    ]
-    gaps = [
-        requirement.value
-        for requirement, (_, multiplier) in zip(target_requirements, target_resolutions)
-        if multiplier == 0.0
-    ]
+
+    strengths: list[str] = []
+    gaps: list[str] = []
+    for requirement, (_, multiplier, experience_status) in zip(
+        target_requirements,
+        target_resolutions,
+    ):
+        if requirement.kind == "experience":
+            if experience_status == "satisfied":
+                strengths.append(requirement.value)
+            else:
+                gaps.append(requirement.value)
+        elif multiplier > 0.0:
+            strengths.append(requirement.value)
+        else:
+            gaps.append(requirement.value)
 
     risks = list(base.risks)
-    if any(
-        requirement.kind == "experience" and multiplier == 0.0
-        for requirement, (_, multiplier) in zip(mandatory, mandatory_resolutions)
+    for requirement, (_, _, experience_status) in zip(
+        mandatory,
+        mandatory_resolutions,
     ):
-        _append_unique(risks, "mandatory_experience_unverified")
+        if requirement.kind != "experience":
+            continue
+        if experience_status == "partial":
+            _append_unique(risks, "experience_duration_below_posting")
+        elif experience_status == "unknown":
+            _append_unique(risks, "experience_duration_unverified")
 
     overall_score = round(
         0.40 * mandatory_fit
@@ -296,19 +307,20 @@ def _resolved_career_requirements(
     requirements: list[Requirement],
     track: CandidateTrack,
     resolver: TaxonomyResolver,
-) -> list[tuple[str | None, float]]:
+) -> list[tuple[str | None, float, str | None]]:
     skill_resolutions = iter(_resolved_terms(
         [requirement for requirement in requirements if requirement.kind == "skill"],
         track,
         resolver,
     )[1])
-    resolutions: list[tuple[str | None, float]] = []
+    resolutions: list[tuple[str | None, float, str | None]] = []
     for requirement in requirements:
         if requirement.kind == "skill":
-            resolutions.append(next(skill_resolutions))
+            matched_skill, multiplier = next(skill_resolutions)
+            resolutions.append((matched_skill, multiplier, None))
             continue
-        score = _experience_capability_score(requirement, track)
-        resolutions.append((requirement.value if score > 0.0 else None, score))
+        status, score = _career_experience_support(requirement, track)
+        resolutions.append((requirement.value if score > 0.0 else None, score, status))
     return resolutions
 
 
@@ -334,12 +346,12 @@ def _verified_candidate_skills(track: CandidateTrack) -> list[str]:
 
 
 def _weighted_requirement_fit(
-    resolutions: list[tuple[str | None, float]],
+    resolutions: list[tuple[str | None, float, str | None]],
 ) -> float:
     if not resolutions:
         return 50.0
     return round(
-        sum(multiplier for _, multiplier in resolutions) / len(resolutions) * 100.0,
+        sum(multiplier for _, multiplier, _ in resolutions) / len(resolutions) * 100.0,
         1,
     )
 
@@ -391,10 +403,58 @@ def _capability_fit(
     return round(sum(scores) / len(scores) * 100.0, 1), matched, gaps
 
 
+def _career_experience_support(
+    requirement: Requirement,
+    track: CandidateTrack,
+) -> tuple[str, float]:
+    """Return deterministic CAREER experience support without inventing duration.
+
+    Statuses are internal-only: satisfied=1.0, partial=verified/requested,
+    unknown=0.5 when relevant verified capability exists without duration, and
+    unsupported=0.0 when no relevant verified evidence exists.
+    """
+
+    required_years = _minimum_experience_years(requirement.value)
+    required_context = _experience_context_terms(requirement.value)
+    relevant: list[EvidenceItem] = []
+
+    for evidence in track.evidence:
+        if not evidence.verified or evidence.type not in {"experience", "project"}:
+            continue
+        corpus = " ".join([evidence.label, *evidence.skills, *evidence.domains])
+        evidence_context = _experience_context_terms(corpus)
+        if required_context and not required_context.intersection(evidence_context):
+            continue
+        relevant.append(evidence)
+
+    if not relevant:
+        return "unsupported", 0.0
+    if required_years is None:
+        return "satisfied", 1.0
+
+    explicit_years = [
+        years
+        for evidence in relevant
+        if evidence.type == "experience"
+        and (years := _minimum_experience_years(evidence.label)) is not None
+    ]
+    if not explicit_years:
+        return "unknown", 0.5
+
+    evidenced_years = max(explicit_years)
+    if evidenced_years >= required_years:
+        return "satisfied", 1.0
+    if required_years <= 0.0:
+        return "satisfied", 1.0
+    return "partial", min(evidenced_years / required_years, 1.0)
+
+
 def _experience_capability_score(
     requirement: Requirement,
     track: CandidateTrack,
 ) -> float:
+    """Preserve strict INCOME_NOW capability semantics for experience barriers."""
+
     requirement_key = _normalize(requirement.value)
     required_years = _minimum_experience_years(requirement.value)
     required_context = _experience_context_terms(requirement.value)
@@ -586,10 +646,7 @@ def _recommend(score: float, risks: list[str]) -> Recommendation:
         recommendation = "nurture"
     else:
         recommendation = "discard"
-    if (
-        "location conflict" in risks
-        or "mandatory_experience_unverified" in risks
-    ) and recommendation == "apply":
+    if "location conflict" in risks and recommendation == "apply":
         return "stretch"
     return recommendation
 
