@@ -289,3 +289,20 @@ def test_orphan_heading_near_page_bottom_is_hard_failure(tmp_path):
     result = _evaluate(_save(build, tmp_path / "orphan.pdf"), claim_count=8)
 
     assert "visual_orphan_heading" in {issue.code for issue in result.errors}
+
+
+def test_near_orphan_heading_with_small_body_block_warns(tmp_path):
+    def build(page):
+        page.insert_text((48, 45), "Alex Example", fontsize=16)
+        page.insert_text((48, 67), "Software Developer", fontsize=12)
+        for index in range(6):
+            page.insert_text((48, 110 + index * 45), f"Evidence backed claim {index}", fontsize=BODY)
+        page.insert_text((48, 710), "PROJECTS", fontsize=13)
+        page.insert_text((48, 735), "Evidence backed claim 6", fontsize=BODY)
+
+    result = _evaluate(_save(build, tmp_path / "near-orphan.pdf"), claim_count=9)
+    error_codes = {issue.code for issue in result.errors}
+    warning_codes = {issue.code for issue in result.warnings}
+
+    assert "visual_orphan_heading" not in error_codes
+    assert "visual_orphan_heading_warning" in warning_codes
