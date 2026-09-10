@@ -100,7 +100,7 @@ class ReportLabHumanRenderer:
         policy: RecruiterPolicy,
         layout_profile: LayoutProfile,
     ) -> RecruiterRenderResult:
-        if recruiter_document.source_document_version != source_document.document_version:
+        if recruiter_document.source_cv_document_version != source_document.document_version:
             raise ValueError("Human-first renderer source version mismatch")
         if recruiter_document.language != source_document.language:
             raise ValueError("Human-first renderer language mismatch")
