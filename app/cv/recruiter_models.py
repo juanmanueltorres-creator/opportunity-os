@@ -25,12 +25,12 @@ class TechnologyGroup(StrictCVModel):
 
 class RecruiterProjectEntry(StrictCVModel):
     primary_claim_id: str = Field(min_length=1)
-    bullet_claim_ids: list[str] = Field(default_factory=list, max_length=1)
+    bullet_claim_ids: list[str] = Field(default_factory=list, max_length=2)
 
 
 class RecruiterExperienceEntry(StrictCVModel):
     primary_claim_id: str = Field(min_length=1)
-    bullet_claim_ids: list[str] = Field(default_factory=list, max_length=1)
+    bullet_claim_ids: list[str] = Field(default_factory=list, max_length=2)
 
 
 class RecruiterDocumentModel(StrictCVModel):
