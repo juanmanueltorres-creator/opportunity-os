@@ -11,6 +11,8 @@ from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
 from app.cv.render_policy import load_render_policy
 from app.cv.renderers.rendercv_typst import RenderCVTypstRenderer
+from app.cv.visual_policy import load_visual_policy
+from app.cv.visual_qa import VisualQualityQA
 
 _PREVIEW_CASES = (
     ("recruiter_software", "technical_clean"),
@@ -32,20 +34,23 @@ def render_previews(output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     recruiter_policy = load_recruiter_policy("config/recruiter_policy.yaml")
     render_policy = load_render_policy("config/render_policy.yaml")
+    visual_policy = load_visual_policy("config/visual_policy.yaml")
     profiles = load_layout_profiles("config/layout_profiles.yaml")
     renderer = RenderCVTypstRenderer()
     qa = RecruiterQualityQA()
+    visual_qa = VisualQualityQA()
     outputs: list[Path] = []
 
     for fixture_name, profile_id in _PREVIEW_CASES:
         recruiter_document, source_document = _load_fixture(fixture_name)
+        layout_profile = profiles[profile_id]
         output_path = output_dir / f"{fixture_name}__{profile_id}.pdf"
         render_result = renderer.render(
             recruiter_document=recruiter_document,
             source_document=source_document,
             output_path=output_path,
             policy=recruiter_policy,
-            layout_profile=profiles[profile_id],
+            layout_profile=layout_profile,
         )
         qa_result = qa.evaluate(
             render_result=render_result,
@@ -57,6 +62,20 @@ def render_previews(output_dir: Path) -> list[Path]:
             codes = ", ".join(issue.code for issue in qa_result.errors)
             raise RuntimeError(
                 f"Recruiter preview {fixture_name} with {profile_id} failed QA: "
+                f"{codes or 'unknown_error'}"
+            )
+
+        visual_result = visual_qa.evaluate(
+            render_result=render_result,
+            recruiter_document=recruiter_document,
+            source_document=source_document,
+            layout_profile=layout_profile,
+            policy=visual_policy,
+        )
+        if not visual_result.valid:
+            codes = ", ".join(issue.code for issue in visual_result.errors)
+            raise RuntimeError(
+                f"Recruiter preview {fixture_name} with {profile_id} failed visual QA: "
                 f"{codes or 'unknown_error'}"
             )
         outputs.append(output_path)
