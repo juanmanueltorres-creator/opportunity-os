@@ -37,6 +37,8 @@ from app.cv.track import (
     resolve_application_track,
 )
 from app.cv.validator import validate_cv
+from app.cv.visual_policy import VisualPolicy, load_visual_policy
+from app.cv.visual_qa import VisualQualityQA
 from app.radar.models import LanguageDecision, RadarAssessment
 from app.radar.taxonomy import TaxonomyResolver
 
@@ -44,10 +46,15 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RECRUITER_POLICY_PATH = _PROJECT_ROOT / "config" / "recruiter_policy.yaml"
 _DEFAULT_RENDER_POLICY_PATH = _PROJECT_ROOT / "config" / "render_policy.yaml"
 _DEFAULT_NARRATIVE_POLICY_PATH = _PROJECT_ROOT / "config" / "narrative_policy.yaml"
+_DEFAULT_VISUAL_POLICY_PATH = _PROJECT_ROOT / "config" / "visual_policy.yaml"
 _DEFAULT_LAYOUT_PROFILES_PATH = _PROJECT_ROOT / "config" / "layout_profiles.yaml"
 _REDUCIBLE_QA_CODES = {
     "recruiter_one_page_failed",
     "recruiter_overflow_detected",
+}
+_REDUCIBLE_VISUAL_QA_CODES = {
+    "visual_overcompressed",
+    "visual_wall_of_text_severe",
 }
 
 
@@ -64,6 +71,8 @@ class CVPreparationService:
         render_policy: RenderPolicy | None = None,
         narrative_policy: NarrativePolicy | None = None,
         narrative_qa: NarrativeQualityQA | None = None,
+        visual_policy: VisualPolicy | None = None,
+        visual_qa: VisualQualityQA | None = None,
         layout_profiles: Mapping[str, LayoutProfile] | None = None,
         track_layout_map: Mapping[str, str] | None = None,
     ) -> None:
@@ -83,6 +92,10 @@ class CVPreparationService:
             _DEFAULT_NARRATIVE_POLICY_PATH
         )
         self.narrative_qa = narrative_qa or NarrativeQualityQA()
+        self.visual_policy = visual_policy or load_visual_policy(
+            _DEFAULT_VISUAL_POLICY_PATH
+        )
+        self.visual_qa = visual_qa or VisualQualityQA()
         self.layout_profiles = (
             dict(layout_profiles)
             if layout_profiles is not None
@@ -259,6 +272,7 @@ class CVPreparationService:
         final_recruiter_validation = recruiter_validation
         final_render_result = None
         final_qa_result = None
+        final_visual_result = None
         max_reductions = _max_reduction_actions(recruiter_document)
 
         for reduction_index in range(max_reductions + 1):
@@ -304,29 +318,70 @@ class CVPreparationService:
                 )
 
             if qa_result.valid:
-                final_render_result = render_result
-                final_qa_result = qa_result
-                break
+                try:
+                    visual_result = self.visual_qa.evaluate(
+                        render_result,
+                        final_recruiter_document,
+                        document,
+                        selected_layout_profile,
+                        self.visual_policy,
+                    )
+                except (OSError, ValueError):
+                    _remove_partial_pdf(output_path)
+                    return _blocked(
+                        "BLOCKED_RENDER",
+                        code="visual_qa_failed",
+                        message="Recruiter CV visual quality validation failed",
+                        warnings=[
+                            *validation.warnings,
+                            *final_recruiter_validation.warnings,
+                            *narrative_warnings,
+                            *qa_result.warnings,
+                        ],
+                    )
 
-            combined_warnings = [
-                *validation.warnings,
-                *final_recruiter_validation.warnings,
-                *narrative_warnings,
-                *qa_result.warnings,
-            ]
-            if not _qa_failure_is_reducible(qa_result.errors):
-                _remove_partial_pdf(output_path)
-                return PreparationResult(
-                    status="BLOCKED_RENDER",
-                    errors=qa_result.errors,
-                    warnings=combined_warnings,
-                )
+                if visual_result.valid:
+                    final_render_result = render_result
+                    final_qa_result = qa_result
+                    final_visual_result = visual_result
+                    break
+
+                attempt_errors = visual_result.errors
+                combined_warnings = [
+                    *validation.warnings,
+                    *final_recruiter_validation.warnings,
+                    *narrative_warnings,
+                    *qa_result.warnings,
+                    *visual_result.warnings,
+                ]
+                if not _visual_qa_failure_is_reducible(attempt_errors):
+                    _remove_partial_pdf(output_path)
+                    return PreparationResult(
+                        status="BLOCKED_RENDER",
+                        errors=attempt_errors,
+                        warnings=combined_warnings,
+                    )
+            else:
+                attempt_errors = qa_result.errors
+                combined_warnings = [
+                    *validation.warnings,
+                    *final_recruiter_validation.warnings,
+                    *narrative_warnings,
+                    *qa_result.warnings,
+                ]
+                if not _qa_failure_is_reducible(attempt_errors):
+                    _remove_partial_pdf(output_path)
+                    return PreparationResult(
+                        status="BLOCKED_RENDER",
+                        errors=attempt_errors,
+                        warnings=combined_warnings,
+                    )
 
             if reduction_index >= max_reductions:
                 _remove_partial_pdf(output_path)
                 return PreparationResult(
                     status="BLOCKED_RENDER",
-                    errors=qa_result.errors,
+                    errors=attempt_errors,
                     warnings=combined_warnings,
                 )
 
@@ -343,7 +398,7 @@ class CVPreparationService:
                 _remove_partial_pdf(output_path)
                 return PreparationResult(
                     status="BLOCKED_RENDER",
-                    errors=qa_result.errors,
+                    errors=attempt_errors,
                     warnings=combined_warnings,
                 )
 
@@ -388,7 +443,11 @@ class CVPreparationService:
             final_recruiter_document = reduced_document
             final_recruiter_validation = reduced_validation
 
-        if final_render_result is None or final_qa_result is None:
+        if (
+            final_render_result is None
+            or final_qa_result is None
+            or final_visual_result is None
+        ):
             _remove_partial_pdf(output_path)
             return _blocked(
                 "BLOCKED_RENDER",
@@ -407,6 +466,7 @@ class CVPreparationService:
             *final_recruiter_validation.warnings,
             *narrative_warnings,
             *final_qa_result.warnings,
+            *final_visual_result.warnings,
         ]
         opportunity_snapshot_hash = canonical_sha256(
             assessment.opportunity.model_dump(mode="json")
@@ -494,6 +554,12 @@ def _max_reduction_actions(document: RecruiterDocumentModel) -> int:
 
 def _qa_failure_is_reducible(errors: list[ValidationIssue]) -> bool:
     return bool(errors) and {error.code for error in errors}.issubset(_REDUCIBLE_QA_CODES)
+
+
+def _visual_qa_failure_is_reducible(errors: list[ValidationIssue]) -> bool:
+    return bool(errors) and {error.code for error in errors}.issubset(
+        _REDUCIBLE_VISUAL_QA_CODES
+    )
 
 
 def _preserves_required_sections(
