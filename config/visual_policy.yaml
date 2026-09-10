@@ -1,0 +1,23 @@
+version: visual-policy-v1
+min_substantive_claims_for_underfill: 8
+underfill_warning_bottom_ratio: 0.45
+underfill_error_bottom_ratio: 0.30
+isolated_bottom_start_ratio: 0.88
+isolated_bottom_min_gap_pt: 72.0
+max_headline_lines: 2
+wall_text_warning_lines: 6
+wall_text_error_lines: 10
+wall_text_warning_chars: 420
+wall_text_error_chars: 700
+wall_text_max_list_marker_ratio: 0.50
+large_gap_warning_ratio: 0.12
+large_gap_error_ratio: 0.20
+density_warning_lines_per_page_inch: 5.0
+density_error_lines_per_page_inch: 6.2
+density_multipliers:
+  comfortable: 0.92
+  balanced: 1.00
+  compact: 1.10
+hierarchy_min_delta_pt: 1.0
+orphan_heading_bottom_ratio: 0.84
+orphan_heading_max_following_lines: 1

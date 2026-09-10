@@ -2,14 +2,15 @@ from pathlib import Path
 
 import pymupdf
 
+from app.cv.layout.models import LayoutProfile
 from app.cv.models import CVClaim, CVDocumentModel, ClaimProvenance, RenderedCVArtifact
 from app.cv.recruiter_models import (
     RecruiterDocumentModel,
     RecruiterRenderMetrics,
     RecruiterRenderResult,
 )
-from app.cv.recruiter_qa import RecruiterQualityQA
-from app.cv.render_policy import load_render_policy
+from app.cv.visual_policy import load_visual_policy
+from app.cv.visual_qa import VisualQualityQA
 
 
 def _source_document() -> CVDocumentModel:
@@ -69,7 +70,7 @@ def _render_result(path: Path) -> RecruiterRenderResult:
     )
 
 
-def test_isolated_bottom_note_is_hard_recruiter_failure(tmp_path):
+def test_isolated_bottom_note_is_hard_visual_failure(tmp_path):
     source_document = _source_document()
     recruiter_document = _recruiter_document()
     pdf = tmp_path / "isolated-footer.pdf"
@@ -94,14 +95,22 @@ def test_isolated_bottom_note_is_hard_recruiter_failure(tmp_path):
     document.save(pdf)
     document.close()
 
-    result = RecruiterQualityQA().evaluate(
+    result = VisualQualityQA().evaluate(
         render_result=_render_result(pdf),
         recruiter_document=recruiter_document,
         source_document=source_document,
-        policy=load_render_policy("config/render_policy.yaml"),
+        layout_profile=LayoutProfile(
+            version="layout-profile-v1",
+            id="operations_clean",
+            design_path="config/layouts/operations_clean.yaml",
+            density="balanced",
+            emphasis="neutral",
+            ats_mode="strict",
+        ),
+        policy=load_visual_policy("config/visual_policy.yaml"),
     )
 
     assert result.valid is False
-    assert "recruiter_isolated_footer_detected" in {
+    assert "visual_isolated_bottom_block" in {
         issue.code for issue in result.errors
     }

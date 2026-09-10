@@ -18,11 +18,6 @@ _PAGE_SIZES_POINTS = {
     "LETTER": (612.0, 792.0),
 }
 _PAGE_TOLERANCE_POINTS = 3.0
-_MAX_HEADLINE_LINES = 2
-_MIN_SUBSTANTIVE_CLAIMS = 8
-_MIN_CONTENT_BOTTOM_RATIO = 0.30
-_ISOLATED_BOTTOM_START_RATIO = 0.88
-_ISOLATED_BOTTOM_MIN_GAP_POINTS = 72.0
 
 
 class RecruiterQualityQA:
@@ -112,14 +107,6 @@ class RecruiterQualityQA:
                     )
                 )
 
-            if render_result.metrics.headline_line_count > _MAX_HEADLINE_LINES:
-                errors.append(
-                    _issue(
-                        "recruiter_headline_too_tall",
-                        "Recruiter PDF headline exceeds the maximum rendered line count.",
-                    )
-                )
-
             if render_result.metrics.overflow_detected:
                 errors.append(
                     _issue(
@@ -133,32 +120,6 @@ class RecruiterQualityQA:
                     _issue(
                         "recruiter_raster_image_detected",
                         "Recruiter PDF must remain text-first and contain no raster images.",
-                    )
-                )
-
-            if page_count == 1 and _has_isolated_bottom_text(document[0]):
-                errors.append(
-                    _issue(
-                        "recruiter_isolated_footer_detected",
-                        "Recruiter PDF contains isolated text in the lower page margin.",
-                    )
-                )
-
-            content_bottom_ratio = (
-                _content_bottom_ratio(document[0]) if page_count == 1 else None
-            )
-            if (
-                content_bottom_ratio is not None
-                and len(recruiter_document.all_claim_ids()) >= _MIN_SUBSTANTIVE_CLAIMS
-                and content_bottom_ratio < _MIN_CONTENT_BOTTOM_RATIO
-            ):
-                errors.append(
-                    _issue(
-                        "recruiter_content_underfilled",
-                        (
-                            "Recruiter PDF leaves an excessive unused lower page region "
-                            f"(content_bottom_ratio={content_bottom_ratio:.3f})."
-                        ),
                     )
                 )
 
@@ -180,42 +141,6 @@ class RecruiterQualityQA:
             )
         finally:
             document.close()
-
-
-def _text_blocks(page: pymupdf.Page) -> list[tuple]:
-    return [
-        block
-        for block in page.get_text("blocks")
-        if len(block) >= 5 and str(block[4]).strip()
-    ]
-
-
-def _has_isolated_bottom_text(page: pymupdf.Page) -> bool:
-    page_height = float(page.rect.height)
-    if page_height <= 0:
-        return False
-
-    blocks = _text_blocks(page)
-    if len(blocks) < 2:
-        return False
-
-    bottom_start = page_height * _ISOLATED_BOTTOM_START_RATIO
-    bottom_blocks = [block for block in blocks if float(block[1]) >= bottom_start]
-    main_blocks = [block for block in blocks if float(block[1]) < bottom_start]
-    if not bottom_blocks or not main_blocks:
-        return False
-
-    footer_top = min(float(block[1]) for block in bottom_blocks)
-    main_bottom = max(float(block[3]) for block in main_blocks)
-    return footer_top - main_bottom >= _ISOLATED_BOTTOM_MIN_GAP_POINTS
-
-
-def _content_bottom_ratio(page: pymupdf.Page) -> float:
-    text_blocks = _text_blocks(page)
-    if not text_blocks or page.rect.height <= 0:
-        return 0.0
-    content_bottom = max(float(block[3]) for block in text_blocks)
-    return max(0.0, min(1.0, content_bottom / float(page.rect.height)))
 
 
 def _validate_claim_order(

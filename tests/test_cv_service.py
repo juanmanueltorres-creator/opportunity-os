@@ -26,6 +26,7 @@ from app.cv.recruiter_models import (
 from app.cv.recruiter_policy import load_recruiter_policy
 from app.cv.recruiter_qa import RecruiterQualityQA
 from app.cv.service import CVPreparationService
+from app.cv.visual_models import VisualMetrics, VisualQAResult
 from app.models.domain import Opportunity
 from app.radar.models import (
     ConfidenceAssessment,
@@ -210,6 +211,7 @@ def _service(
     recruiter_policy=None,
     recruiter_renderer=None,
     recruiter_qa=None,
+    visual_qa=None,
 ) -> CVPreparationService:
     kwargs = {
         "taxonomy_resolver": _resolver(),
@@ -221,6 +223,8 @@ def _service(
         kwargs["recruiter_renderer"] = recruiter_renderer
     if recruiter_qa is not None:
         kwargs["recruiter_qa"] = recruiter_qa
+    if visual_qa is not None:
+        kwargs["visual_qa"] = visual_qa
     return CVPreparationService(**kwargs)
 
 
@@ -522,11 +526,30 @@ def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_docume
                 extracted_text="fictional recruiter output",
             )
 
+    class PassingVisualQA:
+        def evaluate(self, render_result, recruiter_document, source_document, layout_profile, visual_policy):
+            return VisualQAResult(
+                valid=True,
+                metrics=VisualMetrics(
+                    page_count=1,
+                    content_bottom_ratio=0.75,
+                    largest_internal_gap_ratio=0.10,
+                    nonempty_line_count=20,
+                    lines_per_page_inch=2.5,
+                    max_text_block_lines=4,
+                    max_text_block_chars=120,
+                    headline_line_count=1,
+                    body_font_size=9.4,
+                    observed_font_size_levels=[9.4, 12.0],
+                ),
+            )
+
     first = _service(
         "app-a",
         recruiter_policy=default_policy,
         recruiter_renderer=ConstantRecruiterRenderer(),
         recruiter_qa=PassingRecruiterQA(),
+        visual_qa=PassingVisualQA(),
     ).prepare(
         assessment=_assessment(),
         master_facts=master,
@@ -541,6 +564,7 @@ def test_recruiter_grouping_change_changes_packet_hash_with_same_semantic_docume
         recruiter_policy=alternate_policy,
         recruiter_renderer=ConstantRecruiterRenderer(),
         recruiter_qa=PassingRecruiterQA(),
+        visual_qa=PassingVisualQA(),
     ).prepare(
         assessment=_assessment(),
         master_facts=master,

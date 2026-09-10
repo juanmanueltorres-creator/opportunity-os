@@ -221,7 +221,7 @@ def test_blank_nonextractable_pdf_is_hard_recruiter_failure(tmp_path):
     assert "recruiter_text_not_extractable" in {issue.code for issue in result.errors}
 
 
-def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(tmp_path):
+def test_substantive_underfill_does_not_fail_recruiter_technical_qa(tmp_path):
     pdf = tmp_path / "underfilled.pdf"
     source_document = _golden_source_document()
     recruiter_document = _golden_recruiter_document()
@@ -239,8 +239,10 @@ def test_substantive_one_page_with_large_bottom_void_is_hard_recruiter_failure(t
         policy=load_render_policy("config/render_policy.yaml"),
     )
 
-    assert result.valid is False
-    assert "recruiter_content_underfilled" in {issue.code for issue in result.errors}
+    assert result.valid is True
+    assert "recruiter_content_underfilled" not in {
+        issue.code for issue in result.errors
+    }
 
 
 def test_real_rendercv_pdf_survives_qa_and_two_independent_extractors(tmp_path):

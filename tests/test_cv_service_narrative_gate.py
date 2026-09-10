@@ -10,6 +10,7 @@ from app.cv.recruiter_models import (
 )
 from app.cv.service import CVPreparationService
 from app.cv.strategy.policy import load_narrative_policy
+from app.cv.visual_models import VisualMetrics, VisualQAResult
 from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
 
 
@@ -54,7 +55,32 @@ class WarningNarrativeQA:
         )
 
 
-def _service(*, narrative_qa, recruiter_renderer=None, recruiter_qa=None) -> CVPreparationService:
+class PassingVisualQA:
+    def evaluate(self, render_result, recruiter_document, source_document, layout_profile, policy):
+        return VisualQAResult(
+            valid=True,
+            metrics=VisualMetrics(
+                page_count=1,
+                content_bottom_ratio=0.75,
+                largest_internal_gap_ratio=0.10,
+                nonempty_line_count=20,
+                lines_per_page_inch=2.5,
+                max_text_block_lines=4,
+                max_text_block_chars=120,
+                headline_line_count=1,
+                body_font_size=9.4,
+                observed_font_size_levels=[9.4, 12.0],
+            ),
+        )
+
+
+def _service(
+    *,
+    narrative_qa,
+    recruiter_renderer=None,
+    recruiter_qa=None,
+    visual_qa=None,
+) -> CVPreparationService:
     kwargs = {
         "taxonomy_resolver": _resolver(),
         "id_factory": lambda: "app-narrative",
@@ -65,6 +91,8 @@ def _service(*, narrative_qa, recruiter_renderer=None, recruiter_qa=None) -> CVP
         kwargs["recruiter_renderer"] = recruiter_renderer
     if recruiter_qa is not None:
         kwargs["recruiter_qa"] = recruiter_qa
+    if visual_qa is not None:
+        kwargs["visual_qa"] = visual_qa
     return CVPreparationService(**kwargs)
 
 
@@ -204,6 +232,7 @@ def test_reduction_rechecks_narrative_and_preserves_earlier_warnings(
         narrative_qa=narrative_qa,
         recruiter_renderer=renderer,
         recruiter_qa=recruiter_qa,
+        visual_qa=PassingVisualQA(),
     ).prepare(
         assessment=_assessment(),
         master_facts=master,
