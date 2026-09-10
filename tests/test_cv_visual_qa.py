@@ -297,8 +297,10 @@ def test_near_orphan_heading_with_small_body_block_warns(tmp_path):
         page.insert_text((48, 67), "Software Developer", fontsize=12)
         for index in range(6):
             page.insert_text((48, 110 + index * 45), f"Evidence backed claim {index}", fontsize=BODY)
-        page.insert_text((48, 710), "PROJECTS", fontsize=13)
-        page.insert_text((48, 735), "Evidence backed claim 6", fontsize=BODY)
+        # PyMuPDF insert_text uses a baseline; these baselines yield a heading bbox
+        # top just below the configured 84% page-height threshold.
+        page.insert_text((48, 722), "PROJECTS", fontsize=13)
+        page.insert_text((48, 747), "Evidence backed claim 6", fontsize=BODY)
 
     result = _evaluate(_save(build, tmp_path / "near-orphan.pdf"), claim_count=9)
     error_codes = {issue.code for issue in result.errors}
