@@ -79,6 +79,7 @@ def compose_recruiter_document(
         document=document,
         supported_ids=supported_ids,
         source_order=source_order,
+        max_bullets=policy.max_project_bullets,
     )
 
     experience_entries = _compose_experience_entries(
@@ -87,6 +88,7 @@ def compose_recruiter_document(
         supported_ids=supported_ids,
         source_order=source_order,
         max_entries=policy.max_experience_entries,
+        max_bullets=policy.max_experience_bullets,
     )
 
     education_claim_ids = _ordered_claim_ids(
@@ -291,6 +293,7 @@ def _compose_project_entries(
     document: CVDocumentModel,
     supported_ids: set[str],
     source_order: dict[str, int],
+    max_bullets: int,
 ) -> list[RecruiterProjectEntry]:
     bullets = [
         claim
@@ -316,15 +319,16 @@ def _compose_project_entries(
         selected_bullet_ids: list[str] = []
 
         for bullet in bullets:
+            if len(selected_bullet_ids) >= max_bullets:
+                break
             if bullet.claim_id in used_bullets:
                 continue
             bullet_provenance = document.provenance_map.get(bullet.claim_id)
             if bullet_provenance is None:
                 continue
             if primary_fact_ids & set(bullet_provenance.fact_ids):
-                selected_bullet_ids = [bullet.claim_id]
+                selected_bullet_ids.append(bullet.claim_id)
                 used_bullets.add(bullet.claim_id)
-                break
 
         result.append(
             RecruiterProjectEntry(
@@ -343,6 +347,7 @@ def _compose_experience_entries(
     supported_ids: set[str],
     source_order: dict[str, int],
     max_entries: int,
+    max_bullets: int,
 ) -> list[RecruiterExperienceEntry]:
     primary_claims = [
         claim
@@ -381,15 +386,16 @@ def _compose_experience_entries(
         selected_bullet_ids: list[str] = []
 
         for bullet in bullets:
+            if len(selected_bullet_ids) >= max_bullets:
+                break
             if bullet.claim_id in used_bullets:
                 continue
             bullet_provenance = document.provenance_map.get(bullet.claim_id)
             if bullet_provenance is None:
                 continue
             if primary_fact_ids & set(bullet_provenance.fact_ids):
-                selected_bullet_ids = [bullet.claim_id]
+                selected_bullet_ids.append(bullet.claim_id)
                 used_bullets.add(bullet.claim_id)
-                break
 
         result.append(
             RecruiterExperienceEntry(
@@ -399,6 +405,38 @@ def _compose_experience_entries(
         )
 
     return result
+
+
+def _trim_extra_bullet_from_project(
+    document: RecruiterDocumentModel,
+    indexes: range,
+) -> RecruiterDocumentModel | None:
+    entries = [entry.model_copy(deep=True) for entry in document.project_entries]
+    for index in indexes:
+        entry = entries[index]
+        if len(entry.bullet_claim_ids) <= 1:
+            continue
+        entries[index] = entry.model_copy(
+            update={"bullet_claim_ids": entry.bullet_claim_ids[:-1]}
+        )
+        return document.model_copy(update={"project_entries": entries})
+    return None
+
+
+def _trim_extra_bullet_from_experience(
+    document: RecruiterDocumentModel,
+    indexes: range,
+) -> RecruiterDocumentModel | None:
+    entries = [entry.model_copy(deep=True) for entry in document.experience_entries]
+    for index in indexes:
+        entry = entries[index]
+        if len(entry.bullet_claim_ids) <= 1:
+            continue
+        entries[index] = entry.model_copy(
+            update={"bullet_claim_ids": entry.bullet_claim_ids[:-1]}
+        )
+        return document.model_copy(update={"experience_entries": entries})
+    return None
 
 
 def _reduce_once(
@@ -456,5 +494,36 @@ def _reduce_once(
         return document.model_copy(
             update={"education_claim_ids": document.education_claim_ids[:-1]}
         )
+
+    # 6. Narrative depth is trimmed only after lower-value breadth. Secondary
+    # project bullets go before the primary project story.
+    if len(document.project_entries) > 1:
+        reduced = _trim_extra_bullet_from_project(
+            document,
+            range(len(document.project_entries) - 1, 0, -1),
+        )
+        if reduced is not None:
+            return reduced
+
+    # 7. Then trim secondary experience narrative, followed by the primary
+    # experience entry. Keep at least one provenance-backed bullet per entry.
+    if len(document.experience_entries) > 1:
+        reduced = _trim_extra_bullet_from_experience(
+            document,
+            range(len(document.experience_entries) - 1, 0, -1),
+        )
+        if reduced is not None:
+            return reduced
+    if document.experience_entries:
+        reduced = _trim_extra_bullet_from_experience(document, range(0, 1))
+        if reduced is not None:
+            return reduced
+
+    # 8. The primary project's second bullet is the final narrative-depth
+    # fallback. This deliberately protects the problem -> implementation story.
+    if document.project_entries:
+        reduced = _trim_extra_bullet_from_project(document, range(0, 1))
+        if reduced is not None:
+            return reduced
 
     return document
