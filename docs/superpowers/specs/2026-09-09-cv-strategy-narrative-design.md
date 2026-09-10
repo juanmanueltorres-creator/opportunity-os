@@ -1,8 +1,8 @@
 # CV Strategy, Narrative Composition, Layout, and Quality Architecture
 
-**Date:** 2026-09-09  
-**Status:** Proposed for implementation after review  
-**Scope:** Opportunity-OS CV preparation pipeline  
+**Date:** 2026-09-09
+**Status:** Proposed for implementation after review
+**Scope:** Opportunity-OS CV preparation pipeline
 
 ## 1. Problem statement
 
