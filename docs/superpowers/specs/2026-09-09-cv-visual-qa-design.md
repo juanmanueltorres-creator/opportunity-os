@@ -1,8 +1,8 @@
 # CV Visual QA Design
 
-**Status:** Awaiting written-spec approval  
-**Roadmap:** CV architecture item 6 of 9  
-**Base:** `feat/cv-layout-profiles` / PR #47  
+**Status:** Approved for implementation
+**Roadmap:** CV architecture item 6 of 9
+**Base:** `feat/cv-layout-profiles` / PR #47
 **Feature branch:** `feat/cv-visual-qa`
 
 ## 1. Purpose
