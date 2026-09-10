@@ -61,8 +61,8 @@ def _recruiter_document(source: CVDocumentModel, claim_count: int | None = None)
         selected_project_claim_ids=[],
         project_entries=[],
         experience_entries=[],
-        education_claim_ids=item_ids[3:],
-        language_claim_ids=[],
+        education_claim_ids=item_ids[3:7],
+        language_claim_ids=item_ids[7:],
         link_claim_ids=[],
     )
 
@@ -284,7 +284,7 @@ def test_orphan_heading_near_page_bottom_is_hard_failure(tmp_path):
         page.insert_text((48, 67), "Software Developer", fontsize=12)
         for index in range(6):
             page.insert_text((48, 110 + index * 45), f"Evidence backed claim {index}", fontsize=BODY)
-        page.insert_text((48, 720), "PROJECTS", fontsize=13)
+        page.insert_text((48, 750), "PROJECTS", fontsize=13)
 
     result = _evaluate(_save(build, tmp_path / "orphan.pdf"), claim_count=8)
 
