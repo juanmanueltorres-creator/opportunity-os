@@ -23,8 +23,9 @@ class RecruiterSkillGroup(StrictCVModel):
 class RecruiterPolicy(StrictCVModel):
     version: str = Field(min_length=1)
     max_projects: int = Field(ge=1, le=4)
+    max_project_bullets: int = Field(default=2, ge=0, le=2)
     max_experience_entries: int = Field(ge=1, le=5)
-    max_experience_bullets: int = Field(ge=0, le=1)
+    max_experience_bullets: int = Field(default=2, ge=0, le=2)
     max_skill_groups: int = Field(ge=1, le=4)
     max_skill_tokens: int = Field(ge=1, le=24)
     max_profile_claims: int = Field(ge=1, le=3)
