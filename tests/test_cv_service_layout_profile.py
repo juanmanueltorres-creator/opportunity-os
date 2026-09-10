@@ -7,6 +7,7 @@ from app.cv.recruiter_models import (
     RecruiterRenderResult,
 )
 from app.cv.service import CVPreparationService
+from app.cv.visual_models import VisualMetrics, VisualQAResult
 from test_cv_service import LANGUAGE_DECISION, NOW, _assessment, _inputs, _resolver
 
 
@@ -51,6 +52,25 @@ class PassingRecruiterQA:
             valid=True,
             page_count=1,
             extracted_text="fictional layout-aware recruiter output",
+        )
+
+
+class PassingVisualQA:
+    def evaluate(self, render_result, recruiter_document, source_document, layout_profile, policy):
+        return VisualQAResult(
+            valid=True,
+            metrics=VisualMetrics(
+                page_count=1,
+                content_bottom_ratio=0.75,
+                largest_internal_gap_ratio=0.10,
+                nonempty_line_count=20,
+                lines_per_page_inch=2.5,
+                max_text_block_lines=4,
+                max_text_block_chars=120,
+                headline_line_count=1,
+                body_font_size=10.0,
+                observed_font_size_levels=[10.0, 12.0],
+            ),
         )
 
 
@@ -99,6 +119,7 @@ def test_service_passes_injected_track_layout_to_renderer(tmp_path: Path) -> Non
             id_factory=lambda: "app-layout-map",
             recruiter_renderer=renderer,
             recruiter_qa=PassingRecruiterQA(),
+            visual_qa=PassingVisualQA(),
             track_layout_map={"tech": "technical_clean"},
         ),
         tmp_path,
@@ -116,6 +137,7 @@ def test_service_without_mapping_uses_compact_ats(tmp_path: Path) -> None:
             id_factory=lambda: "app-layout-default",
             recruiter_renderer=renderer,
             recruiter_qa=PassingRecruiterQA(),
+            visual_qa=PassingVisualQA(),
         ),
         tmp_path,
     )
@@ -157,6 +179,7 @@ def test_reduction_reuses_same_selected_layout_profile(monkeypatch, tmp_path: Pa
             id_factory=lambda: "app-layout-reduction",
             recruiter_renderer=renderer,
             recruiter_qa=qa,
+            visual_qa=PassingVisualQA(),
             track_layout_map={"tech": "operations_clean"},
         ),
         tmp_path,
