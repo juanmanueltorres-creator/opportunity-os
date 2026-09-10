@@ -136,3 +136,12 @@ def test_ci_uses_single_dev_environment_for_recruiter_verification() -> None:
     assert 'python -m pip install -e ".[dev]"' in workflow
     assert "python -m pytest" in workflow
     assert "python -m compileall app" in workflow
+
+
+def test_readme_describes_ats_roundtrip_as_recoverability_proxy_only() -> None:
+    text = Path("README.md").read_text(encoding="utf-8").casefold()
+
+    assert "ats round-trip qa" in text
+    assert "recoverability proxy" in text
+    assert "not vendor ats emulation" in text
+    assert "does not guarantee commercial ats ranking" in text
