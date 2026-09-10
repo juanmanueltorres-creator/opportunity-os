@@ -596,6 +596,26 @@ def _packet_content_payload(packet: ApplicationPacket) -> dict:
         "cv_document_version": packet.cv_document_version,
         "recruiter_policy_version": packet.recruiter_policy_version,
         "renderer_version": packet.renderer_version,
+        "packet_schema_version": packet.packet_schema_version,
+        "strategy_version": packet.strategy_version,
+        "strategy": (
+            packet.strategy.model_dump(mode="json")
+            if packet.strategy is not None
+            else None
+        ),
+        "narrative_policy_version": packet.narrative_policy_version,
+        "layout_profile_id": packet.layout_profile_id,
+        "layout_profile_version": packet.layout_profile_version,
+        "narrative_qa": (
+            packet.narrative_qa.model_dump(mode="json")
+            if packet.narrative_qa is not None
+            else None
+        ),
+        "visual_qa": (
+            packet.visual_qa.model_dump(mode="json")
+            if packet.visual_qa is not None
+            else None
+        ),
         "ats_policy_version": packet.ats_policy_version,
         "ats_qa": (
             packet.ats_qa.model_dump(mode="json")
