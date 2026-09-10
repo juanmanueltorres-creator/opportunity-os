@@ -1,0 +1,8 @@
+version: ats-roundtrip-policy-v1
+thresholds:
+  identity: 1.0
+  contact: 1.0
+  experience: 1.0
+  skills: 0.9
+  education: 1.0
+  links: 1.0
