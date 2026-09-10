@@ -38,6 +38,7 @@ from app.radar.models import (
     Requirement,
 )
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
+from cv_ats_test_doubles import PassingATSParser, PassingATSQA
 
 NOW = datetime(2026, 8, 28, 12, 0, tzinfo=timezone.utc)
 LANGUAGE_DECISION = LanguageDecision(
@@ -221,6 +222,8 @@ def _service(
         kwargs["recruiter_policy"] = recruiter_policy
     if recruiter_renderer is not None:
         kwargs["recruiter_renderer"] = recruiter_renderer
+        kwargs["ats_parser"] = PassingATSParser()
+        kwargs["ats_qa"] = PassingATSQA()
     if recruiter_qa is not None:
         kwargs["recruiter_qa"] = recruiter_qa
     if visual_qa is not None:
