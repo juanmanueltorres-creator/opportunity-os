@@ -227,4 +227,3 @@ def test_old_posting_without_explicit_closed_evidence_stays_eligible() -> None:
 
     assert result.eligible is True
     assert result.hard_fail_reasons == []
-
