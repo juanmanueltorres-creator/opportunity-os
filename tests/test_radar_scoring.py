@@ -528,4 +528,3 @@ def test_fast_market_policy_also_changes_career_freshness() -> None:
     assert standard.freshness_fit == 75.0
     assert fast.freshness_fit == 20.0
     assert fast.overall_score < standard.overall_score
-
