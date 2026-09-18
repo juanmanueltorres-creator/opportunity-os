@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.main import create_app
 from app.models.domain import Opportunity
 from app.repositories.opportunities import SQLiteOpportunityRepository
@@ -172,3 +173,55 @@ def test_invalid_policy_bound_is_rejected_by_request_schema(tmp_path) -> None:
         )
 
     assert response.status_code == 422
+
+
+def test_preview_endpoint_uses_availability_memory_from_app_wiring(tmp_path) -> None:
+    repository = _repository(tmp_path)
+    availability = SQLiteAvailabilityRepository(repository.path)
+    availability.initialize()
+    closed, _ = repository.upsert(_opportunity("verified-closed"))
+    opened, _ = repository.upsert(_opportunity("verified-open"))
+    availability.record_verification(
+        closed.id,
+        is_open=False,
+        observed_at=NOW - timedelta(minutes=30),
+        evidence_source="official_company_page",
+    )
+    availability.record_verification(
+        opened.id,
+        is_open=True,
+        observed_at=NOW - timedelta(minutes=20),
+        evidence_source="official_company_page",
+    )
+
+    app = create_app(
+        repository=repository,
+        availability_repository=availability,
+        profile=None,
+        enable_default_radar=False,
+        enable_default_targets=False,
+        enable_default_relationships=False,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/community/digest/preview",
+            json={"timezone_name": "America/Argentina/Cordoba"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    ids = [
+        item["opportunity_id"]
+        for item in payload["digest"]["items"]
+    ]
+    assert closed.id not in ids
+    assert opened.id in ids
+    open_item = next(
+        item
+        for item in payload["digest"]["items"]
+        if item["opportunity_id"] == opened.id
+    )
+    assert open_item["availability_state"] == "VERIFIED_OPEN"
+    assert open_item["verification_source"] == "official_company_page"
+    assert "✅ Verificada abierta" in payload["rendered_text"]
