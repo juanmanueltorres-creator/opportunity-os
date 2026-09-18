@@ -307,3 +307,22 @@ def test_old_availability_table_is_migrated_in_place(tmp_path) -> None:
         "confirmed_at",
         "preview_sha256",
     }.issubset(columns)
+
+
+def test_future_confirmation_is_blocked_without_write(tmp_path) -> None:
+    service, _, availability, _ = _service(tmp_path)
+    evidence = _evidence()
+    preview = service.preview(evidence)
+
+    result = service.confirm(
+        _request(
+            evidence,
+            preview.preview_sha256,
+            confirmed_at=NOW + timedelta(minutes=5),
+        ),
+        processed_at=NOW + timedelta(minutes=1),
+    )
+
+    assert result.status == "BLOCKED"
+    assert result.errors == ["confirmation_in_future"]
+    assert availability.list_observations("opp-1") == []
