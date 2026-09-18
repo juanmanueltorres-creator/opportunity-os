@@ -81,7 +81,7 @@ def test_verification_api_is_disabled_by_default_write_policy(
         enable_default_targets=False,
         enable_default_relationships=False,
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
 
     with TestClient(app) as client:
         response = client.post(
@@ -98,7 +98,7 @@ def test_verification_api_is_disabled_by_default_write_policy(
 def test_enabled_preview_is_read_only(tmp_path) -> None:
     opportunities, availability, _ = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
 
     with TestClient(app) as client:
         response = client.post(
@@ -118,7 +118,7 @@ def test_enabled_preview_is_read_only(tmp_path) -> None:
 def test_enabled_confirm_records_exact_preview_once(tmp_path) -> None:
     opportunities, availability, _ = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
     evidence = _evidence(now)
 
     with TestClient(app) as client:
@@ -162,7 +162,7 @@ def test_enabled_confirm_records_exact_preview_once(tmp_path) -> None:
 def test_stale_preview_is_blocked_after_concurrent_sighting(tmp_path) -> None:
     opportunities, availability, _ = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
     evidence = _evidence(now)
 
     with TestClient(app) as client:
@@ -199,7 +199,7 @@ def test_stale_preview_is_blocked_after_concurrent_sighting(tmp_path) -> None:
 def test_verified_closed_workflow_does_not_mutate_base_opportunity_status(tmp_path) -> None:
     opportunities, availability, stored = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
     evidence = _evidence(now, decision="CLOSED")
 
     with TestClient(app) as client:
@@ -226,7 +226,7 @@ def test_verified_closed_workflow_does_not_mutate_base_opportunity_status(tmp_pa
 def test_invalid_evidence_url_is_rejected_before_service(tmp_path) -> None:
     opportunities, availability, _ = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
     evidence = _evidence(now)
     evidence["source_url"] = "file:///tmp/fake"
 
@@ -242,7 +242,7 @@ def test_invalid_evidence_url_is_rejected_before_service(tmp_path) -> None:
 def test_missing_opportunity_returns_typed_blocked_preview(tmp_path) -> None:
     opportunities, availability, _ = _repositories(tmp_path)
     app = _app(opportunities, availability, enabled=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(minutes=1)
     evidence = _evidence(now)
     evidence["opportunity_id"] = "missing"
 
