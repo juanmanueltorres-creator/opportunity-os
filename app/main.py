@@ -10,11 +10,15 @@ from app.adapters.gmail_read.api import create_gmail_read_router
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_service import AvailabilityVerificationService
 from app.availability.verification_queue import VerificationQueueService
+from app.availability.verification_review_session import (
+    VerificationReviewSessionService,
+)
 from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
     VerificationQueueServiceProtocol,
+    VerificationReviewSessionServiceProtocol,
     RadarServiceProtocol,
     TargetRadarServiceProtocol,
     create_api_router,
@@ -184,6 +188,8 @@ def create_app(
     enable_availability_verification: bool | None = None,
     verification_queue_service: VerificationQueueServiceProtocol | None = None,
     enable_default_verification_queue: bool = True,
+    verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
+    enable_default_verification_review_session: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -333,6 +339,20 @@ def create_app(
             ),
         )
 
+    resolved_verification_review_session_service = (
+        verification_review_session_service
+    )
+    if (
+        resolved_verification_review_session_service is None
+        and enable_default_verification_review_session
+        and resolved_verification_queue_service is not None
+    ):
+        resolved_verification_review_session_service = (
+            VerificationReviewSessionService(
+                queue_service=resolved_verification_queue_service,
+            )
+        )
+
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
         resolved_target_service = _load_default_target_service(
@@ -363,6 +383,9 @@ def create_app(
             availability_repository=resolved_availability_repository,
             availability_verification_service=resolved_availability_verification_service,
             verification_queue_service=resolved_verification_queue_service,
+            verification_review_session_service=(
+                resolved_verification_review_session_service
+            ),
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
