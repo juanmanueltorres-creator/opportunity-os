@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from app.models.domain import CandidateProfile, CandidateTrack, Opportunity
 from app.radar.models import EligibilityResult, OpportunityEnrichment, Requirement
 
@@ -11,6 +13,8 @@ def evaluate_eligibility(
     enrichment: OpportunityEnrichment,
     profile: CandidateProfile,
     track: CandidateTrack,
+    *,
+    now: datetime | None = None,
 ) -> EligibilityResult:
     """Evaluate only explicit, factual eligibility constraints.
 
@@ -25,6 +29,13 @@ def evaluate_eligibility(
 
     if _normalize(opportunity.status) in _CLOSED_STATUSES:
         _append_unique(hard_fail_reasons, "posting_closed")
+
+    if (
+        now is not None
+        and enrichment.application_deadline is not None
+        and _deadline_date_has_passed(enrichment.application_deadline.value, now)
+    ):
+        _append_unique(hard_fail_reasons, "posting_deadline_passed")
 
     _evaluate_role_family(enrichment, profile, soft_risks)
     _evaluate_work_mode(opportunity, profile, track, hard_fail_reasons)
@@ -198,3 +209,11 @@ def _normalize(value: str) -> str:
 def _append_unique(values: list[str], value: str) -> None:
     if value not in values:
         values.append(value)
+
+
+def _deadline_date_has_passed(deadline: datetime, now: datetime) -> bool:
+    if deadline.tzinfo is None or deadline.utcoffset() is None:
+        raise ValueError("application deadline must be timezone-aware")
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+    return now.astimezone(timezone.utc).date() > deadline.astimezone(timezone.utc).date()
