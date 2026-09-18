@@ -7,6 +7,7 @@ import httpx
 from fastapi import FastAPI
 
 from app.adapters.gmail_read.api import create_gmail_read_router
+from app.availability.daily_curation import DailyCurationService
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.review_evidence_draft import ReviewEvidenceDraftService
 from app.availability.verification_service import AvailabilityVerificationService
@@ -18,6 +19,7 @@ from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
+    DailyCurationServiceProtocol,
     ReviewEvidenceDraftServiceProtocol,
     VerificationQueueServiceProtocol,
     VerificationReviewSessionServiceProtocol,
@@ -194,6 +196,8 @@ def create_app(
     enable_default_verification_review_session: bool = True,
     review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
     enable_default_review_evidence_draft: bool = True,
+    daily_curation_service: DailyCurationServiceProtocol | None = None,
+    enable_default_daily_curation: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -376,6 +380,22 @@ def create_app(
             verification_service=preview_only_verification_service,
         )
 
+    resolved_daily_curation_service = daily_curation_service
+    if (
+        resolved_daily_curation_service is None
+        and enable_default_daily_curation
+        and resolved_verification_queue_service is not None
+        and resolved_verification_review_session_service is not None
+        and resolved_community_digest_preview_service is not None
+    ):
+        resolved_daily_curation_service = DailyCurationService(
+            queue_service=resolved_verification_queue_service,
+            review_session_service=(
+                resolved_verification_review_session_service
+            ),
+            digest_preview_service=resolved_community_digest_preview_service,
+        )
+
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
         resolved_target_service = _load_default_target_service(
@@ -410,6 +430,7 @@ def create_app(
                 resolved_verification_review_session_service
             ),
             review_evidence_draft_service=resolved_review_evidence_draft_service,
+            daily_curation_service=resolved_daily_curation_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
