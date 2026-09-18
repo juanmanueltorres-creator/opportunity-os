@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 
+from app.availability.models import OpportunityAvailability
 from app.models.domain import Opportunity
 from app.radar.models import OpportunityEnrichment, RadarAssessment, StrictRadarModel
 
@@ -116,6 +117,7 @@ class CommunityDigestPolicy:
 class CommunityDigestCandidate(StrictRadarModel):
     opportunity: Opportunity
     enrichment: OpportunityEnrichment
+    availability: OpportunityAvailability | None = None
 
 
 class CommunityDigestItem(StrictRadarModel):
@@ -133,10 +135,13 @@ class CommunityDigestItem(StrictRadarModel):
     remote_policy: str | None = None
     published_at: datetime | None = None
     application_deadline: datetime | None = None
+    availability_state: str = "UNVERIFIED"
+    last_verified_at: datetime | None = None
+    verification_source: str | None = None
     freshness_score: float = Field(ge=0, le=100)
     selection_score: float = Field(ge=0, le=100)
 
-    @field_validator("published_at", "application_deadline")
+    @field_validator("published_at", "application_deadline", "last_verified_at")
     @classmethod
     def dates_must_be_aware(cls, value: datetime | None) -> datetime | None:
         if value is None:
@@ -230,8 +235,14 @@ def _project_item(
 ) -> CommunityDigestItem | None:
     opportunity = assessment.opportunity
     enrichment = assessment.enrichment
+    availability = getattr(assessment, "availability", None)
 
     if _normalize(opportunity.status) in _CLOSED_STATUSES:
+        return None
+    if (
+        availability is not None
+        and availability.availability_state == "VERIFIED_CLOSED"
+    ):
         return None
 
     deadline = (
@@ -275,6 +286,21 @@ def _project_item(
         remote_policy=opportunity.remote_policy,
         published_at=opportunity.published_at,
         application_deadline=deadline,
+        availability_state=(
+            availability.availability_state
+            if availability is not None
+            else "UNVERIFIED"
+        ),
+        last_verified_at=(
+            availability.last_verified_at
+            if availability is not None
+            else None
+        ),
+        verification_source=(
+            availability.verification_source
+            if availability is not None
+            else None
+        ),
         freshness_score=freshness_score,
         selection_score=selection_score,
     )
@@ -417,9 +443,11 @@ def _selection_key(item: CommunityDigestItem) -> tuple[object, ...]:
     published = item.published_at
     published_unknown = 1 if published is None else 0
     published_sort = -published.timestamp() if published is not None else 0.0
+    verified_rank = 0 if item.availability_state == "VERIFIED_OPEN" else 1
     return (
         -item.selection_score,
         -item.freshness_score,
+        verified_rank,
         published_unknown,
         published_sort,
         item.opportunity_id,
@@ -444,7 +472,18 @@ def _digest_id(
     payload = {
         "generated_at": generated_at.isoformat(),
         "policy": policy,
-        "opportunity_ids": [item.opportunity_id for item in items],
+        "items": [
+            {
+                "opportunity_id": item.opportunity_id,
+                "availability_state": item.availability_state,
+                "last_verified_at": (
+                    item.last_verified_at.isoformat()
+                    if item.last_verified_at is not None
+                    else None
+                ),
+            }
+            for item in items
+        ],
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
