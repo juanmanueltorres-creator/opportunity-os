@@ -208,12 +208,16 @@ def _queue_item(
         return None
 
     reasons: list[VerificationReason] = []
+    needs_verification = (
+        source_entry is None or source_entry.verification_required
+    )
 
     if source_entry is not None and source_entry.authority == "DISCOVERY_ONLY":
         reasons.append("DISCOVERY_ONLY_NEEDS_OFFICIAL_SOURCE")
 
     if (
         state == "UNVERIFIED"
+        and needs_verification
         and deadline is not None
         and deadline.date() <= (
             now + timedelta(days=policy.deadline_soon_days)
@@ -223,20 +227,21 @@ def _queue_item(
 
     if (
         state == "UNVERIFIED"
+        and needs_verification
         and enrichment.freshness_policy == "fast_market_project"
     ):
         reasons.append("FAST_MARKET_UNVERIFIED")
 
     if (
         state == "UNVERIFIED"
-        and source_entry is not None
-        and source_entry.verification_required
+        and needs_verification
         and "DISCOVERY_ONLY_NEEDS_OFFICIAL_SOURCE" not in reasons
     ):
         reasons.append("SOURCE_REQUIRES_VERIFICATION")
 
     if (
         state == "VERIFIED_OPEN"
+        and needs_verification
         and availability is not None
         and availability.last_verified_at is not None
         and _verification_is_stale(
