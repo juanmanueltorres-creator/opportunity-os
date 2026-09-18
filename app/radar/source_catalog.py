@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -38,6 +39,18 @@ class StrictSourceCatalogModel(BaseModel):
 
 def _normalized_reference(value: str) -> str:
     return value.strip().casefold()
+
+
+def _normalized_host(source_url: str | None) -> str | None:
+    if source_url is None or not source_url.strip():
+        return None
+    try:
+        host = (urlparse(source_url.strip()).hostname or "").casefold()
+    except ValueError:
+        return None
+    if host.startswith("www."):
+        host = host[4:]
+    return host or None
 
 
 class SourceCatalogEntry(StrictSourceCatalogModel):
@@ -126,13 +139,22 @@ class SourceCatalog(StrictSourceCatalogModel):
                 owners[normalized] = entry.key
         return self
 
-    def resolve(self, source: str) -> SourceCatalogEntry | None:
-        normalized = _normalized_reference(source)
-        if not normalized:
-            return None
-        for entry in self.sources:
-            if entry.matches(normalized):
-                return entry
+    def resolve(
+        self,
+        source: str,
+        source_url: str | None = None,
+    ) -> SourceCatalogEntry | None:
+        references = [_normalized_reference(source)]
+        host = _normalized_host(source_url)
+        if host is not None:
+            references.append(host)
+
+        for reference in references:
+            if not reference:
+                continue
+            for entry in self.sources:
+                if entry.matches(reference):
+                    return entry
         return None
 
 
