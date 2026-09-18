@@ -7,6 +7,8 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.availability.models import OpportunityAvailability
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
@@ -91,6 +93,7 @@ class TargetRadarServiceProtocol(Protocol):
 def create_api_router(
     *,
     repository: SQLiteOpportunityRepository,
+    availability_repository: SQLiteAvailabilityRepository | None,
     profile: CandidateProfile | None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -113,6 +116,28 @@ def create_api_router(
             raise HTTPException(status_code=404, detail="Opportunity not found")
         return opportunity
 
+    @router.get(
+        "/opportunities/{opportunity_id}/availability",
+        response_model=OpportunityAvailability,
+    )
+    def get_opportunity_availability(
+        opportunity_id: str,
+    ) -> OpportunityAvailability:
+        if repository.get(opportunity_id) is None:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        if availability_repository is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Availability memory unavailable",
+            )
+        state = availability_repository.get(opportunity_id)
+        if state is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Availability history not found",
+            )
+        return state
+
     @router.post("/opportunities/manual", response_model=Opportunity)
     def import_manual_opportunity(manual: ManualOpportunityInput) -> Opportunity:
         if radar_service is None:
@@ -126,12 +151,19 @@ def create_api_router(
     async def ingest_remotive() -> IngestionResponse:
         try:
             if remotive_connector is not None:
-                result = await ingest(remotive_connector, repository)
+                result = await ingest(
+                    remotive_connector,
+                    repository,
+                    availability_repository=availability_repository,
+                    observed_at=datetime.now(timezone.utc),
+                )
             else:
                 async with httpx.AsyncClient() as client:
                     result = await ingest(
                         RemotiveConnector(client, timeout_seconds=timeout_seconds),
                         repository,
+                        availability_repository=availability_repository,
+                        observed_at=datetime.now(timezone.utc),
                     )
         except ConnectorError as exc:
             raise HTTPException(
