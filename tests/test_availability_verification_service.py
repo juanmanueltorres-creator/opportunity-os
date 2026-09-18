@@ -5,6 +5,7 @@ import sqlite3
 
 import pytest
 
+from app.availability.models import AvailabilityObservation
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_models import (
     VerificationConfirmRequest,
@@ -230,10 +231,7 @@ def test_same_prior_direct_verification_without_workflow_receipt_blocks_duplicat
     service, _, availability, _ = _service(tmp_path)
     evidence = _evidence()
     availability.record(
-        __import__(
-            "app.availability.models",
-            fromlist=["AvailabilityObservation"],
-        ).AvailabilityObservation(
+        AvailabilityObservation(
             opportunity_id="opp-1",
             observation_type="VERIFIED_OPEN",
             observed_at=evidence.observed_at,
