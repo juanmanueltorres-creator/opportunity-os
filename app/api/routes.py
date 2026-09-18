@@ -19,6 +19,10 @@ from app.availability.verification_queue import (
     VerificationQueue,
     VerificationQueuePolicy,
 )
+from app.availability.verification_review_session import (
+    VerificationReviewSession,
+    VerificationReviewSessionPolicy,
+)
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
@@ -61,6 +65,26 @@ class RadarServiceProtocol(Protocol):
         *,
         now: datetime,
     ) -> Opportunity: ...
+
+
+class VerificationReviewSessionServiceProtocol(Protocol):
+    def build(
+        self,
+        *,
+        now: datetime,
+        policy: VerificationReviewSessionPolicy | None = None,
+    ) -> VerificationReviewSession: ...
+
+
+class VerificationReviewSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    batch_size: int = Field(default=5, ge=1, le=20)
+    candidate_lookback_days: int = Field(default=90, ge=1, le=365)
+    deadline_soon_days: int = Field(default=2, ge=0, le=30)
+    standard_reverify_after_days: int = Field(default=7, ge=1, le=365)
+    fast_market_reverify_after_days: int = Field(default=2, ge=1, le=90)
+    fast_market_max_age_days: int = Field(default=14, ge=1, le=90)
 
 
 class VerificationQueueServiceProtocol(Protocol):
@@ -140,6 +164,7 @@ def create_api_router(
     availability_repository: SQLiteAvailabilityRepository | None = None,
     availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
     verification_queue_service: VerificationQueueServiceProtocol | None = None,
+    verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -183,6 +208,46 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/availability/verification/session",
+        response_model=VerificationReviewSession,
+    )
+    def build_availability_verification_session(
+        request: VerificationReviewSessionRequest | None = None,
+    ) -> VerificationReviewSession:
+        if verification_review_session_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Availability verification review session unavailable",
+            )
+        resolved = request or VerificationReviewSessionRequest()
+        try:
+            queue_policy = VerificationQueuePolicy(
+                max_items=max(resolved.batch_size, 20),
+                candidate_lookback_days=resolved.candidate_lookback_days,
+                deadline_soon_days=resolved.deadline_soon_days,
+                standard_reverify_after_days=(
+                    resolved.standard_reverify_after_days
+                ),
+                fast_market_reverify_after_days=(
+                    resolved.fast_market_reverify_after_days
+                ),
+                fast_market_max_age_days=resolved.fast_market_max_age_days,
+            )
+            policy = VerificationReviewSessionPolicy(
+                batch_size=resolved.batch_size,
+                queue_policy=queue_policy,
+            )
+            return verification_review_session_service.build(
+                now=datetime.now(timezone.utc),
+                policy=policy,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid availability verification review session options",
+            ) from exc
 
     @router.post(
         "/availability/verification/queue",
