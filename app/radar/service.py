@@ -133,6 +133,7 @@ class RadarService:
                 opportunity,
                 enrichment,
                 profile,
+                now=run_at,
             )
             confidence = score_confidence(enrichment, career, income)
             ranked_items.append(
@@ -212,9 +213,17 @@ def _aggregate_eligibility(
     opportunity: Opportunity,
     enrichment,
     profile: CandidateProfile,
+    *,
+    now: datetime,
 ) -> EligibilityResult:
     results = [
-        evaluate_eligibility(opportunity, enrichment, profile, track)
+        evaluate_eligibility(
+            opportunity,
+            enrichment,
+            profile,
+            track,
+            now=now,
+        )
         for track in effective_tracks(profile)
     ]
     if not results:
