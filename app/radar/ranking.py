@@ -36,6 +36,8 @@ class RadarPolicy:
     selection_mode: SelectionMode = "income_first"
     max_items: int = 20
     max_per_company: int = 2
+    max_per_source: int | None = None
+    max_per_source_category: int | None = None
     candidate_lookback_days: int = 30
     company_role_cooldown_days: int = 0
 
@@ -69,6 +71,15 @@ class RadarPolicy:
             raise ValueError("max_items must be positive")
         if self.max_per_company < 1:
             raise ValueError("max_per_company must be positive")
+        if self.max_per_source is not None and self.max_per_source < 1:
+            raise ValueError("max_per_source must be positive when configured")
+        if (
+            self.max_per_source_category is not None
+            and self.max_per_source_category < 1
+        ):
+            raise ValueError(
+                "max_per_source_category must be positive when configured"
+            )
         if self.candidate_lookback_days < 1:
             raise ValueError("candidate_lookback_days must be positive")
         if self.company_role_cooldown_days < 0:
