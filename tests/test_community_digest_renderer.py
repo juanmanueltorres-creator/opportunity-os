@@ -24,6 +24,9 @@ def _item(
     location: str | None = "Argentina",
     remote_policy: str | None = "Remote",
     deadline: datetime | None = None,
+    availability_state: str = "UNVERIFIED",
+    last_verified_at: datetime | None = None,
+    verification_source: str | None = None,
 ) -> CommunityDigestItem:
     return CommunityDigestItem(
         opportunity_id=item_id,
@@ -40,6 +43,9 @@ def _item(
         remote_policy=remote_policy,
         published_at=NOW,
         application_deadline=deadline,
+        availability_state=availability_state,
+        last_verified_at=last_verified_at,
+        verification_source=verification_source,
         freshness_score=100.0,
         selection_score=90.0,
     )
@@ -179,3 +185,39 @@ def test_renderer_is_deterministic_for_same_digest_and_options() -> None:
         digest,
         options=options,
     )
+
+
+def test_renderer_shows_explicit_verified_open_evidence() -> None:
+    text = render_community_digest(
+        _digest(
+            [
+                _item(
+                    "verified",
+                    availability_state="VERIFIED_OPEN",
+                    last_verified_at=datetime(
+                        2026,
+                        9,
+                        18,
+                        15,
+                        0,
+                        tzinfo=timezone.utc,
+                    ),
+                    verification_source="official_company_page",
+                )
+            ]
+        ),
+        options=CommunityDigestRenderOptions(
+            timezone_name="America/Argentina/Cordoba",
+        ),
+    )
+
+    assert (
+        "✅ Verificada abierta: official_company_page · 18/09/2026"
+        in text
+    )
+
+
+def test_renderer_does_not_claim_verification_for_unverified_item() -> None:
+    text = render_community_digest(_digest([_item("unverified")]))
+
+    assert "Verificada abierta" not in text
