@@ -84,6 +84,11 @@ class AvailabilityVerificationService:
         processed_at: datetime,
     ) -> VerificationConfirmResult:
         processed_at = _aware_utc(processed_at, field="processed_at")
+        if request.confirmed_at > processed_at:
+            return VerificationConfirmResult(
+                status="BLOCKED",
+                errors=["confirmation_in_future"],
+            )
         opportunity = self.opportunity_repository.get(
             request.evidence.opportunity_id
         )
