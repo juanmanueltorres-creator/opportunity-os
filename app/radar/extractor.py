@@ -188,6 +188,15 @@ class RuleBasedRequirementExtractor:
             source_entry=source_entry,
         )
         source_category = _source_category(opportunity, source_entry)
+        freshness_policy = (
+            "deadline_sensitive"
+            if application_deadline is not None
+            else (
+                source_entry.freshness_policy
+                if source_entry is not None
+                else "standard_job"
+            )
+        )
         canonical_url = _canonical_url(opportunity.source_url)
 
         region = None
@@ -221,6 +230,7 @@ class RuleBasedRequirementExtractor:
             ),
             source_reliability=source_reliability,
             source_freshness_quality=source_freshness_quality,
+            freshness_policy=freshness_policy,
             channel_tags=(
                 list(source_entry.default_channel_tags)
                 if source_entry is not None
