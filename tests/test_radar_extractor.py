@@ -192,18 +192,38 @@ def test_source_catalog_enriches_manual_marketplace_opportunity_and_cleans_track
         )
     )
 
-    assert enrichment.extractor_version == "rules-v4+source-catalog-v1"
+    assert enrichment.extractor_version == "rules-v4+source-catalog-v2"
     assert enrichment.source_category is not None
     assert enrichment.source_category.value == "FREELANCE_MARKETPLACE"
     assert enrichment.source_category.source_text == source_url
     assert enrichment.channel_tags == ["freelance", "project"]
     assert enrichment.source_reliability == "AGGREGATOR"
     assert enrichment.source_freshness_quality == "DIRECT_TIMESTAMP"
+    assert enrichment.freshness_policy == "fast_market_project"
     assert enrichment.canonical_url is not None
     assert enrichment.canonical_url.value == (
         "https://www.workana.com/job/example-project?project_id=42"
     )
     assert enrichment.canonical_url.source_text == source_url
+
+
+def test_explicit_deadline_overrides_source_freshness_policy() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(
+            source="workana",
+            source_url="https://workana.com/job/deadline-project",
+            description="Apply by 2026-09-15.",
+            published_at=NOW,
+        )
+    )
+
+    assert enrichment.freshness_policy == "deadline_sensitive"
 
 
 def test_discovery_only_catalog_source_remains_low_authority() -> None:
