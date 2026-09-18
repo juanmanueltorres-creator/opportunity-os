@@ -270,6 +270,7 @@ def create_app(
         resolved_community_digest_preview_service = CommunityDigestPreviewService(
             opportunity_repository=resolved_repository,
             extractor=default_extractor,
+            availability_repository=resolved_availability_repository,
         )
 
     resolved_target_service = target_service
