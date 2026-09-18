@@ -8,7 +8,7 @@ import re
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.availability.models import AvailabilityState, OpportunityAvailability
 from app.models.domain import Opportunity
@@ -118,6 +118,17 @@ class CommunityDigestCandidate(StrictRadarModel):
     opportunity: Opportunity
     enrichment: OpportunityEnrichment
     availability: OpportunityAvailability | None = None
+
+    @model_validator(mode="after")
+    def availability_must_match_opportunity(self) -> "CommunityDigestCandidate":
+        if (
+            self.availability is not None
+            and self.availability.opportunity_id != self.opportunity.id
+        ):
+            raise ValueError(
+                "availability opportunity_id must match opportunity.id"
+            )
+        return self
 
 
 class CommunityDigestItem(StrictRadarModel):
