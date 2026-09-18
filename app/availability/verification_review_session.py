@@ -245,6 +245,43 @@ def _card_sha256(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def review_card_sha256(card: VerificationReviewCard) -> str:
+    payload = {
+        "opportunity_id": card.opportunity_id,
+        "review_url": card.review_url,
+        "source_key": card.source_key,
+        "source_category": card.source_category,
+        "availability_state": card.availability_state,
+        "last_seen_at": (
+            card.last_seen_at.isoformat()
+            if card.last_seen_at is not None
+            else None
+        ),
+        "last_verified_at": (
+            card.last_verified_at.isoformat()
+            if card.last_verified_at is not None
+            else None
+        ),
+        "application_deadline": (
+            card.application_deadline.isoformat()
+            if card.application_deadline is not None
+            else None
+        ),
+        "priority_score": card.priority_score,
+        "reason_codes": list(card.reason_codes),
+        "suggested_action": card.suggested_action,
+        "checklist": list(card.checklist),
+        "acceptable_evidence_kinds": list(card.acceptable_evidence_kinds),
+    }
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _checklist(item: VerificationQueueItem) -> list[ReviewCheckCode]:
     if item.suggested_action == "FIND_OFFICIAL_SOURCE":
         checks: list[ReviewCheckCode] = [
