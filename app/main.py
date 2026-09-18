@@ -8,7 +8,12 @@ from fastapi import FastAPI
 
 from app.adapters.gmail_read.api import create_gmail_read_router
 from app.adapters.gmail_read.service import GmailReadService
-from app.api.routes import RadarServiceProtocol, TargetRadarServiceProtocol, create_api_router
+from app.api.routes import (
+    CommunityDigestPreviewServiceProtocol,
+    RadarServiceProtocol,
+    TargetRadarServiceProtocol,
+    create_api_router,
+)
 from app.connectors.base import JobConnector
 from app.models.domain import CandidateProfile
 from app.operator_bridge.api import create_operator_router
@@ -16,6 +21,7 @@ from app.operator_bridge.service import OperatorBridgeService
 from app.process_email.api import create_process_email_router
 from app.process_email.service import ProcessEmailService
 from app.profiles import load_profile
+from app.radar.community_digest_preview import CommunityDigestPreviewService
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
 from app.radar.source_catalog import SourceCatalog, load_source_catalog
@@ -158,6 +164,8 @@ def create_app(
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
     enable_default_radar: bool = True,
+    community_digest_preview_service: CommunityDigestPreviewServiceProtocol | None = None,
+    enable_default_community_digest_preview: bool = True,
     target_service: TargetRadarServiceProtocol | None = None,
     enable_default_targets: bool = True,
     relationship_memory: RelationshipMemory | None = None,
@@ -204,6 +212,21 @@ def create_app(
 
     owned_http_client: httpx.AsyncClient | None = None
     resolved_radar_service = radar_service
+    resolved_community_digest_preview_service = community_digest_preview_service
+
+    default_extractor: RuleBasedRequirementExtractor | None = None
+    needs_default_extractor = (
+        (resolved_radar_service is None and enable_default_radar)
+        or (
+            resolved_community_digest_preview_service is None
+            and enable_default_community_digest_preview
+        )
+    )
+    if needs_default_extractor:
+        default_extractor = RuleBasedRequirementExtractor(
+            source_catalog=_load_default_source_catalog(),
+        )
+
     if resolved_radar_service is None and enable_default_radar:
         enrichment_repository = SQLiteEnrichmentRepository(resolved_repository.path)
         alias_registry = AliasRegistry.load(_alias_registry_path())
@@ -213,6 +236,8 @@ def create_app(
         )
         source_registry = _load_source_registry()
         owned_http_client = httpx.AsyncClient()
+        if default_extractor is None:
+            raise RuntimeError("default extractor unavailable")
         resolved_radar_service = RadarService(
             opportunity_repository=resolved_repository,
             enrichment_repository=enrichment_repository,
@@ -221,13 +246,24 @@ def create_app(
                 owned_http_client,
                 timeout_seconds=timeout_seconds,
             ),
-            extractor=RuleBasedRequirementExtractor(
-                source_catalog=_load_default_source_catalog(),
-            ),
+            extractor=default_extractor,
             resolver=resolver,
         )
     else:
         enrichment_repository = None
+
+    if (
+        resolved_community_digest_preview_service is None
+        and enable_default_community_digest_preview
+    ):
+        if default_extractor is None:
+            default_extractor = RuleBasedRequirementExtractor(
+                source_catalog=_load_default_source_catalog(),
+            )
+        resolved_community_digest_preview_service = CommunityDigestPreviewService(
+            opportunity_repository=resolved_repository,
+            extractor=default_extractor,
+        )
 
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
@@ -259,6 +295,7 @@ def create_app(
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
             radar_service=resolved_radar_service,
+            community_digest_preview_service=resolved_community_digest_preview_service,
             target_service=resolved_target_service,
             relationship_memory=resolved_relationship_memory,
         )
