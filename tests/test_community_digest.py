@@ -294,3 +294,83 @@ def test_digest_order_and_id_are_deterministic() -> None:
 
     assert [item.opportunity_id for item in left.items] == ["a", "b"]
     assert left.digest_id == right.digest_id
+
+
+def _availability(
+    opportunity_id: str,
+    *,
+    state: str,
+    verified_at: datetime | None = None,
+    verification_source: str | None = None,
+) -> OpportunityAvailability:
+    return OpportunityAvailability(
+        opportunity_id=opportunity_id,
+        first_seen_at=NOW - timedelta(days=2),
+        last_seen_at=NOW - timedelta(hours=1),
+        last_verified_at=verified_at,
+        verification_source=verification_source,
+        availability_state=state,
+        observation_count=2,
+        latest_observation_at=NOW - timedelta(hours=1),
+    )
+
+
+def test_verified_closed_availability_excludes_open_opportunity() -> None:
+    assessment = _assessment("verified-closed", status="open")
+    candidate = CommunityDigestCandidate(
+        opportunity=assessment.opportunity,
+        enrichment=assessment.enrichment,
+        availability=_availability(
+            assessment.opportunity.id,
+            state="VERIFIED_CLOSED",
+            verified_at=NOW - timedelta(hours=2),
+            verification_source="official_company_page",
+        ),
+    )
+
+    digest = build_community_digest([candidate], now=NOW)
+
+    assert digest.count == 0
+    assert assessment.opportunity.status == "open"
+
+
+def test_verified_open_availability_is_exposed_without_changing_selection_score() -> None:
+    assessment = _assessment("verified-open")
+    candidate = CommunityDigestCandidate(
+        opportunity=assessment.opportunity,
+        enrichment=assessment.enrichment,
+        availability=_availability(
+            assessment.opportunity.id,
+            state="VERIFIED_OPEN",
+            verified_at=NOW - timedelta(hours=2),
+            verification_source="official_company_page",
+        ),
+    )
+
+    unverified = build_community_digest([assessment], now=NOW)
+    verified = build_community_digest([candidate], now=NOW)
+
+    assert verified.count == 1
+    assert verified.items[0].availability_state == "VERIFIED_OPEN"
+    assert verified.items[0].verification_source == "official_company_page"
+    assert verified.items[0].last_verified_at == NOW - timedelta(hours=2)
+    assert verified.items[0].selection_score == unverified.items[0].selection_score
+
+
+def test_availability_state_changes_digest_id_when_public_output_changes() -> None:
+    assessment = _assessment("digest-id")
+    verified_candidate = CommunityDigestCandidate(
+        opportunity=assessment.opportunity,
+        enrichment=assessment.enrichment,
+        availability=_availability(
+            assessment.opportunity.id,
+            state="VERIFIED_OPEN",
+            verified_at=NOW,
+            verification_source="official_company_page",
+        ),
+    )
+
+    unverified = build_community_digest([assessment], now=NOW)
+    verified = build_community_digest([verified_candidate], now=NOW)
+
+    assert unverified.digest_id != verified.digest_id
