@@ -120,8 +120,9 @@ def _render_item(
         lines.append(f"📍 {source}")
 
     if item.application_deadline is not None:
-        deadline = item.application_deadline.astimezone(timezone)
-        lines.append(f"📅 Cierre: {deadline:%d/%m/%Y}")
+        # Extracted application deadlines are calendar-date semantics encoded as
+        # aware datetimes. Do not shift the stated date through a display timezone.
+        lines.append(f"📅 Cierre: {item.application_deadline:%d/%m/%Y}")
 
     lines.append(item.source_url)
     return lines
