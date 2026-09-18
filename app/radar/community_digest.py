@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 
-from app.availability.models import OpportunityAvailability
+from app.availability.models import AvailabilityState, OpportunityAvailability
 from app.models.domain import Opportunity
 from app.radar.models import OpportunityEnrichment, RadarAssessment, StrictRadarModel
 
@@ -135,7 +135,7 @@ class CommunityDigestItem(StrictRadarModel):
     remote_policy: str | None = None
     published_at: datetime | None = None
     application_deadline: datetime | None = None
-    availability_state: str = "UNVERIFIED"
+    availability_state: AvailabilityState = "UNVERIFIED"
     last_verified_at: datetime | None = None
     verification_source: str | None = None
     freshness_score: float = Field(ge=0, le=100)
@@ -481,6 +481,7 @@ def _digest_id(
                     if item.last_verified_at is not None
                     else None
                 ),
+                "verification_source": item.verification_source,
             }
             for item in items
         ],
