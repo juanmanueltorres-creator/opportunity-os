@@ -47,6 +47,7 @@ class VerificationReviewSessionPolicy:
 
 class VerificationReviewCard(StrictRadarModel):
     rank: int = Field(ge=1)
+    card_sha256: str = Field(min_length=64, max_length=64)
     opportunity_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     company: str = Field(min_length=1)
@@ -144,7 +145,7 @@ class VerificationReviewSessionService:
         )
         selected = queue.items[: resolved_policy.batch_size]
         cards = [
-            _review_card(rank=index, item=item)
+            build_review_card(rank=index, item=item)
             for index, item in enumerate(selected, start=1)
         ]
         return VerificationReviewSession(
@@ -168,15 +169,21 @@ class VerificationReviewSessionService:
         )
 
 
-def _review_card(
+def build_review_card(
     *,
     rank: int,
     item: VerificationQueueItem,
 ) -> VerificationReviewCard:
     checklist = _checklist(item)
     evidence_kinds = _acceptable_evidence_kinds(item)
+    card_sha256 = _card_sha256(
+        item=item,
+        checklist=checklist,
+        evidence_kinds=evidence_kinds,
+    )
     return VerificationReviewCard(
         rank=rank,
+        card_sha256=card_sha256,
         opportunity_id=item.opportunity_id,
         title=item.title,
         company=item.company,
@@ -194,6 +201,48 @@ def _review_card(
         last_verified_at=item.last_verified_at,
         external_actions=[],
     )
+
+
+def _card_sha256(
+    *,
+    item: VerificationQueueItem,
+    checklist: list[ReviewCheckCode],
+    evidence_kinds: list[VerificationEvidenceKind],
+) -> str:
+    payload = {
+        "opportunity_id": item.opportunity_id,
+        "review_url": item.source_url,
+        "source_key": item.source_key,
+        "source_category": item.source_category,
+        "availability_state": item.availability_state,
+        "last_seen_at": (
+            item.last_seen_at.isoformat()
+            if item.last_seen_at is not None
+            else None
+        ),
+        "last_verified_at": (
+            item.last_verified_at.isoformat()
+            if item.last_verified_at is not None
+            else None
+        ),
+        "application_deadline": (
+            item.application_deadline.isoformat()
+            if item.application_deadline is not None
+            else None
+        ),
+        "priority_score": item.priority_score,
+        "reason_codes": list(item.reason_codes),
+        "suggested_action": item.suggested_action,
+        "checklist": checklist,
+        "acceptable_evidence_kinds": evidence_kinds,
+    }
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _checklist(item: VerificationQueueItem) -> list[ReviewCheckCode]:
@@ -262,6 +311,7 @@ def _session_id(
         "cards": [
             {
                 "opportunity_id": card.opportunity_id,
+                "card_sha256": card.card_sha256,
                 "priority_score": card.priority_score,
                 "reason_codes": card.reason_codes,
                 "suggested_action": card.suggested_action,
