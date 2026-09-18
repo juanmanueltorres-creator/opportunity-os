@@ -266,4 +266,3 @@ def test_without_catalog_existing_source_semantics_remain_backward_compatible() 
     assert enrichment.source_category is None
     assert enrichment.channel_tags == []
     assert enrichment.canonical_url is not None
-
