@@ -14,7 +14,10 @@ from app.availability.verification_models import (
     VerificationEvidenceKind,
     VerificationPreview,
 )
-from app.availability.verification_review_session import VerificationReviewCard
+from app.availability.verification_review_session import (
+    VerificationReviewCard,
+    review_card_sha256,
+)
 from app.availability.verification_service import AvailabilityVerificationService
 from app.radar.models import StrictRadarModel
 from app.repositories.opportunities import SQLiteOpportunityRepository
@@ -126,6 +129,13 @@ class ReviewEvidenceDraftService:
     ) -> ReviewEvidenceDraft:
         generated_at = _aware_utc(now)
         card = request.card
+
+        if review_card_sha256(card) != card.card_sha256:
+            return _blocked(
+                request,
+                "BLOCKED_STALE_CARD",
+                "review_card_hash_mismatch",
+            )
 
         opportunity = self.opportunity_repository.get(card.opportunity_id)
         if opportunity is None:
