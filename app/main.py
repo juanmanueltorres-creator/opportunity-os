@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.adapters.gmail_read.api import create_gmail_read_router
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.availability.review_evidence_draft import ReviewEvidenceDraftService
 from app.availability.verification_service import AvailabilityVerificationService
 from app.availability.verification_queue import VerificationQueueService
 from app.availability.verification_review_session import (
@@ -17,6 +18,7 @@ from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
+    ReviewEvidenceDraftServiceProtocol,
     VerificationQueueServiceProtocol,
     VerificationReviewSessionServiceProtocol,
     RadarServiceProtocol,
@@ -190,6 +192,8 @@ def create_app(
     enable_default_verification_queue: bool = True,
     verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
     enable_default_verification_review_session: bool = True,
+    review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
+    enable_default_review_evidence_draft: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -353,6 +357,25 @@ def create_app(
             )
         )
 
+    resolved_review_evidence_draft_service = review_evidence_draft_service
+    if (
+        resolved_review_evidence_draft_service is None
+        and enable_default_review_evidence_draft
+    ):
+        preview_only_verification_service = (
+            resolved_availability_verification_service
+            if resolved_availability_verification_service is not None
+            else AvailabilityVerificationService(
+                opportunity_repository=resolved_repository,
+                availability_repository=resolved_availability_repository,
+            )
+        )
+        resolved_review_evidence_draft_service = ReviewEvidenceDraftService(
+            opportunity_repository=resolved_repository,
+            availability_repository=resolved_availability_repository,
+            verification_service=preview_only_verification_service,
+        )
+
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
         resolved_target_service = _load_default_target_service(
@@ -386,6 +409,7 @@ def create_app(
             verification_review_session_service=(
                 resolved_verification_review_session_service
             ),
+            review_evidence_draft_service=resolved_review_evidence_draft_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
