@@ -182,6 +182,73 @@ class SQLiteAvailabilityRepository:
             ).fetchall()
         return [AvailabilityObservation.model_validate(dict(row)) for row in rows]
 
+    def record_if_unchanged(
+        self,
+        observation: AvailabilityObservation,
+        *,
+        expected_observation_count: int,
+        expected_latest_observation_at: datetime | None,
+    ) -> bool:
+        self._ensure_initialized()
+        expected_latest = (
+            expected_latest_observation_at.isoformat()
+            if expected_latest_observation_at is not None
+            else None
+        )
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS observation_count,
+                    MAX(observed_at) AS latest_observation_at
+                FROM opportunity_availability_observations
+                WHERE opportunity_id = ?
+                """,
+                (observation.opportunity_id,),
+            ).fetchone()
+            if row is None:
+                return False
+            if (
+                int(row["observation_count"]) != expected_observation_count
+                or row["latest_observation_at"] != expected_latest
+            ):
+                return False
+
+            conn.execute(
+                """
+                INSERT INTO opportunity_availability_observations (
+                    opportunity_id,
+                    observation_type,
+                    observed_at,
+                    evidence_source,
+                    source_url,
+                    note,
+                    evidence_kind,
+                    confirmed_by,
+                    confirmed_at,
+                    preview_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    observation.opportunity_id,
+                    observation.observation_type,
+                    observation.observed_at.isoformat(),
+                    observation.evidence_source,
+                    observation.source_url,
+                    observation.note,
+                    observation.evidence_kind,
+                    observation.confirmed_by,
+                    (
+                        observation.confirmed_at.isoformat()
+                        if observation.confirmed_at is not None
+                        else None
+                    ),
+                    observation.preview_sha256,
+                ),
+            )
+        return True
+
     def get(self, opportunity_id: str) -> OpportunityAvailability | None:
         observations = self.list_observations(opportunity_id)
         if not observations:
