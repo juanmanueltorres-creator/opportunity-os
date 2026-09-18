@@ -93,4 +93,4 @@ def test_spanish_section_normalization_bumps_extractor_version_for_cache_invalid
         _opportunity("Lo que buscamos:\n- Conocimientos de Python y bases de datos")
     )
 
-    assert enrichment.extractor_version == "rules-v3"
+    assert enrichment.extractor_version == "rules-v4"
