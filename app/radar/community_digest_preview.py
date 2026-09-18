@@ -58,6 +58,7 @@ class CommunityDigestPreviewService:
         now: datetime,
         policy: CommunityDigestPolicy | None = None,
         render_options: CommunityDigestRenderOptions | None = None,
+        excluded_opportunity_ids: set[str] | None = None,
     ) -> CommunityDigestPreview:
         generated_at = _aware_utc(now)
         resolved_options = render_options or CommunityDigestRenderOptions()
@@ -66,6 +67,12 @@ class CommunityDigestPreviewService:
             now=generated_at,
             lookback_days=self.candidate_lookback_days,
         )
+        excluded = excluded_opportunity_ids or set()
+        opportunities = [
+            opportunity
+            for opportunity in opportunities
+            if opportunity.id not in excluded
+        ]
         candidates = [
             CommunityDigestCandidate(
                 opportunity=opportunity,
