@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Literal, Protocol
 
 import httpx
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
 from app.models.domain import CandidateProfile, Opportunity, OpportunityAssessment
+from app.radar.community_digest import CommunityDigestPolicy
+from app.radar.community_digest_preview import CommunityDigestPreview
+from app.radar.community_digest_renderer import CommunityDigestRenderOptions
 from app.radar.models import DailyRadarBatch
 from app.radar.service import RadarSourceError
 from app.radar.sources import ManualOpportunityInput
@@ -48,6 +51,33 @@ class RadarServiceProtocol(Protocol):
     ) -> Opportunity: ...
 
 
+class CommunityDigestPreviewServiceProtocol(Protocol):
+    def preview(
+        self,
+        *,
+        now: datetime,
+        policy: CommunityDigestPolicy | None = None,
+        render_options: CommunityDigestRenderOptions | None = None,
+    ) -> CommunityDigestPreview: ...
+
+
+class CommunityDigestPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["whatsapp", "markdown"] = "whatsapp"
+    timezone_name: str = Field(default="UTC", min_length=1)
+    title: str = Field(
+        default="Oportunidades y proyectos — Equipo Geoespacial",
+        min_length=1,
+    )
+    include_intro: bool = True
+    include_footer: bool = True
+    max_items: int = Field(default=10, ge=1, le=50)
+    max_per_source: int | None = Field(default=2, ge=1)
+    max_per_bucket: int | None = Field(default=None, ge=1)
+    min_freshness_score: float = Field(default=20.0, ge=0, le=100)
+
+
 class TargetRadarServiceProtocol(Protocol):
     def run(
         self,
@@ -65,6 +95,7 @@ def create_api_router(
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
     radar_service: RadarServiceProtocol | None = None,
+    community_digest_preview_service: CommunityDigestPreviewServiceProtocol | None = None,
     target_service: TargetRadarServiceProtocol | None = None,
     relationship_memory: RelationshipMemory | None = None,
 ) -> APIRouter:
@@ -137,6 +168,45 @@ def create_api_router(
             raise HTTPException(
                 status_code=502,
                 detail="Radar sources unavailable",
+            ) from exc
+
+    @router.post(
+        "/community/digest/preview",
+        response_model=CommunityDigestPreview,
+    )
+    def preview_community_digest(
+        request: CommunityDigestPreviewRequest | None = None,
+    ) -> CommunityDigestPreview:
+        if community_digest_preview_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Community digest preview unavailable",
+            )
+
+        resolved = request or CommunityDigestPreviewRequest()
+        try:
+            policy = CommunityDigestPolicy(
+                max_items=resolved.max_items,
+                max_per_source=resolved.max_per_source,
+                max_per_bucket=resolved.max_per_bucket,
+                min_freshness_score=resolved.min_freshness_score,
+            )
+            render_options = CommunityDigestRenderOptions(
+                title=resolved.title,
+                timezone_name=resolved.timezone_name,
+                include_intro=resolved.include_intro,
+                include_footer=resolved.include_footer,
+                format=resolved.format,
+            )
+            return community_digest_preview_service.preview(
+                now=datetime.now(timezone.utc),
+                policy=policy,
+                render_options=render_options,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid community digest preview options",
             ) from exc
 
     @router.post("/targets/radar/run", response_model=TargetAccountBatch)
