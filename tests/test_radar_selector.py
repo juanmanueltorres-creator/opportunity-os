@@ -6,6 +6,7 @@ from importlib import import_module
 from app.models.domain import Opportunity
 from app.radar.models import (
     ConfidenceAssessment,
+    DerivedValue,
     EligibilityResult,
     OpportunityEnrichment,
     RadarAssessment,
@@ -76,12 +77,16 @@ def _assessment(
     priority: float = 84.0,
     published_at: datetime | None = NOW - timedelta(days=1),
     discovery_origin: str = "targeted",
+    source: str = "manual",
+    source_url: str | None = None,
+    source_category: str | None = None,
 ) -> RadarAssessment:
+    resolved_source_url = source_url or f"https://example.com/jobs/{item_id}"
     opportunity = Opportunity(
         id=item_id,
-        source="manual",
+        source=source,
         source_id=item_id,
-        source_url=f"https://example.com/jobs/{item_id}",
+        source_url=resolved_source_url,
         company=company or f"Company {item_id}",
         title=title or f"Role {item_id}",
         description="Role description",
@@ -90,6 +95,16 @@ def _assessment(
     )
     enrichment = OpportunityEnrichment(
         opportunity_id=item_id,
+        source_category=(
+            DerivedValue[str](
+                value=source_category,
+                source_field="source",
+                extraction_method="source_structured",
+                confidence=1.0,
+            )
+            if source_category is not None
+            else None
+        ),
         extractor_version="rules-v1",
         taxonomy_versions={"esco": "1.2.1"},
         created_at=NOW,
@@ -295,3 +310,133 @@ def test_batch_metadata_is_explicit_and_counts_selected_lanes() -> None:
     assert batch.medium_count == 0
     assert batch.intent_counts == {"INCOME_NOW": 1, "CAREER": 1}
     assert batch.tier_counts == {"HIGH": 2}
+
+def test_source_cap_limits_one_marketplace_without_reordering_by_quota() -> None:
+    items = [
+        _assessment(
+            f"workana-{index}",
+            source_url=f"https://www.workana.com/job/{index}",
+        )
+        for index in range(4)
+    ]
+    items.extend(
+        _assessment(
+            f"freelancer-{index}",
+            source_url=f"https://www.freelancer.com/projects/gis/{index}",
+        )
+        for index in range(3)
+    )
+
+    batch = _select(
+        items,
+        policy=RadarPolicy(max_items=10, max_per_source=2),
+    )
+
+    hosts = [
+        item.opportunity.source_url.split("/")[2].removeprefix("www.")
+        for item in batch.items
+    ]
+    assert hosts.count("workana.com") == 2
+    assert hosts.count("freelancer.com") == 2
+    assert batch.count == 4
+
+
+def test_source_category_cap_limits_marketplace_family_across_platforms() -> None:
+    items = [
+        _assessment(
+            "workana-1",
+            source_url="https://workana.com/job/1",
+            source_category="FREELANCE_MARKETPLACE",
+        ),
+        _assessment(
+            "freelancer-1",
+            source_url="https://freelancer.com/projects/gis/1",
+            source_category="FREELANCE_MARKETPLACE",
+        ),
+        _assessment(
+            "cadcrowd-1",
+            source_url="https://cadcrowd.com/job/1",
+            source_category="FREELANCE_MARKETPLACE",
+        ),
+        _assessment(
+            "guru-1",
+            source_url="https://guru.com/jobs/1",
+            source_category="FREELANCE_MARKETPLACE",
+        ),
+        _assessment(
+            "geo-careers-1",
+            source_url="https://geo-careers.com/jobs/1",
+            source_category="NICHE_JOB_BOARD",
+        ),
+        _assessment(
+            "earthworks-1",
+            source_url="https://earthworks-jobs.com/jobs/1",
+            source_category="NICHE_JOB_BOARD",
+        ),
+    ]
+
+    batch = _select(
+        items,
+        policy=RadarPolicy(max_items=10, max_per_source_category=3),
+    )
+
+    categories = [
+        item.enrichment.source_category.value
+        for item in batch.items
+        if item.enrichment.source_category is not None
+    ]
+    assert categories.count("FREELANCE_MARKETPLACE") == 3
+    assert categories.count("NICHE_JOB_BOARD") == 2
+    assert batch.count == 5
+
+
+def test_unknown_source_category_is_not_collapsed_into_one_bucket() -> None:
+    items = [
+        _assessment(
+            f"unknown-{index}",
+            source_url=f"https://unknown-{index}.example/jobs/1",
+        )
+        for index in range(4)
+    ]
+
+    batch = _select(
+        items,
+        policy=RadarPolicy(max_items=10, max_per_source_category=1),
+    )
+
+    assert batch.count == 4
+
+
+def test_diversity_caps_never_promote_stretch_to_fill_capacity() -> None:
+    items = [
+        _assessment(
+            "high-a",
+            source_url="https://workana.com/job/a",
+        ),
+        _assessment(
+            "high-b",
+            source_url="https://workana.com/job/b",
+        ),
+        _assessment(
+            "stretch-other",
+            tier="STRETCH",
+            selected_intent=None,
+            income_viability=60.0,
+            source_url="https://freelancer.com/projects/gis/stretch",
+        ),
+    ]
+
+    batch = _select(
+        items,
+        policy=RadarPolicy(max_items=10, max_per_source=1),
+    )
+
+    assert [item.opportunity.id for item in batch.items] == ["high-a"]
+
+
+def test_default_policy_leaves_source_diversity_caps_disabled() -> None:
+    policy = RadarPolicy()
+
+    assert policy.max_per_source is None
+    assert policy.max_per_source_category is None
+
