@@ -7,6 +7,10 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.availability.daily_curation import (
+    DailyCurationPolicy,
+    DailyCurationRun,
+)
 from app.availability.models import OpportunityAvailability
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.review_evidence_draft import (
@@ -69,6 +73,43 @@ class RadarServiceProtocol(Protocol):
         *,
         now: datetime,
     ) -> Opportunity: ...
+
+
+class DailyCurationServiceProtocol(Protocol):
+    def run(
+        self,
+        *,
+        now: datetime,
+        policy: DailyCurationPolicy | None = None,
+        render_options: CommunityDigestRenderOptions | None = None,
+    ) -> DailyCurationRun: ...
+
+
+class DailyCurationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    review_batch_size: int = Field(default=5, ge=1, le=20)
+    held_items_limit: int = Field(default=20, ge=1, le=100)
+
+    candidate_lookback_days: int = Field(default=90, ge=1, le=365)
+    deadline_soon_days: int = Field(default=2, ge=0, le=30)
+    standard_reverify_after_days: int = Field(default=7, ge=1, le=365)
+    fast_market_reverify_after_days: int = Field(default=2, ge=1, le=90)
+    fast_market_max_age_days: int = Field(default=14, ge=1, le=90)
+
+    digest_max_items: int = Field(default=10, ge=1, le=50)
+    digest_max_per_source: int | None = Field(default=2, ge=1)
+    digest_max_per_bucket: int | None = Field(default=None, ge=1)
+    digest_min_freshness_score: float = Field(default=20.0, ge=0, le=100)
+
+    format: Literal["whatsapp", "markdown"] = "whatsapp"
+    timezone_name: str = Field(default="UTC", min_length=1)
+    title: str = Field(
+        default="Oportunidades y proyectos — Equipo Geoespacial",
+        min_length=1,
+    )
+    include_intro: bool = True
+    include_footer: bool = True
 
 
 class ReviewEvidenceDraftServiceProtocol(Protocol):
@@ -141,6 +182,7 @@ class CommunityDigestPreviewServiceProtocol(Protocol):
         now: datetime,
         policy: CommunityDigestPolicy | None = None,
         render_options: CommunityDigestRenderOptions | None = None,
+        excluded_opportunity_ids: set[str] | None = None,
     ) -> CommunityDigestPreview: ...
 
 
@@ -179,6 +221,7 @@ def create_api_router(
     verification_queue_service: VerificationQueueServiceProtocol | None = None,
     verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
     review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
+    daily_curation_service: DailyCurationServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -222,6 +265,62 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/curation/daily",
+        response_model=DailyCurationRun,
+    )
+    def run_daily_curation(
+        request: DailyCurationRequest | None = None,
+    ) -> DailyCurationRun:
+        if daily_curation_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Daily curation unavailable",
+            )
+        resolved = request or DailyCurationRequest()
+        try:
+            queue_policy = VerificationQueuePolicy(
+                max_items=max(resolved.review_batch_size, 20),
+                candidate_lookback_days=resolved.candidate_lookback_days,
+                deadline_soon_days=resolved.deadline_soon_days,
+                standard_reverify_after_days=(
+                    resolved.standard_reverify_after_days
+                ),
+                fast_market_reverify_after_days=(
+                    resolved.fast_market_reverify_after_days
+                ),
+                fast_market_max_age_days=resolved.fast_market_max_age_days,
+            )
+            digest_policy = CommunityDigestPolicy(
+                max_items=resolved.digest_max_items,
+                max_per_source=resolved.digest_max_per_source,
+                max_per_bucket=resolved.digest_max_per_bucket,
+                min_freshness_score=resolved.digest_min_freshness_score,
+            )
+            policy = DailyCurationPolicy(
+                review_batch_size=resolved.review_batch_size,
+                held_items_limit=resolved.held_items_limit,
+                queue_policy=queue_policy,
+                digest_policy=digest_policy,
+            )
+            render_options = CommunityDigestRenderOptions(
+                title=resolved.title,
+                timezone_name=resolved.timezone_name,
+                include_intro=resolved.include_intro,
+                include_footer=resolved.include_footer,
+                format=resolved.format,
+            )
+            return daily_curation_service.run(
+                now=datetime.now(timezone.utc),
+                policy=policy,
+                render_options=render_options,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid daily curation options",
+            ) from exc
 
     @router.post(
         "/availability/verification/draft",
