@@ -12,6 +12,7 @@ from app.availability.daily_curation import (
     DailyCurationService,
 )
 from app.availability.verification_queue import VerificationReason
+from app.availability.verification_review_session import VerificationReviewCard
 from app.radar.community_digest_renderer import CommunityDigestRenderOptions
 from app.radar.models import StrictRadarModel
 
@@ -70,6 +71,7 @@ class OperatorReviewItem(StrictRadarModel):
     checklist: list[str] = Field(default_factory=list)
     next_endpoint: str = "/api/v1/availability/verification/draft"
     card_sha256: str = Field(min_length=64, max_length=64)
+    card: VerificationReviewCard
 
 
 class OperatorPublishableSummary(StrictRadarModel):
@@ -176,6 +178,7 @@ def render_daily_curation_operator_view(
                 else []
             ),
             card_sha256=card.card_sha256,
+            card=card,
         )
         for card in run.review.cards
     ]
