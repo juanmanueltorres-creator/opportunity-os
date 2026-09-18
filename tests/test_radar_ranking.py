@@ -214,4 +214,3 @@ def test_source_diversity_caps_must_be_positive_when_configured() -> None:
         match="max_per_source_category must be positive",
     ):
         RadarPolicy(max_per_source_category=0)
-
