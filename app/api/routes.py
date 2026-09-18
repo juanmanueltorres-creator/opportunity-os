@@ -9,6 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.availability.models import OpportunityAvailability
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.availability.verification_models import (
+    VerificationConfirmRequest,
+    VerificationConfirmResult,
+    VerificationEvidence,
+    VerificationPreview,
+)
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
@@ -53,6 +59,20 @@ class RadarServiceProtocol(Protocol):
     ) -> Opportunity: ...
 
 
+class AvailabilityVerificationServiceProtocol(Protocol):
+    def preview(
+        self,
+        evidence: VerificationEvidence,
+    ) -> VerificationPreview: ...
+
+    def confirm(
+        self,
+        request: VerificationConfirmRequest,
+        *,
+        processed_at: datetime,
+    ) -> VerificationConfirmResult: ...
+
+
 class CommunityDigestPreviewServiceProtocol(Protocol):
     def preview(
         self,
@@ -94,6 +114,7 @@ def create_api_router(
     *,
     repository: SQLiteOpportunityRepository,
     availability_repository: SQLiteAvailabilityRepository | None = None,
+    availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -137,6 +158,37 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/availability/verification/preview",
+        response_model=VerificationPreview,
+    )
+    def preview_availability_verification(
+        evidence: VerificationEvidence,
+    ) -> VerificationPreview:
+        if availability_verification_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Availability verification unavailable",
+            )
+        return availability_verification_service.preview(evidence)
+
+    @router.post(
+        "/availability/verification/confirm",
+        response_model=VerificationConfirmResult,
+    )
+    def confirm_availability_verification(
+        request: VerificationConfirmRequest,
+    ) -> VerificationConfirmResult:
+        if availability_verification_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Availability verification unavailable",
+            )
+        return availability_verification_service.confirm(
+            request,
+            processed_at=datetime.now(timezone.utc),
+        )
 
     @router.post("/opportunities/manual", response_model=Opportunity)
     def import_manual_opportunity(manual: ManualOpportunityInput) -> Opportunity:
