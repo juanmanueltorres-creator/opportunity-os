@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from pydantic import Field, field_validator
 
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.radar.community_digest import (
     CommunityDigest,
     CommunityDigestCandidate,
@@ -41,12 +42,14 @@ class CommunityDigestPreviewService:
         *,
         opportunity_repository: SQLiteOpportunityRepository,
         extractor: RuleBasedRequirementExtractor,
+        availability_repository: SQLiteAvailabilityRepository | None = None,
         candidate_lookback_days: int = 90,
     ) -> None:
         if candidate_lookback_days < 1:
             raise ValueError("candidate_lookback_days must be positive")
         self.opportunity_repository = opportunity_repository
         self.extractor = extractor
+        self.availability_repository = availability_repository
         self.candidate_lookback_days = candidate_lookback_days
 
     def preview(
@@ -67,6 +70,11 @@ class CommunityDigestPreviewService:
             CommunityDigestCandidate(
                 opportunity=opportunity,
                 enrichment=self.extractor.extract(opportunity),
+                availability=(
+                    self.availability_repository.get(opportunity.id)
+                    if self.availability_repository is not None
+                    else None
+                ),
             )
             for opportunity in opportunities
         ]
