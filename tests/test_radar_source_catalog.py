@@ -34,6 +34,22 @@ def test_public_source_catalog_loads_and_resolves_observed_channels() -> None:
     assert reddit.verification_required is True
 
 
+def test_source_catalog_can_resolve_exact_url_host_for_manual_imports() -> None:
+    module = _module()
+    catalog = module.load_source_catalog(Path("config/source_catalog.yaml"))
+
+    entry = catalog.resolve(
+        "manual",
+        "https://www.workana.com/job/example-project?utm_source=test",
+    )
+
+    assert entry is not None
+    assert entry.key == "workana"
+    assert entry.category == "FREELANCE_MARKETPLACE"
+
+
+
+
 def test_unknown_source_is_not_inferred_from_partial_text() -> None:
     module = _module()
     catalog = module.load_source_catalog(Path("config/source_catalog.yaml"))
