@@ -63,7 +63,14 @@ def _app(
     )
 
 
-def test_verification_api_is_disabled_by_default_write_policy(tmp_path) -> None:
+def test_verification_api_is_disabled_by_default_write_policy(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv(
+        "OPPORTUNITY_AVAILABILITY_VERIFICATION_ENABLED",
+        raising=False,
+    )
     opportunities, availability, _ = _repositories(tmp_path)
     app = create_app(
         repository=opportunities,
@@ -73,7 +80,6 @@ def test_verification_api_is_disabled_by_default_write_policy(tmp_path) -> None:
         enable_default_community_digest_preview=False,
         enable_default_targets=False,
         enable_default_relationships=False,
-        enable_availability_verification=False,
     )
     now = datetime.now(timezone.utc)
 
