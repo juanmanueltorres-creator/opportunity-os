@@ -14,13 +14,14 @@ def test_public_source_catalog_loads_and_resolves_observed_channels() -> None:
     module = _module()
     catalog = module.load_source_catalog(Path("config/source_catalog.yaml"))
 
-    assert catalog.version == "source-catalog-v1"
+    assert catalog.version == "source-catalog-v2"
 
     workana = catalog.resolve("workana.com")
     assert workana is not None
     assert workana.key == "workana"
     assert workana.category == "FREELANCE_MARKETPLACE"
     assert workana.authority == "DIRECT_PLATFORM"
+    assert workana.freshness_policy == "fast_market_project"
     assert workana.default_channel_tags == ["freelance", "project"]
 
     geo_careers = catalog.resolve("GEO-CAREERS.COM")
