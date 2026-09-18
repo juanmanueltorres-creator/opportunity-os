@@ -27,6 +27,10 @@ class AvailabilityObservation(StrictRadarModel):
     evidence_source: str = Field(min_length=1)
     source_url: str | None = None
     note: str | None = None
+    evidence_kind: str | None = None
+    confirmed_by: str | None = None
+    confirmed_at: datetime | None = None
+    preview_sha256: str | None = None
 
     @field_validator("observed_at")
     @classmethod
@@ -43,7 +47,25 @@ class AvailabilityObservation(StrictRadarModel):
             raise ValueError("evidence_source must not be blank")
         return normalized
 
-    @field_validator("source_url", "note")
+    @field_validator("confirmed_at")
+    @classmethod
+    def confirmed_at_must_be_aware(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("confirmed_at must be timezone-aware")
+        return value.astimezone(timezone.utc)
+
+    @field_validator(
+        "source_url",
+        "note",
+        "evidence_kind",
+        "confirmed_by",
+        "preview_sha256",
+    )
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:
