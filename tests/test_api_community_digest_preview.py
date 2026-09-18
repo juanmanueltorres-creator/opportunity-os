@@ -25,7 +25,7 @@ def _opportunity(item_id: str) -> Opportunity:
         source="workana",
         source_id=item_id,
         source_url=f"https://workana.com/job/{item_id}?utm_source=chatgpt.com",
-        company="Example Client",
+        company=f"Example Client {item_id}",
         title="GIS Forest Mapping",
         description="QGIS remote sensing project",
         discovered_at=NOW - timedelta(hours=1),
