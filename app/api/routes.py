@@ -9,6 +9,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.availability.models import OpportunityAvailability
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.availability.review_evidence_draft import (
+    ReviewEvidenceDraft,
+    ReviewEvidenceDraftRequest,
+)
 from app.availability.verification_models import (
     VerificationConfirmRequest,
     VerificationConfirmResult,
@@ -65,6 +69,15 @@ class RadarServiceProtocol(Protocol):
         *,
         now: datetime,
     ) -> Opportunity: ...
+
+
+class ReviewEvidenceDraftServiceProtocol(Protocol):
+    def build(
+        self,
+        request: ReviewEvidenceDraftRequest,
+        *,
+        now: datetime,
+    ) -> ReviewEvidenceDraft: ...
 
 
 class VerificationReviewSessionServiceProtocol(Protocol):
@@ -165,6 +178,7 @@ def create_api_router(
     availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
     verification_queue_service: VerificationQueueServiceProtocol | None = None,
     verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
+    review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -208,6 +222,23 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/availability/verification/draft",
+        response_model=ReviewEvidenceDraft,
+    )
+    def build_review_evidence_draft(
+        request: ReviewEvidenceDraftRequest,
+    ) -> ReviewEvidenceDraft:
+        if review_evidence_draft_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Review evidence draft unavailable",
+            )
+        return review_evidence_draft_service.build(
+            request,
+            now=datetime.now(timezone.utc),
+        )
 
     @router.post(
         "/availability/verification/session",
