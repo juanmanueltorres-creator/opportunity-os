@@ -9,10 +9,12 @@ from fastapi import FastAPI
 from app.adapters.gmail_read.api import create_gmail_read_router
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_service import AvailabilityVerificationService
+from app.availability.verification_queue import VerificationQueueService
 from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
+    VerificationQueueServiceProtocol,
     RadarServiceProtocol,
     TargetRadarServiceProtocol,
     create_api_router,
@@ -180,6 +182,8 @@ def create_app(
     availability_repository: SQLiteAvailabilityRepository | None = None,
     availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
     enable_availability_verification: bool | None = None,
+    verification_queue_service: VerificationQueueServiceProtocol | None = None,
+    enable_default_verification_queue: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -305,6 +309,30 @@ def create_app(
             availability_repository=resolved_availability_repository,
         )
 
+    resolved_verification_queue_service = verification_queue_service
+    if (
+        resolved_verification_queue_service is None
+        and enable_default_verification_queue
+    ):
+        queue_source_catalog = _load_default_source_catalog()
+        queue_extractor = (
+            default_extractor
+            if default_extractor is not None
+            else RuleBasedRequirementExtractor(
+                source_catalog=queue_source_catalog,
+            )
+        )
+        resolved_verification_queue_service = VerificationQueueService(
+            opportunity_repository=resolved_repository,
+            availability_repository=resolved_availability_repository,
+            extractor=queue_extractor,
+            source_catalog=(
+                queue_extractor.source_catalog
+                if queue_extractor.source_catalog is not None
+                else queue_source_catalog
+            ),
+        )
+
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
         resolved_target_service = _load_default_target_service(
@@ -334,6 +362,7 @@ def create_app(
             repository=resolved_repository,
             availability_repository=resolved_availability_repository,
             availability_verification_service=resolved_availability_verification_service,
+            verification_queue_service=resolved_verification_queue_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
