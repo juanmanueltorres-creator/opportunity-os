@@ -35,10 +35,33 @@ class SQLiteAvailabilityRepository:
                     observed_at TEXT NOT NULL,
                     evidence_source TEXT NOT NULL,
                     source_url TEXT,
-                    note TEXT
+                    note TEXT,
+                    evidence_kind TEXT,
+                    confirmed_by TEXT,
+                    confirmed_at TEXT,
+                    preview_sha256 TEXT
                 )
                 """
             )
+            columns = {
+                row["name"]
+                for row in conn.execute(
+                    "PRAGMA table_info(opportunity_availability_observations)"
+                ).fetchall()
+            }
+            migrations = {
+                "evidence_kind": "TEXT",
+                "confirmed_by": "TEXT",
+                "confirmed_at": "TEXT",
+                "preview_sha256": "TEXT",
+            }
+            for column, sql_type in migrations.items():
+                if column not in columns:
+                    conn.execute(
+                        "ALTER TABLE opportunity_availability_observations "
+                        f"ADD COLUMN {column} {sql_type}"
+                    )
+
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_availability_opportunity_time
@@ -66,8 +89,12 @@ class SQLiteAvailabilityRepository:
                     observed_at,
                     evidence_source,
                     source_url,
-                    note
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    note,
+                    evidence_kind,
+                    confirmed_by,
+                    confirmed_at,
+                    preview_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     observation.opportunity_id,
@@ -76,6 +103,14 @@ class SQLiteAvailabilityRepository:
                     observation.evidence_source,
                     observation.source_url,
                     observation.note,
+                    observation.evidence_kind,
+                    observation.confirmed_by,
+                    (
+                        observation.confirmed_at.isoformat()
+                        if observation.confirmed_at is not None
+                        else None
+                    ),
+                    observation.preview_sha256,
                 ),
             )
 
@@ -134,7 +169,11 @@ class SQLiteAvailabilityRepository:
                     observed_at,
                     evidence_source,
                     source_url,
-                    note
+                    note,
+                    evidence_kind,
+                    confirmed_by,
+                    confirmed_at,
+                    preview_sha256
                 FROM opportunity_availability_observations
                 WHERE opportunity_id = ?
                 ORDER BY observed_at ASC, id ASC
