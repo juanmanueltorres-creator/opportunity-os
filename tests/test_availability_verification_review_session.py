@@ -270,13 +270,15 @@ def test_session_id_changes_when_review_snapshot_changes(tmp_path) -> None:
 
     availability.record_seen(
         stored.id,
-        observed_at=NOW + timedelta(minutes=1),
+        observed_at=NOW,
         evidence_source="linkedin",
         source_url=stored.source_url,
     )
-    after = service.build(now=NOW + timedelta(minutes=1))
+    after = service.build(now=NOW)
 
     assert before.session_id != after.session_id
+    assert before.cards[0].last_seen_at is None
+    assert after.cards[0].last_seen_at == NOW
 
 
 def test_custom_queue_policy_flows_into_session(tmp_path) -> None:
