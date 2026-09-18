@@ -7,6 +7,7 @@ import httpx
 from fastapi import FastAPI
 
 from app.adapters.gmail_read.api import create_gmail_read_router
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     CommunityDigestPreviewServiceProtocol,
@@ -160,6 +161,7 @@ def _alias_registry_path() -> Path:
 
 def create_app(
     repository: SQLiteOpportunityRepository | None = None,
+    availability_repository: SQLiteAvailabilityRepository | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -179,6 +181,10 @@ def create_app(
 ) -> FastAPI:
     resolved_repository = repository or SQLiteOpportunityRepository(
         os.getenv("OPPORTUNITY_DB_PATH", "opportunities.db")
+    )
+    resolved_availability_repository = (
+        availability_repository
+        or SQLiteAvailabilityRepository(resolved_repository.path)
     )
     resolved_profile = profile if profile is not None else _load_default_profile()
     timeout_seconds = _http_timeout_seconds()
@@ -248,6 +254,7 @@ def create_app(
             ),
             extractor=default_extractor,
             resolver=resolver,
+            availability_repository=resolved_availability_repository,
         )
     else:
         enrichment_repository = None
@@ -274,6 +281,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         resolved_repository.initialize()
+        resolved_availability_repository.initialize()
         if enrichment_repository is not None:
             enrichment_repository.initialize()
         try:
@@ -291,6 +299,7 @@ def create_app(
     api.include_router(
         create_api_router(
             repository=resolved_repository,
+            availability_repository=resolved_availability_repository,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
