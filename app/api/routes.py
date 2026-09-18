@@ -11,6 +11,10 @@ from app.availability.daily_curation import (
     DailyCurationPolicy,
     DailyCurationRun,
 )
+from app.availability.daily_curation_operator_view import (
+    DailyCurationOperatorView,
+    DailyCurationOperatorViewOptions,
+)
 from app.availability.models import OpportunityAvailability
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.review_evidence_draft import (
@@ -75,6 +79,17 @@ class RadarServiceProtocol(Protocol):
     ) -> Opportunity: ...
 
 
+class DailyCurationOperatorViewServiceProtocol(Protocol):
+    def build(
+        self,
+        *,
+        now: datetime,
+        policy: DailyCurationPolicy | None = None,
+        digest_render_options: CommunityDigestRenderOptions | None = None,
+        view_options: DailyCurationOperatorViewOptions | None = None,
+    ) -> DailyCurationOperatorView: ...
+
+
 class DailyCurationServiceProtocol(Protocol):
     def run(
         self,
@@ -110,6 +125,16 @@ class DailyCurationRequest(BaseModel):
     )
     include_intro: bool = True
     include_footer: bool = True
+
+
+class DailyCurationOperatorViewRequest(DailyCurationRequest):
+    view_title: str = Field(
+        default="Opportunity OS — Daily Curation",
+        min_length=1,
+    )
+    view_format: Literal["markdown", "plain"] = "markdown"
+    include_review_checklists: bool = True
+    include_held_details: bool = True
 
 
 class ReviewEvidenceDraftServiceProtocol(Protocol):
@@ -222,6 +247,7 @@ def create_api_router(
     verification_review_session_service: VerificationReviewSessionServiceProtocol | None = None,
     review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
     daily_curation_service: DailyCurationServiceProtocol | None = None,
+    daily_curation_operator_view_service: DailyCurationOperatorViewServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -265,6 +291,69 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/curation/daily/view",
+        response_model=DailyCurationOperatorView,
+    )
+    def build_daily_curation_operator_view(
+        request: DailyCurationOperatorViewRequest | None = None,
+    ) -> DailyCurationOperatorView:
+        if daily_curation_operator_view_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Daily curation operator view unavailable",
+            )
+        resolved = request or DailyCurationOperatorViewRequest()
+        try:
+            queue_policy = VerificationQueuePolicy(
+                max_items=max(resolved.review_batch_size, 20),
+                candidate_lookback_days=resolved.candidate_lookback_days,
+                deadline_soon_days=resolved.deadline_soon_days,
+                standard_reverify_after_days=(
+                    resolved.standard_reverify_after_days
+                ),
+                fast_market_reverify_after_days=(
+                    resolved.fast_market_reverify_after_days
+                ),
+                fast_market_max_age_days=resolved.fast_market_max_age_days,
+            )
+            digest_policy = CommunityDigestPolicy(
+                max_items=resolved.digest_max_items,
+                max_per_source=resolved.digest_max_per_source,
+                max_per_bucket=resolved.digest_max_per_bucket,
+                min_freshness_score=resolved.digest_min_freshness_score,
+            )
+            policy = DailyCurationPolicy(
+                review_batch_size=resolved.review_batch_size,
+                held_items_limit=resolved.held_items_limit,
+                queue_policy=queue_policy,
+                digest_policy=digest_policy,
+            )
+            digest_render_options = CommunityDigestRenderOptions(
+                title=resolved.title,
+                timezone_name=resolved.timezone_name,
+                include_intro=resolved.include_intro,
+                include_footer=resolved.include_footer,
+                format=resolved.format,
+            )
+            view_options = DailyCurationOperatorViewOptions(
+                title=resolved.view_title,
+                format=resolved.view_format,
+                include_checklists=resolved.include_review_checklists,
+                include_held_details=resolved.include_held_details,
+            )
+            return daily_curation_operator_view_service.build(
+                now=datetime.now(timezone.utc),
+                policy=policy,
+                digest_render_options=digest_render_options,
+                view_options=view_options,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid daily curation operator view options",
+            ) from exc
 
     @router.post(
         "/curation/daily",
