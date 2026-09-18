@@ -165,6 +165,7 @@ class OpportunityEnrichment(StrictRadarModel):
     contract_duration: DerivedValue[str] | None = None
     application_friction: DerivedValue[str] | None = None
     source_category: DerivedValue[str] | None = None
+    canonical_url: DerivedValue[str] | None = None
     extractor_version: str = Field(min_length=1)
     taxonomy_versions: dict[str, str] = Field(default_factory=dict)
     created_at: datetime
