@@ -439,4 +439,3 @@ def test_default_policy_leaves_source_diversity_caps_disabled() -> None:
 
     assert policy.max_per_source is None
     assert policy.max_per_source_category is None
-
