@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.availability.models import OpportunityAvailability
 from app.models.domain import Opportunity
 from app.radar.community_digest import (
@@ -376,3 +378,20 @@ def test_availability_state_changes_digest_id_when_public_output_changes() -> No
     verified = build_community_digest([verified_candidate], now=NOW)
 
     assert unverified.digest_id != verified.digest_id
+
+
+def test_digest_candidate_rejects_availability_from_another_opportunity() -> None:
+    assessment = _assessment("candidate-a")
+
+    with pytest.raises(
+        ValueError,
+        match="availability opportunity_id must match opportunity.id",
+    ):
+        CommunityDigestCandidate(
+            opportunity=assessment.opportunity,
+            enrichment=assessment.enrichment,
+            availability=_availability(
+                "candidate-b",
+                state="UNVERIFIED",
+            ),
+        )
