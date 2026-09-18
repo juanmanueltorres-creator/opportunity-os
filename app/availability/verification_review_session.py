@@ -8,6 +8,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
+from app.availability.models import AvailabilityState
 from app.availability.verification_models import VerificationEvidenceKind
 from app.availability.verification_queue import (
     VerificationAction,
@@ -50,6 +51,10 @@ class VerificationReviewCard(StrictRadarModel):
     title: str = Field(min_length=1)
     company: str = Field(min_length=1)
     review_url: str = Field(min_length=1)
+    source_key: str | None = None
+    source_category: str | None = None
+    availability_state: AvailabilityState
+    last_seen_at: datetime | None = None
     priority_score: int = Field(ge=0, le=100)
     reason_codes: list[str] = Field(min_length=1)
     suggested_action: VerificationAction
@@ -62,7 +67,11 @@ class VerificationReviewCard(StrictRadarModel):
     )
     external_actions: list[str] = Field(default_factory=list)
 
-    @field_validator("application_deadline", "last_verified_at")
+    @field_validator(
+        "last_seen_at",
+        "application_deadline",
+        "last_verified_at",
+    )
     @classmethod
     def dates_must_be_aware(
         cls,
@@ -172,6 +181,10 @@ def _review_card(
         title=item.title,
         company=item.company,
         review_url=item.source_url,
+        source_key=item.source_key,
+        source_category=item.source_category,
+        availability_state=item.availability_state,
+        last_seen_at=item.last_seen_at,
         priority_score=item.priority_score,
         reason_codes=list(item.reason_codes),
         suggested_action=item.suggested_action,
@@ -253,6 +266,14 @@ def _session_id(
                 "reason_codes": card.reason_codes,
                 "suggested_action": card.suggested_action,
                 "review_url": card.review_url,
+                "source_key": card.source_key,
+                "source_category": card.source_category,
+                "availability_state": card.availability_state,
+                "last_seen_at": (
+                    card.last_seen_at.isoformat()
+                    if card.last_seen_at is not None
+                    else None
+                ),
                 "last_verified_at": (
                     card.last_verified_at.isoformat()
                     if card.last_verified_at is not None
