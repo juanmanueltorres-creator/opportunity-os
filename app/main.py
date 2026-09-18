@@ -8,8 +8,10 @@ from fastapi import FastAPI
 
 from app.adapters.gmail_read.api import create_gmail_read_router
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.availability.verification_service import AvailabilityVerificationService
 from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
+    AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
     RadarServiceProtocol,
     TargetRadarServiceProtocol,
@@ -66,6 +68,20 @@ def _operator_import_enabled() -> bool:
     if raw in {"0", "false", "no", "off", ""}:
         return False
     raise ValueError("OPPORTUNITY_OPERATOR_IMPORT_ENABLED must be boolean")
+
+
+def _availability_verification_enabled() -> bool:
+    raw = os.getenv(
+        "OPPORTUNITY_AVAILABILITY_VERIFICATION_ENABLED",
+        "false",
+    ).strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError(
+        "OPPORTUNITY_AVAILABILITY_VERIFICATION_ENABLED must be boolean"
+    )
 
 
 def _gmail_read_enabled() -> bool:
@@ -162,6 +178,8 @@ def _alias_registry_path() -> Path:
 def create_app(
     repository: SQLiteOpportunityRepository | None = None,
     availability_repository: SQLiteAvailabilityRepository | None = None,
+    availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
+    enable_availability_verification: bool | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -188,6 +206,20 @@ def create_app(
     )
     resolved_profile = profile if profile is not None else _load_default_profile()
     timeout_seconds = _http_timeout_seconds()
+    availability_verification_enabled = (
+        enable_availability_verification
+        if enable_availability_verification is not None
+        else _availability_verification_enabled()
+    )
+    resolved_availability_verification_service = availability_verification_service
+    if (
+        availability_verification_enabled
+        and resolved_availability_verification_service is None
+    ):
+        resolved_availability_verification_service = AvailabilityVerificationService(
+            opportunity_repository=resolved_repository,
+            availability_repository=resolved_availability_repository,
+        )
 
     if relationship_memory is not None:
         resolved_relationship_memory = relationship_memory
@@ -301,6 +333,7 @@ def create_app(
         create_api_router(
             repository=resolved_repository,
             availability_repository=resolved_availability_repository,
+            availability_verification_service=resolved_availability_verification_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
