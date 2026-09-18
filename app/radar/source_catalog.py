@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from app.radar.models import FreshnessPolicy
+
 
 SourceCategory = Literal[
     "DIRECT_ATS",
@@ -59,6 +61,7 @@ class SourceCatalogEntry(StrictSourceCatalogModel):
     category: SourceCategory
     authority: SourceAuthority
     freshness_mode: SourceFreshnessMode
+    freshness_policy: FreshnessPolicy = "standard_job"
     default_channel_tags: list[str] = Field(default_factory=list)
     publishable: bool
     verification_required: bool
