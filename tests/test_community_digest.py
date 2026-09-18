@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from app.availability.models import OpportunityAvailability
 from app.models.domain import Opportunity
 from app.radar.community_digest import (
+    CommunityDigestCandidate,
     CommunityDigestPolicy,
     build_community_digest,
 )
