@@ -10,7 +10,8 @@ from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 
-from app.radar.models import RadarAssessment, StrictRadarModel
+from app.models.domain import Opportunity
+from app.radar.models import OpportunityEnrichment, RadarAssessment, StrictRadarModel
 
 
 DigestBucket = Literal[
@@ -112,6 +113,11 @@ class CommunityDigestPolicy:
             raise ValueError("min_freshness_score must be within 0..100")
 
 
+class CommunityDigestCandidate(StrictRadarModel):
+    opportunity: Opportunity
+    enrichment: OpportunityEnrichment
+
+
 class CommunityDigestItem(StrictRadarModel):
     opportunity_id: str = Field(min_length=1)
     bucket: DigestBucket
@@ -157,7 +163,7 @@ class CommunityDigest(StrictRadarModel):
 
 
 def build_community_digest(
-    assessments: list[RadarAssessment],
+    assessments: list[RadarAssessment | CommunityDigestCandidate],
     *,
     now: datetime,
     policy: CommunityDigestPolicy | None = None,
@@ -219,7 +225,7 @@ def build_community_digest(
 
 
 def _project_item(
-    assessment: RadarAssessment,
+    assessment: RadarAssessment | CommunityDigestCandidate,
     now: datetime,
 ) -> CommunityDigestItem | None:
     opportunity = assessment.opportunity
@@ -274,7 +280,9 @@ def _project_item(
     )
 
 
-def _bucket_tags(assessment: RadarAssessment) -> list[DigestBucket]:
+def _bucket_tags(
+    assessment: RadarAssessment | CommunityDigestCandidate,
+) -> list[DigestBucket]:
     opportunity = assessment.opportunity
     enrichment = assessment.enrichment
     source_category = (
@@ -329,7 +337,10 @@ def _primary_bucket(tags: list[DigestBucket]) -> DigestBucket:
     return next(bucket for bucket in priority if bucket in tags)
 
 
-def _freshness_score(assessment: RadarAssessment, now: datetime) -> float:
+def _freshness_score(
+    assessment: RadarAssessment | CommunityDigestCandidate,
+    now: datetime,
+) -> float:
     opportunity = assessment.opportunity
     enrichment = assessment.enrichment
     deadline = (
@@ -367,7 +378,10 @@ def _freshness_score(assessment: RadarAssessment, now: datetime) -> float:
     return 0.0
 
 
-def _selection_score(assessment: RadarAssessment, freshness_score: float) -> float:
+def _selection_score(
+    assessment: RadarAssessment | CommunityDigestCandidate,
+    freshness_score: float,
+) -> float:
     enrichment = assessment.enrichment
     source_quality = {
         "DIRECT_ATS": 100.0,
@@ -385,7 +399,9 @@ def _selection_score(assessment: RadarAssessment, freshness_score: float) -> flo
     )
 
 
-def _actionability_completeness(assessment: RadarAssessment) -> float:
+def _actionability_completeness(
+    assessment: RadarAssessment | CommunityDigestCandidate,
+) -> float:
     opportunity = assessment.opportunity
     enrichment = assessment.enrichment
     signals = [
