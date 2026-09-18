@@ -18,6 +18,7 @@ from app.process_email.service import ProcessEmailService
 from app.profiles import load_profile
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
+from app.radar.source_catalog import SourceCatalog, load_source_catalog
 from app.radar.sources import SourceRegistry, build_connectors, load_source_config
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
 from app.relationships.context import (
@@ -83,6 +84,18 @@ def _load_source_registry() -> SourceRegistry:
     if not path.exists():
         return SourceRegistry(sources=[])
     return load_source_config(path)
+
+
+def _load_default_source_catalog() -> SourceCatalog | None:
+    path = Path(
+        os.getenv(
+            "OPPORTUNITY_SOURCE_CATALOG_PATH",
+            "config/source_catalog.yaml",
+        )
+    )
+    if not path.exists():
+        return None
+    return load_source_catalog(path)
 
 
 def _relationship_path() -> Path:
@@ -208,7 +221,9 @@ def create_app(
                 owned_http_client,
                 timeout_seconds=timeout_seconds,
             ),
-            extractor=RuleBasedRequirementExtractor(),
+            extractor=RuleBasedRequirementExtractor(
+                source_catalog=_load_default_source_catalog(),
+            ),
             resolver=resolver,
         )
     else:
