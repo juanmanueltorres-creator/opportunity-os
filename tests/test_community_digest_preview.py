@@ -255,3 +255,37 @@ def test_preview_remains_backward_compatible_without_availability_repository(tmp
 
     assert preview.digest.count == 1
     assert preview.digest.items[0].availability_state == "UNVERIFIED"
+
+
+def test_preview_exclusions_apply_before_source_caps_and_allow_backfill(tmp_path) -> None:
+    service, repository, _ = _service(tmp_path)
+    first, _ = repository.upsert(
+        _opportunity(
+            "held-first",
+            source="workana",
+            source_url="https://workana.com/job/held-first",
+            published_at=NOW - timedelta(hours=1),
+        )
+    )
+    second, _ = repository.upsert(
+        _opportunity(
+            "publishable-second",
+            source="workana",
+            source_url="https://workana.com/job/publishable-second",
+            published_at=NOW - timedelta(hours=2),
+            title="QGIS Mapping Project",
+        )
+    )
+
+    preview = service.preview(
+        now=NOW,
+        policy=CommunityDigestPolicy(
+            max_items=1,
+            max_per_source=1,
+        ),
+        excluded_opportunity_ids={first.id},
+    )
+
+    assert preview.candidate_count == 1
+    assert preview.digest.count == 1
+    assert preview.digest.items[0].opportunity_id == second.id
