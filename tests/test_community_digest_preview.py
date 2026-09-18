@@ -59,7 +59,7 @@ def _opportunity(
         source=source,
         source_id=item_id,
         source_url=source_url or f"https://workana.com/job/{item_id}",
-        company="Example Client",
+        company=f"Example Client {item_id}",
         title=title,
         description=description,
         discovered_at=NOW - timedelta(hours=1),
