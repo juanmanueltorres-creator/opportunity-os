@@ -312,3 +312,39 @@ def test_queue_limit_never_promotes_non_reviewable_items(tmp_path) -> None:
         item.source_key == "linkedin"
         for item in queue.items
     )
+
+
+def test_unknown_source_fails_conservatively_into_verification_queue(tmp_path) -> None:
+    service, repository, _ = _service(tmp_path)
+    repository.upsert(
+        _opportunity(
+            "unknown",
+            source="mystery-board",
+            source_url="https://jobs.unknown.example/role/1",
+        )
+    )
+
+    queue = service.build(now=NOW)
+
+    assert queue.count == 1
+    assert queue.items[0].source_key is None
+    assert queue.items[0].reason_codes == ["SOURCE_REQUIRES_VERIFICATION"]
+    assert queue.items[0].priority_score == 80
+
+
+def test_direct_official_near_deadline_does_not_create_manual_review_work(
+    tmp_path,
+) -> None:
+    service, repository, _ = _service(tmp_path)
+    repository.upsert(
+        _opportunity(
+            "official-deadline",
+            source="greenhouse",
+            source_url="https://boards.greenhouse.io/acme/jobs/2",
+            description="QGIS role. Deadline: 19/09/2026",
+        )
+    )
+
+    queue = service.build(now=NOW)
+
+    assert queue.count == 0
