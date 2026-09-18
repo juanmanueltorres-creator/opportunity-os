@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -35,7 +35,9 @@ REVIEW_SESSION_VERSION = "verification-review-session-v1"
 @dataclass(frozen=True)
 class VerificationReviewSessionPolicy:
     batch_size: int = 5
-    queue_policy: VerificationQueuePolicy = VerificationQueuePolicy()
+    queue_policy: VerificationQueuePolicy = field(
+        default_factory=VerificationQueuePolicy
+    )
 
     def __post_init__(self) -> None:
         if not 1 <= self.batch_size <= 20:
