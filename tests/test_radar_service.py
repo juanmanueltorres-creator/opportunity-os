@@ -5,6 +5,7 @@ from importlib import import_module
 
 import pytest
 
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.connectors.base import ConnectorError
 from app.models.domain import CandidateProfile, CandidateTrack, Opportunity
 from app.radar.extractor import RuleBasedRequirementExtractor
@@ -227,3 +228,74 @@ async def test_ineligible_high_scoring_track_cannot_win_over_eligible_track(tmp_
     assert assessment.eligibility.eligible is True
     assert assessment.best_income_track == "eligible-partial"
     assert assessment.best_income_track != "blocked-perfect"
+
+
+@pytest.mark.asyncio
+async def test_radar_source_ingestion_records_seen_observation(tmp_path) -> None:
+    opportunity_repository = SQLiteOpportunityRepository(tmp_path / "opportunities.db")
+    opportunity_repository.initialize()
+    enrichment_repository = SQLiteEnrichmentRepository(tmp_path / "opportunities.db")
+    enrichment_repository.initialize()
+    availability_repository = SQLiteAvailabilityRepository(tmp_path / "opportunities.db")
+    availability_repository.initialize()
+
+    service = _module().RadarService(
+        opportunity_repository=opportunity_repository,
+        enrichment_repository=enrichment_repository,
+        connectors=[
+            ConfiguredConnector(
+                name="greenhouse:example",
+                connector=SuccessfulConnector(),
+            )
+        ],
+        extractor=RuleBasedRequirementExtractor(extractor_version="rules-v1"),
+        resolver=_resolver(tmp_path),
+        availability_repository=availability_repository,
+        policy=RadarPolicy(),
+        history=EmptyHistory(),
+        scoring_version="v0.2a1",
+    )
+
+    await service.run(_profile(), now=NOW)
+
+    state = availability_repository.get("greenhouse:ok-1")
+    assert state is not None
+    assert state.first_seen_at == NOW
+    assert state.last_seen_at == NOW
+    assert state.availability_state == "UNVERIFIED"
+
+
+def test_manual_import_records_seen_but_not_verified_when_memory_enabled(tmp_path) -> None:
+    opportunity_repository = SQLiteOpportunityRepository(tmp_path / "opportunities.db")
+    opportunity_repository.initialize()
+    enrichment_repository = SQLiteEnrichmentRepository(tmp_path / "opportunities.db")
+    enrichment_repository.initialize()
+    availability_repository = SQLiteAvailabilityRepository(tmp_path / "opportunities.db")
+    availability_repository.initialize()
+
+    service = _module().RadarService(
+        opportunity_repository=opportunity_repository,
+        enrichment_repository=enrichment_repository,
+        connectors=[],
+        extractor=RuleBasedRequirementExtractor(extractor_version="rules-v1"),
+        resolver=_resolver(tmp_path),
+        availability_repository=availability_repository,
+        policy=RadarPolicy(),
+        history=EmptyHistory(),
+        scoring_version="v0.2a1",
+    )
+    manual = ManualOpportunityInput(
+        source="community-board",
+        source_url="https://example.com/jobs/manual-memory",
+        title="Support Analyst",
+        company="Example Cooperative",
+        raw_description="Must have Python.",
+    )
+
+    stored = service.import_manual(manual, now=NOW)
+    state = availability_repository.get(stored.id)
+
+    assert state is not None
+    assert state.last_seen_at == NOW
+    assert state.availability_state == "UNVERIFIED"
+    assert state.last_verified_at is None
