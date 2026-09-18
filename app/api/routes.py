@@ -15,6 +15,10 @@ from app.availability.verification_models import (
     VerificationEvidence,
     VerificationPreview,
 )
+from app.availability.verification_queue import (
+    VerificationQueue,
+    VerificationQueuePolicy,
+)
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
@@ -57,6 +61,26 @@ class RadarServiceProtocol(Protocol):
         *,
         now: datetime,
     ) -> Opportunity: ...
+
+
+class VerificationQueueServiceProtocol(Protocol):
+    def build(
+        self,
+        *,
+        now: datetime,
+        policy: VerificationQueuePolicy | None = None,
+    ) -> VerificationQueue: ...
+
+
+class VerificationQueueRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    max_items: int = Field(default=20, ge=1, le=100)
+    candidate_lookback_days: int = Field(default=90, ge=1, le=365)
+    deadline_soon_days: int = Field(default=2, ge=0, le=30)
+    standard_reverify_after_days: int = Field(default=7, ge=1, le=365)
+    fast_market_reverify_after_days: int = Field(default=2, ge=1, le=90)
+    fast_market_max_age_days: int = Field(default=14, ge=1, le=90)
 
 
 class AvailabilityVerificationServiceProtocol(Protocol):
@@ -115,6 +139,7 @@ def create_api_router(
     repository: SQLiteOpportunityRepository,
     availability_repository: SQLiteAvailabilityRepository | None = None,
     availability_verification_service: AvailabilityVerificationServiceProtocol | None = None,
+    verification_queue_service: VerificationQueueServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -158,6 +183,42 @@ def create_api_router(
                 detail="Availability history not found",
             )
         return state
+
+    @router.post(
+        "/availability/verification/queue",
+        response_model=VerificationQueue,
+    )
+    def build_availability_verification_queue(
+        request: VerificationQueueRequest | None = None,
+    ) -> VerificationQueue:
+        if verification_queue_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Availability verification queue unavailable",
+            )
+        resolved = request or VerificationQueueRequest()
+        try:
+            policy = VerificationQueuePolicy(
+                max_items=resolved.max_items,
+                candidate_lookback_days=resolved.candidate_lookback_days,
+                deadline_soon_days=resolved.deadline_soon_days,
+                standard_reverify_after_days=(
+                    resolved.standard_reverify_after_days
+                ),
+                fast_market_reverify_after_days=(
+                    resolved.fast_market_reverify_after_days
+                ),
+                fast_market_max_age_days=resolved.fast_market_max_age_days,
+            )
+            return verification_queue_service.build(
+                now=datetime.now(timezone.utc),
+                policy=policy,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid availability verification queue options",
+            ) from exc
 
     @router.post(
         "/availability/verification/preview",
