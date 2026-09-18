@@ -17,6 +17,7 @@ _SEEN_TYPES = {"SEEN", "VERIFIED_OPEN"}
 class SQLiteAvailabilityRepository:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
+        self._initialized = False
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)
@@ -48,8 +49,14 @@ class SQLiteAvailabilityRepository:
                 )
                 """
             )
+        self._initialized = True
+
+    def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            self.initialize()
 
     def record(self, observation: AvailabilityObservation) -> None:
+        self._ensure_initialized()
         with self._connect() as conn:
             conn.execute(
                 """
@@ -117,6 +124,7 @@ class SQLiteAvailabilityRepository:
         self,
         opportunity_id: str,
     ) -> list[AvailabilityObservation]:
+        self._ensure_initialized()
         with self._connect() as conn:
             rows = conn.execute(
                 """
