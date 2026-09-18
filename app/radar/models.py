@@ -56,6 +56,11 @@ FreshnessQuality = Literal[
     "DISCOVERED_AT_ONLY",
     "UNKNOWN",
 ]
+FreshnessPolicy = Literal[
+    "standard_job",
+    "fast_market_project",
+    "deadline_sensitive",
+]
 DiscoveryOrigin = Literal["targeted", "adjacent", "wildcard"]
 Tier = Literal["HIGH", "MEDIUM", "STRETCH", "DISCARD"]
 DiagnosticStatus = Literal["ok", "warning", "error"]
@@ -158,6 +163,7 @@ class OpportunityEnrichment(StrictRadarModel):
     application_mode: ApplicationMode = "UNKNOWN"
     source_reliability: SourceReliability = "UNKNOWN"
     source_freshness_quality: FreshnessQuality = "UNKNOWN"
+    freshness_policy: FreshnessPolicy = "standard_job"
     channel_tags: list[str] = Field(default_factory=list)
     sector: DerivedValue[str] | None = None
     application_deadline: DerivedValue[datetime] | None = None
