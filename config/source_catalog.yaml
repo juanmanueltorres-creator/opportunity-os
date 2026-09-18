@@ -1,4 +1,4 @@
-version: source-catalog-v1
+version: source-catalog-v2
 
 sources:
   - key: greenhouse
@@ -41,6 +41,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, project]
     publishable: true
     verification_required: true
@@ -50,6 +51,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, project]
     publishable: true
     verification_required: true
@@ -59,6 +61,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, project, cad]
     publishable: true
     verification_required: true
@@ -68,6 +71,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, consulting, research]
     publishable: true
     verification_required: true
@@ -77,6 +81,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, project]
     publishable: true
     verification_required: true
@@ -86,6 +91,7 @@ sources:
     category: FREELANCE_MARKETPLACE
     authority: DIRECT_PLATFORM
     freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
     default_channel_tags: [freelance, project]
     publishable: true
     verification_required: true
