@@ -124,6 +124,17 @@ def _render_item(
         # aware datetimes. Do not shift the stated date through a display timezone.
         lines.append(f"📅 Cierre: {item.application_deadline:%d/%m/%Y}")
 
+    if (
+        item.availability_state == "VERIFIED_OPEN"
+        and item.last_verified_at is not None
+        and item.verification_source is not None
+    ):
+        verified_at = item.last_verified_at.astimezone(timezone)
+        lines.append(
+            "✅ Verificada abierta: "
+            f"{item.verification_source} · {verified_at:%d/%m/%Y}"
+        )
+
     lines.append(item.source_url)
     return lines
 
