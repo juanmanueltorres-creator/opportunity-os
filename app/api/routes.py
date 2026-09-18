@@ -93,8 +93,8 @@ class TargetRadarServiceProtocol(Protocol):
 def create_api_router(
     *,
     repository: SQLiteOpportunityRepository,
-    availability_repository: SQLiteAvailabilityRepository | None,
-    profile: CandidateProfile | None,
+    availability_repository: SQLiteAvailabilityRepository | None = None,
+    profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
     radar_service: RadarServiceProtocol | None = None,
