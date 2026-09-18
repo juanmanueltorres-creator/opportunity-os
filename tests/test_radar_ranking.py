@@ -202,3 +202,16 @@ def test_stretch_lane_is_diagnostic_but_not_selected_for_daily_batch() -> None:
     assert assessment.intent_tiers["CAREER"] == "STRETCH"
     assert assessment.selected_intent is None
     assert assessment.tier == "STRETCH"
+
+def test_source_diversity_caps_must_be_positive_when_configured() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="max_per_source must be positive"):
+        RadarPolicy(max_per_source=0)
+
+    with pytest.raises(
+        ValueError,
+        match="max_per_source_category must be positive",
+    ):
+        RadarPolicy(max_per_source_category=0)
+
