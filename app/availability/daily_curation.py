@@ -25,7 +25,6 @@ from app.radar.community_digest_preview import (
 )
 from app.radar.community_digest_renderer import CommunityDigestRenderOptions
 from app.radar.models import StrictRadarModel
-from app.curation.repository import SQLiteCurationLedgerRepository
 
 
 DAILY_CURATION_VERSION = "daily-curation-run-v1"
@@ -128,28 +127,18 @@ class DailyCurationService:
             policy=full_queue_policy,
         )
         held_ids = {item.opportunity_id for item in full_queue.items}
-        recently_published_ids: set[str] = set()
-        if (
-            self.curation_ledger_repository is not None
-            and self.publication_cooldown_days > 0
-        ):
-            recently_published_ids = (
-                self.curation_ledger_repository.list_recently_published_opportunity_ids(
-                    since=generated_at
-                    - timedelta(days=self.publication_cooldown_days),
-                )
-            )
+
         publication_exclusion_ids: set[str] = set()
         if self.curation_ledger_repository is not None:
             publication_exclusion_ids = (
                 self.curation_ledger_repository
                 .list_recently_published_opportunity_ids(
-                    since=generated_at - timedelta(
-                        days=resolved.publication_cooldown_days
-                    ),
+                    since=generated_at
+                    - timedelta(days=resolved.publication_cooldown_days),
                     until=generated_at,
                 )
             )
+
         editorial_exclusion_ids = held_ids | publication_exclusion_ids
 
         review = self.review_session_service.build(
@@ -171,7 +160,9 @@ class DailyCurationService:
         ]
         actual_review_ids = [card.opportunity_id for card in review.cards]
         if actual_review_ids != expected_review_ids:
-            raise RuntimeError("curation snapshot changed during review projection")
+            raise RuntimeError(
+                "curation snapshot changed during review projection"
+            )
 
         publishable = self.digest_preview_service.preview(
             now=generated_at,
@@ -189,9 +180,7 @@ class DailyCurationService:
             raise RuntimeError(
                 "publishable digest overlaps verification-held opportunities"
             )
-        publication_overlap = (
-            publishable_ids & publication_exclusion_ids
-        )
+        publication_overlap = publishable_ids & publication_exclusion_ids
         if publication_overlap:
             raise RuntimeError(
                 "publishable digest overlaps recently published opportunities"
@@ -205,7 +194,6 @@ class DailyCurationService:
             items=held_items,
             reason_counts=dict(full_queue.reason_counts),
         )
-
         publication_memory = DailyCurationPublicationMemory(
             cooldown_days=resolved.publication_cooldown_days,
             exclusion_ids=sorted(publication_exclusion_ids),
@@ -274,7 +262,6 @@ def _run_id(
         "review_session_id": review.session_id,
         "publishable_digest_id": publishable.digest.digest_id,
         "held_ids": [item.opportunity_id for item in held.items],
-        "recently_published_ids": recently_published_ids,
         "held_total_count": held.total_count,
         "held_reason_counts": held.reason_counts,
         "publication_memory": publication_memory.model_dump(
