@@ -9,6 +9,8 @@ from app.availability.refresh_curation_operator import (
     refresh_curation_run_id,
 )
 from app.curation.models import (
+    CurationRunHistory,
+    CurationRunHistoryItem,
     CurationRunRecord,
     CurationRunRecordResult,
     PublicationCheckpoint,
@@ -120,6 +122,88 @@ class CurationLedgerService:
             status=disposition,
             record=record,
             errors=[],
+        )
+
+    def history(self, *, limit: int = 20) -> CurationRunHistory:
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be within 1..100")
+
+        items: list[CurationRunHistoryItem] = []
+        for payload_json in self.repository.list_run_payload_json(limit=limit):
+            payload = json.loads(payload_json)
+            record = CurationRunRecord.model_validate(payload["record"])
+            run = RefreshCurationOperatorRun.model_validate(payload["run"])
+            if record.run_id != run.run_id:
+                raise RuntimeError("curation run history snapshot mismatch")
+
+            checkpoints = self.repository.list_publication_checkpoints_for_run(
+                run.run_id
+            )
+            published_opportunity_ids: list[str] = []
+            seen_opportunity_ids: set[str] = set()
+            publication_channels = []
+            latest_published_at = None
+            for checkpoint in checkpoints:
+                if checkpoint.run_id != run.run_id:
+                    raise RuntimeError(
+                        "publication checkpoint history snapshot mismatch"
+                    )
+                for opportunity_id in checkpoint.opportunity_ids:
+                    if opportunity_id not in seen_opportunity_ids:
+                        seen_opportunity_ids.add(opportunity_id)
+                        published_opportunity_ids.append(opportunity_id)
+                if checkpoint.channel not in publication_channels:
+                    publication_channels.append(checkpoint.channel)
+                if (
+                    latest_published_at is None
+                    or checkpoint.confirmed_at > latest_published_at
+                ):
+                    latest_published_at = checkpoint.confirmed_at
+
+            failed_sources = [
+                diagnostic.source
+                for diagnostic in run.source_refresh.diagnostics
+                if diagnostic.status == "error"
+            ]
+            items.append(
+                CurationRunHistoryItem(
+                    run_id=run.run_id,
+                    generated_at=run.generated_at,
+                    recorded_at=record.recorded_at,
+                    source_count=run.source_refresh.source_count,
+                    source_ok_count=run.source_refresh.ok_count,
+                    source_error_count=run.source_refresh.error_count,
+                    failed_sources=failed_sources,
+                    fetched_opportunity_count=run.source_refresh.fetched_count,
+                    new_opportunity_count=run.source_refresh.created_count,
+                    existing_opportunity_count=(
+                        run.source_refresh.existing_count
+                    ),
+                    review_count=run.operator_view.review_count,
+                    publishable_count=run.operator_view.publishable_count,
+                    held_count=run.operator_view.held_count,
+                    review_opportunity_ids=list(
+                        record.review_opportunity_ids
+                    ),
+                    publishable_opportunity_ids=list(
+                        record.publishable_opportunity_ids
+                    ),
+                    held_displayed_opportunity_ids=list(
+                        record.held_displayed_opportunity_ids
+                    ),
+                    publication_checkpoint_count=len(checkpoints),
+                    published_opportunity_ids=published_opportunity_ids,
+                    publication_channels=publication_channels,
+                    latest_published_at=latest_published_at,
+                    partial_source_failure=run.partial_source_failure,
+                )
+            )
+
+        return CurationRunHistory(
+            limit=limit,
+            count=len(items),
+            items=items,
+            external_actions=[],
         )
 
     def preview_publication(
