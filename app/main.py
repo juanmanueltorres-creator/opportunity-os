@@ -465,6 +465,14 @@ def create_app(
         and resolved_verification_review_session_service is not None
         and resolved_community_digest_preview_service is not None
     ):
+        if (
+            curation_ledger_service is not None
+            and curation_ledger_repository is None
+        ):
+            raise ValueError(
+                "curation_ledger_repository is required when injecting "
+                "curation_ledger_service with default daily curation"
+            )
         resolved_daily_curation_service = DailyCurationService(
             queue_service=resolved_verification_queue_service,
             review_session_service=(
