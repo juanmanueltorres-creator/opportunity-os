@@ -76,6 +76,11 @@ class CurationLedgerService:
                 status="CONFLICT",
                 errors=["run_id_payload_conflict"],
             )
+        if disposition == "IDENTICAL":
+            persisted = self.repository.get_run_record(run.run_id)
+            if persisted is None:
+                raise RuntimeError("identical curation run disappeared")
+            record = persisted
         return CurationRunRecordResult(
             status=disposition,
             record=record,
@@ -151,7 +156,10 @@ class CurationLedgerService:
     def confirm_publication(
         self,
         request: PublicationCheckpointConfirmRequest,
+        *,
+        processed_at: datetime,
     ) -> PublicationConfirmResult:
+        processed = _aware_utc(processed_at)
         preview = request.preview
         if preview.status != "READY":
             return PublicationConfirmResult(
@@ -170,6 +178,18 @@ class CurationLedgerService:
                 status="BLOCKED",
                 errors=["curation_run_changed"],
             )
+        if run.digest_id != preview.evidence.digest_id:
+            return PublicationConfirmResult(
+                status="BLOCKED",
+                errors=["digest_id_mismatch"],
+            )
+        if not set(preview.evidence.opportunity_ids).issubset(
+            set(run.publishable_opportunity_ids)
+        ):
+            return PublicationConfirmResult(
+                status="BLOCKED",
+                errors=["opportunity_not_in_recorded_publishable_digest"],
+            )
         expected_hash = _preview_sha256(
             evidence=preview.evidence,
             run_payload_sha256=run.payload_sha256,
@@ -184,6 +204,11 @@ class CurationLedgerService:
             return PublicationConfirmResult(
                 status="BLOCKED",
                 errors=["confirmation_before_curation_run"],
+            )
+        if request.confirmed_at > processed:
+            return PublicationConfirmResult(
+                status="BLOCKED",
+                errors=["confirmation_in_future"],
             )
 
         already_published = self.repository.list_published_opportunity_ids(
