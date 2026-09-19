@@ -192,7 +192,7 @@ def test_source_catalog_enriches_manual_marketplace_opportunity_and_cleans_track
         )
     )
 
-    assert enrichment.extractor_version == "rules-v4+source-catalog-v2"
+    assert enrichment.extractor_version == "rules-v5+source-catalog-v2"
     assert enrichment.source_category is not None
     assert enrichment.source_category.value == "FREELANCE_MARKETPLACE"
     assert enrichment.source_category.source_text == source_url

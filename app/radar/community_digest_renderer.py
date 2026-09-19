@@ -135,8 +135,7 @@ def _render_item(
         verified_at = item.last_verified_at.astimezone(timezone)
         lines.append(
             "✅ Verificada abierta: "
-            f"{_safe_inline(item.verification_source, render_format)} · "
-            f"{verified_at:%d/%m/%Y}"
+            f"{item.verification_source} · {verified_at:%d/%m/%Y}"
         )
 
     lines.append(_safe_url(item.source_url))
