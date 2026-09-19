@@ -319,3 +319,75 @@ def test_invalid_publication_cooldown_is_rejected_by_schema(tmp_path) -> None:
         )
 
     assert response.status_code == 422
+
+
+def test_api_tampered_run_snapshot_is_blocked(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        run = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        run["partial_source_failure"] = True
+        response = client.post(
+            "/api/v1/curation/ledger/runs",
+            json=run,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "BLOCKED"
+    assert response.json()["errors"] == [
+        "run_partial_failure_snapshot_mismatch"
+    ]
+
+
+def test_api_exact_publication_confirm_retry_is_idempotent(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        run = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=run)
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": run["run_id"],
+                "digest_id": run["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        request = {
+            "preview": preview,
+            "confirmed_by": "operator",
+            "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "note": "Posted manually",
+        }
+        first = client.post(
+            "/api/v1/curation/publication/confirm",
+            json=request,
+        )
+        second = client.post(
+            "/api/v1/curation/publication/confirm",
+            json=request,
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["status"] == "RECORDED"
+    assert second.json()["status"] == "ALREADY_RECORDED"
+    assert (
+        first.json()["checkpoint"]["checkpoint_id"]
+        == second.json()["checkpoint"]["checkpoint_id"]
+    )
