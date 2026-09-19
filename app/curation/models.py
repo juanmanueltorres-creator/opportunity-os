@@ -148,3 +148,54 @@ class PublicationConfirmResult(StrictRadarModel):
             if self.checkpoint is not None or not self.errors:
                 raise ValueError("blocked result requires errors only")
         return self
+
+
+class CurationRunHistoryItem(StrictRadarModel):
+    run_id: str = Field(min_length=1)
+    generated_at: datetime
+    recorded_at: datetime
+    source_count: int = Field(ge=0)
+    source_ok_count: int = Field(ge=0)
+    source_error_count: int = Field(ge=0)
+    failed_sources: list[str] = Field(default_factory=list)
+    fetched_opportunity_count: int = Field(ge=0)
+    new_opportunity_count: int = Field(ge=0)
+    existing_opportunity_count: int = Field(ge=0)
+    review_count: int = Field(ge=0)
+    publishable_count: int = Field(ge=0)
+    held_count: int = Field(ge=0)
+    review_opportunity_ids: list[str] = Field(default_factory=list)
+    publishable_opportunity_ids: list[str] = Field(default_factory=list)
+    held_displayed_opportunity_ids: list[str] = Field(default_factory=list)
+    publication_checkpoint_count: int = Field(ge=0)
+    published_opportunity_ids: list[str] = Field(default_factory=list)
+    publication_channels: list[PublicationChannel] = Field(default_factory=list)
+    latest_published_at: datetime | None = None
+    partial_source_failure: bool
+
+    @field_validator("generated_at", "recorded_at", "latest_published_at")
+    @classmethod
+    def history_datetimes_must_be_aware(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("datetime must be timezone-aware")
+        return value.astimezone(timezone.utc)
+
+
+class CurationRunHistory(StrictRadarModel):
+    limit: int = Field(ge=1, le=100)
+    count: int = Field(ge=0)
+    items: list[CurationRunHistoryItem] = Field(default_factory=list)
+    external_actions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_history_shape(self) -> "CurationRunHistory":
+        if self.count != len(self.items):
+            raise ValueError("history count must match items")
+        if self.external_actions:
+            raise ValueError("history cannot contain external actions")
+        return self
