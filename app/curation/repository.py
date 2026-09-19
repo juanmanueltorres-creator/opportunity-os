@@ -306,4 +306,3 @@ class SQLiteCurationLedgerRepository:
                 tuple(opportunity_ids),
             ).fetchall()
         return {str(row["opportunity_id"]) for row in rows}
-
