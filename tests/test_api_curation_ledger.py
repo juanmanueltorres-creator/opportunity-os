@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.curation.repository import SQLiteCurationLedgerRepository
+from app.curation.service import CurationLedgerService
 from app.main import create_app
 from app.models.domain import Opportunity
 from app.radar.source_refresh import SourceRefreshService
@@ -391,3 +394,28 @@ def test_api_exact_publication_confirm_retry_is_idempotent(tmp_path) -> None:
         first.json()["checkpoint"]["checkpoint_id"]
         == second.json()["checkpoint"]["checkpoint_id"]
     )
+
+
+def test_injected_ledger_service_requires_repository_for_default_daily_curation(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    custom_repository = SQLiteCurationLedgerRepository(
+        tmp_path / "custom-ledger.db"
+    )
+    custom_service = CurationLedgerService(repository=custom_repository)
+
+    with pytest.raises(
+        ValueError,
+        match="curation_ledger_repository is required",
+    ):
+        create_app(
+            repository=opportunities,
+            availability_repository=availability,
+            curation_ledger_service=custom_service,
+            enable_source_refresh=False,
+            profile=None,
+            enable_default_radar=False,
+            enable_default_targets=False,
+            enable_default_relationships=False,
+        )
