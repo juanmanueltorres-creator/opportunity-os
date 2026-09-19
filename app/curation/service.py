@@ -6,6 +6,7 @@ import json
 
 from app.availability.refresh_curation_operator import (
     RefreshCurationOperatorRun,
+    refresh_curation_run_id,
 )
 from app.curation.models import (
     CurationRunRecord,
@@ -34,6 +35,20 @@ class CurationLedgerService:
         recorded_at: datetime,
     ) -> CurationRunRecordResult:
         normalized_recorded_at = _aware_utc(recorded_at)
+        expected_run_id = refresh_curation_run_id(
+            source_refresh=run.source_refresh,
+            operator_view=run.operator_view,
+        )
+        if expected_run_id != run.run_id:
+            return CurationRunRecordResult(
+                status="BLOCKED",
+                errors=["run_id_snapshot_mismatch"],
+            )
+        if normalized_recorded_at < run.generated_at:
+            return CurationRunRecordResult(
+                status="BLOCKED",
+                errors=["recorded_at_before_run"],
+            )
         payload_sha256 = _run_payload_sha256(run)
         record = CurationRunRecord(
             run_id=run.run_id,
@@ -118,8 +133,9 @@ class CurationLedgerService:
             )
 
         already_published = sorted(
-            self.repository.list_published_opportunity_ids(
-                evidence.opportunity_ids
+            self.repository.list_published_opportunity_ids_for_run(
+                run_id=evidence.run_id,
+                opportunity_ids=evidence.opportunity_ids,
             )
         )
         if already_published:
@@ -161,6 +177,15 @@ class CurationLedgerService:
     ) -> PublicationConfirmResult:
         processed = _aware_utc(processed_at)
         preview = request.preview
+        existing_receipt = self.repository.get_publication_by_preview_sha256(
+            preview.preview_sha256
+        )
+        if existing_receipt is not None:
+            return PublicationConfirmResult(
+                status="ALREADY_RECORDED",
+                checkpoint=existing_receipt,
+                errors=[],
+            )
         if preview.status != "READY":
             return PublicationConfirmResult(
                 status="BLOCKED",
@@ -211,8 +236,11 @@ class CurationLedgerService:
                 errors=["confirmation_in_future"],
             )
 
-        already_published = self.repository.list_published_opportunity_ids(
-            preview.evidence.opportunity_ids
+        already_published = (
+            self.repository.list_published_opportunity_ids_for_run(
+                run_id=preview.evidence.run_id,
+                opportunity_ids=preview.evidence.opportunity_ids,
+            )
         )
         if already_published:
             return PublicationConfirmResult(
@@ -236,6 +264,17 @@ class CurationLedgerService:
             expected_publication_count=preview.publication_count_before,
         )
         if not recorded:
+            existing_receipt = (
+                self.repository.get_publication_by_preview_sha256(
+                    preview.preview_sha256
+                )
+            )
+            if existing_receipt is not None:
+                return PublicationConfirmResult(
+                    status="ALREADY_RECORDED",
+                    checkpoint=existing_receipt,
+                    errors=[],
+                )
             return PublicationConfirmResult(
                 status="BLOCKED",
                 errors=["publication_ledger_changed"],
