@@ -43,6 +43,7 @@ from app.radar.community_digest import CommunityDigestPolicy
 from app.radar.community_digest_preview import CommunityDigestPreview
 from app.radar.community_digest_renderer import CommunityDigestRenderOptions
 from app.radar.models import DailyRadarBatch
+from app.radar.source_refresh import SourceRefreshRun
 from app.radar.service import RadarSourceError
 from app.radar.sources import ManualOpportunityInput
 from app.relationships.context import (
@@ -61,6 +62,25 @@ class IngestionResponse(BaseModel):
 
     created: int
     existing: int
+
+
+class SourceRefreshServiceProtocol(Protocol):
+    async def run(
+        self,
+        *,
+        now: datetime,
+        source_names: list[str] | None = None,
+    ) -> SourceRefreshRun: ...
+
+
+class SourceRefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sources: list[str] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+    )
 
 
 class RadarServiceProtocol(Protocol):
@@ -248,6 +268,7 @@ def create_api_router(
     review_evidence_draft_service: ReviewEvidenceDraftServiceProtocol | None = None,
     daily_curation_service: DailyCurationServiceProtocol | None = None,
     daily_curation_operator_view_service: DailyCurationOperatorViewServiceProtocol | None = None,
+    source_refresh_service: SourceRefreshServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -258,6 +279,30 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.post(
+        "/sources/refresh",
+        response_model=SourceRefreshRun,
+    )
+    async def refresh_sources(
+        request: SourceRefreshRequest | None = None,
+    ) -> SourceRefreshRun:
+        if source_refresh_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Source refresh unavailable",
+            )
+        resolved = request or SourceRefreshRequest()
+        try:
+            return await source_refresh_service.run(
+                now=datetime.now(timezone.utc),
+                source_names=resolved.sources,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid source refresh options",
+            ) from exc
 
     @router.get("/opportunities", response_model=list[Opportunity])
     def list_opportunities() -> list[Opportunity]:
