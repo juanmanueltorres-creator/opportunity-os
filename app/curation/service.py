@@ -44,6 +44,26 @@ class CurationLedgerService:
                 status="BLOCKED",
                 errors=["run_id_snapshot_mismatch"],
             )
+        if (
+            run.generated_at != run.source_refresh.generated_at
+            or run.generated_at != run.operator_view.generated_at
+        ):
+            return CurationRunRecordResult(
+                status="BLOCKED",
+                errors=["run_timestamp_snapshot_mismatch"],
+            )
+        if run.partial_source_failure != (
+            run.source_refresh.error_count > 0
+        ):
+            return CurationRunRecordResult(
+                status="BLOCKED",
+                errors=["run_partial_failure_snapshot_mismatch"],
+            )
+        if run.external_reads != run.source_refresh.external_reads:
+            return CurationRunRecordResult(
+                status="BLOCKED",
+                errors=["run_external_reads_snapshot_mismatch"],
+            )
         if normalized_recorded_at < run.generated_at:
             return CurationRunRecordResult(
                 status="BLOCKED",
