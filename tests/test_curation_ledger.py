@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
@@ -623,3 +625,34 @@ async def test_run_record_before_generation_is_blocked(tmp_path) -> None:
 
     assert result.status == "BLOCKED"
     assert result.errors == ["recorded_at_before_run"]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_run_record_retries_are_idempotent(tmp_path) -> None:
+    combined, ledger, _, repository = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+    workers = 8
+    barrier = Barrier(workers)
+
+    def record_once(_: int) -> str:
+        barrier.wait()
+        result = ledger.record_run(
+            run,
+            recorded_at=NOW + timedelta(minutes=1),
+        )
+        return result.status
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        statuses = list(executor.map(record_once, range(workers)))
+
+    assert statuses.count("NEW") == 1
+    assert statuses.count("IDENTICAL") == workers - 1
+    assert repository.get_run_record(run.run_id) is not None
