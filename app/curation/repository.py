@@ -160,6 +160,42 @@ class SQLiteCurationLedgerRepository:
             ).fetchone()
         return None if row is None else str(row["payload_json"])
 
+    def list_run_payload_json(self, *, limit: int) -> list[str]:
+        self._ensure_initialized()
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be within 1..100")
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload_json
+                FROM curation_runs
+                ORDER BY generated_at DESC, run_id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [str(row["payload_json"]) for row in rows]
+
+    def list_publication_checkpoints_for_run(
+        self,
+        run_id: str,
+    ) -> list[PublicationCheckpoint]:
+        self._ensure_initialized()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload_json
+                FROM publication_checkpoints
+                WHERE run_id = ?
+                ORDER BY confirmed_at ASC, checkpoint_id ASC
+                """,
+                (run_id,),
+            ).fetchall()
+        return [
+            PublicationCheckpoint.model_validate_json(row["payload_json"])
+            for row in rows
+        ]
+
     def publication_count(self) -> int:
         self._ensure_initialized()
         with self._connect() as conn:
