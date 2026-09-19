@@ -9,6 +9,8 @@ from app.availability.refresh_curation_operator import (
     refresh_curation_run_id,
 )
 from app.curation.models import (
+    CurationChangeBrief,
+    CurationChangeBriefFormat,
     CurationRunDelta,
     CurationRunDeltaMetrics,
     CurationRunHistory,
@@ -313,6 +315,89 @@ class CurationLedgerService:
             external_actions=[],
         )
 
+    def latest_change_brief(
+        self,
+        *,
+        format: CurationChangeBriefFormat = "markdown",
+    ) -> CurationChangeBrief:
+        if format not in {"markdown", "plain"}:
+            raise ValueError("unsupported change brief format")
+
+        delta = self.latest_delta()
+        if delta.status == "EMPTY":
+            headline = "No recorded curation runs yet"
+            highlights = [
+                "Record a curation run before comparing operational changes."
+            ]
+            return CurationChangeBrief(
+                status="EMPTY",
+                format=format,
+                headline=headline,
+                highlights=highlights,
+                rendered_text=_render_change_brief(
+                    status="EMPTY",
+                    format=format,
+                    headline=headline,
+                    current_run_id=None,
+                    previous_run_id=None,
+                    highlights=highlights,
+                ),
+                external_actions=[],
+            )
+
+        if delta.current_run is None:
+            raise RuntimeError("change brief missing current run")
+
+        current_run_id = delta.current_run.run_id
+        if delta.status == "BASELINE_ONLY":
+            headline = "Baseline recorded; one more run is required"
+            highlights = [
+                (
+                    "Current recorded run: "
+                    f"{current_run_id}. No run-to-run transition is claimed."
+                )
+            ]
+            return CurationChangeBrief(
+                status="BASELINE_ONLY",
+                format=format,
+                current_run_id=current_run_id,
+                headline=headline,
+                highlights=highlights,
+                rendered_text=_render_change_brief(
+                    status="BASELINE_ONLY",
+                    format=format,
+                    headline=headline,
+                    current_run_id=current_run_id,
+                    previous_run_id=None,
+                    highlights=highlights,
+                ),
+                external_actions=[],
+            )
+
+        if delta.previous_run is None or delta.metrics is None:
+            raise RuntimeError("ready change brief requires complete delta")
+
+        previous_run_id = delta.previous_run.run_id
+        highlights = _change_brief_highlights(delta)
+        headline = "Recorded curation changes since the previous run"
+        return CurationChangeBrief(
+            status="READY",
+            format=format,
+            current_run_id=current_run_id,
+            previous_run_id=previous_run_id,
+            headline=headline,
+            highlights=highlights,
+            rendered_text=_render_change_brief(
+                status="READY",
+                format=format,
+                headline=headline,
+                current_run_id=current_run_id,
+                previous_run_id=previous_run_id,
+                highlights=highlights,
+            ),
+            external_actions=[],
+        )
+
     def preview_publication(
         self,
         evidence: PublicationCheckpointEvidence,
@@ -588,3 +673,136 @@ def _metric_change(previous: int, current: int) -> CurationRunMetricChange:
 
 def _entered(current: list[str], previous: list[str]) -> list[str]:
     return sorted(set(current) - set(previous))
+
+
+def _signed(value: int) -> str:
+    return f"+{value}" if value > 0 else str(value)
+
+
+def _ids_text(items: list[str]) -> str:
+    return ", ".join(items) if items else "none"
+
+
+def _change_brief_highlights(delta: CurationRunDelta) -> list[str]:
+    if delta.status != "READY" or delta.metrics is None:
+        raise ValueError("ready delta required for change brief highlights")
+
+    metrics = delta.metrics
+    highlights = [
+        (
+            "Current run created opportunity count: "
+            f"{metrics.new_opportunity_count.current} "
+            f"(change {_signed(metrics.new_opportunity_count.change)} "
+            "vs previous recorded run)."
+        ),
+        (
+            "Source error count: "
+            f"{metrics.source_error_count.current} "
+            f"(change {_signed(metrics.source_error_count.change)})."
+        ),
+        (
+            "Review set membership: "
+            f"+{len(delta.entered_review_ids)} / "
+            f"-{len(delta.exited_review_ids)} exact recorded IDs."
+        ),
+        (
+            "Publishable set membership: "
+            f"+{len(delta.entered_publishable_ids)} / "
+            f"-{len(delta.exited_publishable_ids)} exact recorded IDs."
+        ),
+        (
+            "Displayed-held subset membership: "
+            f"+{len(delta.entered_displayed_held_ids)} / "
+            f"-{len(delta.exited_displayed_held_ids)} exact recorded IDs."
+        ),
+        (
+            "Publication checkpoints attached to current run: "
+            f"{metrics.publication_checkpoint_count.current}; "
+            "published IDs only on current run: "
+            f"{len(delta.published_only_in_current_run_ids)}."
+        ),
+    ]
+
+    if delta.started_failing_sources:
+        highlights.append(
+            "Sources newly failing in current snapshot: "
+            f"{_ids_text(delta.started_failing_sources)}."
+        )
+    if delta.recovered_sources:
+        highlights.append(
+            "Sources no longer failing in current snapshot: "
+            f"{_ids_text(delta.recovered_sources)}."
+        )
+    if delta.entered_publishable_ids:
+        highlights.append(
+            "Entered publishable set: "
+            f"{_ids_text(delta.entered_publishable_ids)}."
+        )
+    if delta.exited_publishable_ids:
+        highlights.append(
+            "Exited publishable set: "
+            f"{_ids_text(delta.exited_publishable_ids)}."
+        )
+    if delta.published_only_in_current_run_ids:
+        highlights.append(
+            "Checkpointed only against current run: "
+            f"{_ids_text(delta.published_only_in_current_run_ids)}."
+        )
+    return highlights
+
+
+def _render_change_brief(
+    *,
+    status: str,
+    format: CurationChangeBriefFormat,
+    headline: str,
+    current_run_id: str | None,
+    previous_run_id: str | None,
+    highlights: list[str],
+) -> str:
+    if format == "markdown":
+        lines = [
+            "# Opportunity OS — Change Brief",
+            "",
+            f"**Status:** {status}",
+            f"**Summary:** {headline}",
+        ]
+        if current_run_id is not None:
+            lines.append(f"**Current run:** {current_run_id}")
+        if previous_run_id is not None:
+            lines.append(f"**Previous run:** {previous_run_id}")
+        lines.extend(["", "## Recorded changes", ""])
+        lines.extend(f"- {item}" for item in highlights)
+        lines.extend(
+            [
+                "",
+                "---",
+                (
+                    "Read-only snapshot comparison: membership change does not "
+                    "imply cause or verified state transition."
+                ),
+            ]
+        )
+        return "\n".join(lines)
+
+    lines = [
+        "Opportunity OS — Change Brief",
+        f"Status: {status}",
+        f"Summary: {headline}",
+    ]
+    if current_run_id is not None:
+        lines.append(f"Current run: {current_run_id}")
+    if previous_run_id is not None:
+        lines.append(f"Previous run: {previous_run_id}")
+    lines.append("")
+    lines.extend(f"- {item}" for item in highlights)
+    lines.extend(
+        [
+            "",
+            (
+                "Read-only snapshot comparison: membership change does not "
+                "imply cause or verified state transition."
+            ),
+        ]
+    )
+    return "\n".join(lines)

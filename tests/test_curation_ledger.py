@@ -852,3 +852,94 @@ async def test_latest_delta_compares_exact_recorded_memberships(tmp_path) -> Non
     assert delta.published_only_in_previous_run_ids == ["greenhouse:1"]
     assert delta.started_failing_sources == []
     assert delta.recovered_sources == []
+
+
+def test_change_brief_is_read_only_empty_state(tmp_path) -> None:
+    _, ledger, _, _ = _services(tmp_path, [])
+
+    brief = ledger.latest_change_brief(format="plain")
+
+    assert brief.status == "EMPTY"
+    assert brief.current_run_id is None
+    assert brief.previous_run_id is None
+    assert "No recorded curation runs yet" in brief.rendered_text
+    assert brief.external_actions == []
+
+
+@pytest.mark.asyncio
+async def test_change_brief_baseline_does_not_claim_transition(tmp_path) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+    ledger.record_run(run, recorded_at=NOW + timedelta(minutes=1))
+
+    brief = ledger.latest_change_brief(format="markdown")
+
+    assert brief.status == "BASELINE_ONLY"
+    assert brief.current_run_id == run.run_id
+    assert brief.previous_run_id is None
+    assert "No run-to-run transition is claimed." in brief.rendered_text
+
+
+@pytest.mark.asyncio
+async def test_change_brief_renders_recorded_delta_without_causal_claims(
+    tmp_path,
+) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    first = await combined.run(now=NOW)
+    ledger.record_run(first, recorded_at=NOW + timedelta(minutes=1))
+    preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=first.run_id,
+            digest_id=first.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=2),
+        ),
+        processed_at=NOW + timedelta(minutes=3),
+    )
+    second_time = NOW + timedelta(days=1)
+    second = await combined.run(now=second_time)
+    ledger.record_run(
+        second,
+        recorded_at=second_time + timedelta(minutes=1),
+    )
+
+    brief = ledger.latest_change_brief(format="plain")
+
+    assert brief.status == "READY"
+    assert brief.current_run_id == second.run_id
+    assert brief.previous_run_id == first.run_id
+    assert any(
+        item == (
+            "Publishable set membership: +0 / -1 exact recorded IDs."
+        )
+        for item in brief.highlights
+    )
+    assert "Exited publishable set: greenhouse:1." in brief.rendered_text
+    assert (
+        "membership change does not imply cause or verified state transition"
+        in brief.rendered_text
+    )
+    assert "published since" not in brief.rendered_text.lower()

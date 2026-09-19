@@ -270,3 +270,31 @@ class CurationRunDelta(StrictRadarModel):
         ):
             raise ValueError("ready delta requires two runs and metrics")
         return self
+
+
+CurationChangeBriefFormat = Literal["markdown", "plain"]
+
+
+class CurationChangeBrief(StrictRadarModel):
+    status: CurationRunDeltaStatus
+    format: CurationChangeBriefFormat
+    current_run_id: str | None = None
+    previous_run_id: str | None = None
+    headline: str = Field(min_length=1)
+    highlights: list[str] = Field(default_factory=list)
+    rendered_text: str = Field(min_length=1)
+    external_actions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_brief_shape(self) -> "CurationChangeBrief":
+        if self.external_actions:
+            raise ValueError("change brief cannot contain external actions")
+        if self.status == "EMPTY":
+            if self.current_run_id is not None or self.previous_run_id is not None:
+                raise ValueError("empty brief cannot reference runs")
+        elif self.status == "BASELINE_ONLY":
+            if self.current_run_id is None or self.previous_run_id is not None:
+                raise ValueError("baseline brief requires current run only")
+        elif self.current_run_id is None or self.previous_run_id is None:
+            raise ValueError("ready brief requires current and previous runs")
+        return self

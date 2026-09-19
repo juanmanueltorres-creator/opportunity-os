@@ -567,3 +567,74 @@ def test_api_latest_curation_delta_requires_ledger(tmp_path) -> None:
 
     assert response.status_code == 503
     assert response.json() == {"detail": "Curation ledger unavailable"}
+
+
+def test_api_change_brief_renders_plain_from_recorded_delta(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=first)
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": first["run_id"],
+                "digest_id": first["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        client.post(
+            "/api/v1/curation/publication/confirm",
+            json={
+                "preview": preview,
+                "confirmed_by": "operator",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        second = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=second)
+
+        response = client.get(
+            "/api/v1/curation/history/delta/brief?format=plain"
+        )
+
+    assert response.status_code == 200
+    brief = response.json()
+    assert brief["status"] == "READY"
+    assert brief["format"] == "plain"
+    assert brief["current_run_id"] == second["run_id"]
+    assert brief["previous_run_id"] == first["run_id"]
+    assert "Exited publishable set: greenhouse:1." in brief["rendered_text"]
+    assert brief["external_actions"] == []
+
+
+def test_api_change_brief_validates_format_and_requires_ledger(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    enabled_app = _app(opportunities, availability, [])
+    disabled_app = _app(
+        opportunities,
+        availability,
+        [],
+        ledger_enabled=False,
+    )
+
+    with TestClient(enabled_app) as client:
+        invalid = client.get(
+            "/api/v1/curation/history/delta/brief?format=html"
+        )
+    with TestClient(disabled_app) as client:
+        unavailable = client.get("/api/v1/curation/history/delta/brief")
+
+    assert invalid.status_code == 422
+    assert unavailable.status_code == 503
+    assert unavailable.json() == {"detail": "Curation ledger unavailable"}
