@@ -38,6 +38,16 @@ from app.availability.verification_review_session import (
     VerificationReviewSession,
     VerificationReviewSessionPolicy,
 )
+from app.availability.refresh_curation_operator import (
+    RefreshCurationOperatorRun,
+)
+from app.curation.models import (
+    CurationRunRecordResult,
+    PublicationCheckpointConfirmRequest,
+    PublicationCheckpointEvidence,
+    PublicationCheckpointPreview,
+    PublicationConfirmResult,
+)
 from app.connectors.base import ConnectorError, JobConnector
 from app.connectors.remotive import RemotiveConnector
 from app.matching.scorer import assess_opportunity
@@ -65,6 +75,25 @@ class IngestionResponse(BaseModel):
 
     created: int
     existing: int
+
+
+class CurationLedgerServiceProtocol(Protocol):
+    def record_run(
+        self,
+        run: RefreshCurationOperatorRun,
+        *,
+        recorded_at: datetime,
+    ) -> CurationRunRecordResult: ...
+
+    def preview_publication(
+        self,
+        evidence: PublicationCheckpointEvidence,
+    ) -> PublicationCheckpointPreview: ...
+
+    def confirm_publication(
+        self,
+        request: PublicationCheckpointConfirmRequest,
+    ) -> PublicationConfirmResult: ...
 
 
 class RefreshCurationOperatorServiceProtocol(Protocol):
@@ -151,6 +180,7 @@ class DailyCurationRequest(BaseModel):
     digest_max_per_source: int | None = Field(default=2, ge=1)
     digest_max_per_bucket: int | None = Field(default=None, ge=1)
     digest_min_freshness_score: float = Field(default=20.0, ge=0, le=100)
+    publication_cooldown_days: int = Field(default=30, ge=1, le=365)
 
     format: Literal["whatsapp", "markdown"] = "whatsapp"
     timezone_name: str = Field(default="UTC", min_length=1)
@@ -293,6 +323,7 @@ def create_api_router(
     daily_curation_operator_view_service: DailyCurationOperatorViewServiceProtocol | None = None,
     source_refresh_service: SourceRefreshServiceProtocol | None = None,
     refresh_curation_operator_service: RefreshCurationOperatorServiceProtocol | None = None,
+    curation_ledger_service: CurationLedgerServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -303,6 +334,51 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.post(
+        "/curation/ledger/runs",
+        response_model=CurationRunRecordResult,
+    )
+    def record_curation_run(
+        run: RefreshCurationOperatorRun,
+    ) -> CurationRunRecordResult:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.record_run(
+            run,
+            recorded_at=datetime.now(timezone.utc),
+        )
+
+    @router.post(
+        "/curation/publication/preview",
+        response_model=PublicationCheckpointPreview,
+    )
+    def preview_publication_checkpoint(
+        evidence: PublicationCheckpointEvidence,
+    ) -> PublicationCheckpointPreview:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.preview_publication(evidence)
+
+    @router.post(
+        "/curation/publication/confirm",
+        response_model=PublicationConfirmResult,
+    )
+    def confirm_publication_checkpoint(
+        request: PublicationCheckpointConfirmRequest,
+    ) -> PublicationConfirmResult:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.confirm_publication(request)
 
     @router.post(
         "/curation/daily/refresh-view",
@@ -341,6 +417,9 @@ def create_api_router(
                 held_items_limit=resolved.held_items_limit,
                 queue_policy=queue_policy,
                 digest_policy=digest_policy,
+                publication_cooldown_days=(
+                    resolved.publication_cooldown_days
+                ),
             )
             digest_render_options = CommunityDigestRenderOptions(
                 title=resolved.title,
@@ -462,6 +541,9 @@ def create_api_router(
                 held_items_limit=resolved.held_items_limit,
                 queue_policy=queue_policy,
                 digest_policy=digest_policy,
+                publication_cooldown_days=(
+                    resolved.publication_cooldown_days
+                ),
             )
             digest_render_options = CommunityDigestRenderOptions(
                 title=resolved.title,
@@ -525,6 +607,9 @@ def create_api_router(
                 held_items_limit=resolved.held_items_limit,
                 queue_policy=queue_policy,
                 digest_policy=digest_policy,
+                publication_cooldown_days=(
+                    resolved.publication_cooldown_days
+                ),
             )
             render_options = CommunityDigestRenderOptions(
                 title=resolved.title,
