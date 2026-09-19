@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -87,11 +86,6 @@ class RefreshCurationOperatorService:
 
         return RefreshCurationOperatorRun(
             run_id=_run_id(
-                generated_at=generated_at,
-                source_names=source_names,
-                policy=policy,
-                digest_render_options=digest_render_options,
-                view_options=view_options,
                 source_refresh=source_refresh,
                 operator_view=operator_view,
             ),
@@ -106,51 +100,19 @@ class RefreshCurationOperatorService:
 
 def _run_id(
     *,
-    generated_at: datetime,
-    source_names: list[str] | None,
-    policy: DailyCurationPolicy | None,
-    digest_render_options: CommunityDigestRenderOptions | None,
-    view_options: DailyCurationOperatorViewOptions | None,
     source_refresh: SourceRefreshRun,
     operator_view: DailyCurationOperatorView,
 ) -> str:
     payload = {
         "run_version": REFRESH_CURATION_OPERATOR_VERSION,
-        "generated_at": generated_at.isoformat(),
-        "source_names": source_names,
-        "policy": (
-            {
-                "review_batch_size": policy.review_batch_size,
-                "held_items_limit": policy.held_items_limit,
-                "queue_policy": asdict(policy.queue_policy),
-                "digest_policy": asdict(policy.digest_policy),
-            }
-            if policy is not None
-            else None
+        "source_refresh": source_refresh.model_dump(
+            mode="json",
+            exclude_none=False,
         ),
-        "digest_render_options": (
-            {
-                "title": digest_render_options.title,
-                "timezone_name": digest_render_options.timezone_name,
-                "include_intro": digest_render_options.include_intro,
-                "include_footer": digest_render_options.include_footer,
-                "format": digest_render_options.format,
-            }
-            if digest_render_options is not None
-            else None
+        "operator_view": operator_view.model_dump(
+            mode="json",
+            exclude_none=False,
         ),
-        "view_options": (
-            {
-                "title": view_options.title,
-                "format": view_options.format,
-                "include_checklists": view_options.include_checklists,
-                "include_held_details": view_options.include_held_details,
-            }
-            if view_options is not None
-            else None
-        ),
-        "source_refresh_run_id": source_refresh.run_id,
-        "operator_view_run_id": operator_view.run_id,
     }
     canonical = json.dumps(
         payload,
@@ -160,7 +122,6 @@ def _run_id(
     )
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     return f"refresh-curation-{digest[:20]}"
-
 
 def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
