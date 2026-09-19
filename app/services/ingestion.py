@@ -10,6 +10,9 @@ from app.repositories.opportunities import SQLiteOpportunityRepository
 class IngestionResult:
     created: int
     existing: int
+    fetched: int
+    unique_stored: int
+    seen_recorded: int
 
 
 async def ingest(
@@ -30,19 +33,33 @@ async def ingest(
     opportunities = await connector.fetch()
     created = 0
     existing = 0
+    seen_ids: set[str] = set()
+    stored_ids: set[str] = set()
 
     for opportunity in opportunities:
         stored, was_created = repository.upsert(opportunity)
-        if availability_repository is not None and observed_at is not None:
+        stored_ids.add(stored.id)
+        if (
+            availability_repository is not None
+            and observed_at is not None
+            and stored.id not in seen_ids
+        ):
             availability_repository.record_seen(
                 stored.id,
                 observed_at=observed_at,
                 evidence_source=opportunity.source,
                 source_url=opportunity.source_url,
             )
+            seen_ids.add(stored.id)
         if was_created:
             created += 1
         else:
             existing += 1
 
-    return IngestionResult(created=created, existing=existing)
+    return IngestionResult(
+        created=created,
+        existing=existing,
+        fetched=len(opportunities),
+        unique_stored=len(stored_ids),
+        seen_recorded=len(seen_ids),
+    )
