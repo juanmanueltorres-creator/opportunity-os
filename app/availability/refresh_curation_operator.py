@@ -85,7 +85,7 @@ class RefreshCurationOperatorService:
             raise RuntimeError("operator view snapshot timestamp mismatch")
 
         return RefreshCurationOperatorRun(
-            run_id=_run_id(
+            run_id=refresh_curation_run_id(
                 source_refresh=source_refresh,
                 operator_view=operator_view,
             ),
@@ -98,7 +98,7 @@ class RefreshCurationOperatorService:
         )
 
 
-def _run_id(
+def refresh_curation_run_id(
     *,
     source_refresh: SourceRefreshRun,
     operator_view: DailyCurationOperatorView,
