@@ -358,3 +358,67 @@ class CurationPublicationCoverage(StrictRadarModel):
         elif self.run_id is None or self.generated_at is None:
             raise ValueError("non-empty coverage requires a run")
         return self
+
+
+class CurationOperatorOverview(StrictRadarModel):
+    status: CurationRunDeltaStatus
+    current_run: CurationRunHistoryItem | None = None
+    delta: CurationRunDelta
+    change_brief: CurationChangeBrief
+    publication_coverage: CurationPublicationCoverage
+    review_opportunity_ids: list[str] = Field(default_factory=list)
+    publishable_opportunity_ids: list[str] = Field(default_factory=list)
+    held_displayed_opportunity_ids: list[str] = Field(default_factory=list)
+    uncheckpointed_publishable_ids: list[str] = Field(default_factory=list)
+    external_actions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_overview_shape(self) -> "CurationOperatorOverview":
+        if self.external_actions:
+            raise ValueError("operator overview cannot contain external actions")
+        if self.status != self.delta.status:
+            raise ValueError("overview status must match delta status")
+        if self.status != self.change_brief.status:
+            raise ValueError("overview status must match change brief status")
+        if self.status == "EMPTY":
+            if self.current_run is not None:
+                raise ValueError("empty overview cannot contain a current run")
+            if self.publication_coverage.status != "EMPTY":
+                raise ValueError("empty overview requires empty coverage")
+            if (
+                self.review_opportunity_ids
+                or self.publishable_opportunity_ids
+                or self.held_displayed_opportunity_ids
+                or self.uncheckpointed_publishable_ids
+            ):
+                raise ValueError("empty overview cannot contain queue IDs")
+            return self
+
+        if self.current_run is None:
+            raise ValueError("non-empty overview requires current run")
+        if self.delta.current_run is None:
+            raise ValueError("non-empty overview delta requires current run")
+        if self.current_run.run_id != self.delta.current_run.run_id:
+            raise ValueError("overview current run must match delta")
+        if self.change_brief.current_run_id != self.current_run.run_id:
+            raise ValueError("overview current run must match change brief")
+        if self.publication_coverage.run_id != self.current_run.run_id:
+            raise ValueError("overview current run must match coverage")
+        if self.review_opportunity_ids != self.current_run.review_opportunity_ids:
+            raise ValueError("overview review IDs must match current run")
+        if (
+            self.publishable_opportunity_ids
+            != self.current_run.publishable_opportunity_ids
+        ):
+            raise ValueError("overview publishable IDs must match current run")
+        if (
+            self.held_displayed_opportunity_ids
+            != self.current_run.held_displayed_opportunity_ids
+        ):
+            raise ValueError("overview held IDs must match current run")
+        if (
+            self.uncheckpointed_publishable_ids
+            != self.publication_coverage.uncheckpointed_publishable_ids
+        ):
+            raise ValueError("overview uncheckpointed IDs must match coverage")
+        return self

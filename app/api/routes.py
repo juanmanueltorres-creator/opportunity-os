@@ -40,6 +40,7 @@ from app.availability.verification_review_session import (
 )
 from app.curation.models import (
     CurationChangeBrief,
+    CurationOperatorOverview,
     CurationPublicationCoverage,
     CurationRunDelta,
     CurationRunHistory,
@@ -79,6 +80,12 @@ class IngestionResponse(BaseModel):
 
 
 class CurationLedgerServiceProtocol(Protocol):
+    def operator_overview(
+        self,
+        *,
+        format: Literal["markdown", "plain"] = "markdown",
+    ) -> CurationOperatorOverview: ...
+
     def latest_publication_coverage(
         self,
     ) -> CurationPublicationCoverage: ...
@@ -355,6 +362,20 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.get(
+        "/curation/operator/overview",
+        response_model=CurationOperatorOverview,
+    )
+    def get_curation_operator_overview(
+        format: Literal["markdown", "plain"] = Query(default="markdown"),
+    ) -> CurationOperatorOverview:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.operator_overview(format=format)
 
     @router.get(
         "/curation/history/publication-coverage",

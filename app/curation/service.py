@@ -213,238 +213,57 @@ class CurationLedgerService:
         )
 
     def latest_delta(self) -> CurationRunDelta:
-        history = self.history(limit=2)
-        if history.count == 0:
-            return CurationRunDelta(
-                status="EMPTY",
-                external_actions=[],
-            )
-
-        current = history.items[0]
-        if history.count == 1:
-            return CurationRunDelta(
-                status="BASELINE_ONLY",
-                current_run=current,
-                external_actions=[],
-            )
-
-        previous = history.items[1]
-        metrics = CurationRunDeltaMetrics(
-            source_error_count=_metric_change(
-                previous.source_error_count,
-                current.source_error_count,
-            ),
-            fetched_opportunity_count=_metric_change(
-                previous.fetched_opportunity_count,
-                current.fetched_opportunity_count,
-            ),
-            new_opportunity_count=_metric_change(
-                previous.new_opportunity_count,
-                current.new_opportunity_count,
-            ),
-            existing_opportunity_count=_metric_change(
-                previous.existing_opportunity_count,
-                current.existing_opportunity_count,
-            ),
-            review_count=_metric_change(
-                previous.review_count,
-                current.review_count,
-            ),
-            publishable_count=_metric_change(
-                previous.publishable_count,
-                current.publishable_count,
-            ),
-            held_count=_metric_change(
-                previous.held_count,
-                current.held_count,
-            ),
-            publication_checkpoint_count=_metric_change(
-                previous.publication_checkpoint_count,
-                current.publication_checkpoint_count,
-            ),
-            published_opportunity_count=_metric_change(
-                len(previous.published_opportunity_ids),
-                len(current.published_opportunity_ids),
-            ),
-        )
-
-        return CurationRunDelta(
-            status="READY",
-            current_run=current,
-            previous_run=previous,
-            metrics=metrics,
-            started_failing_sources=_entered(
-                current.failed_sources,
-                previous.failed_sources,
-            ),
-            recovered_sources=_entered(
-                previous.failed_sources,
-                current.failed_sources,
-            ),
-            entered_review_ids=_entered(
-                current.review_opportunity_ids,
-                previous.review_opportunity_ids,
-            ),
-            exited_review_ids=_entered(
-                previous.review_opportunity_ids,
-                current.review_opportunity_ids,
-            ),
-            entered_publishable_ids=_entered(
-                current.publishable_opportunity_ids,
-                previous.publishable_opportunity_ids,
-            ),
-            exited_publishable_ids=_entered(
-                previous.publishable_opportunity_ids,
-                current.publishable_opportunity_ids,
-            ),
-            entered_displayed_held_ids=_entered(
-                current.held_displayed_opportunity_ids,
-                previous.held_displayed_opportunity_ids,
-            ),
-            exited_displayed_held_ids=_entered(
-                previous.held_displayed_opportunity_ids,
-                current.held_displayed_opportunity_ids,
-            ),
-            published_only_in_current_run_ids=_entered(
-                current.published_opportunity_ids,
-                previous.published_opportunity_ids,
-            ),
-            published_only_in_previous_run_ids=_entered(
-                previous.published_opportunity_ids,
-                current.published_opportunity_ids,
-            ),
-            external_actions=[],
-        )
+        return _delta_from_history(self.history(limit=2))
 
     def latest_change_brief(
         self,
         *,
         format: CurationChangeBriefFormat = "markdown",
     ) -> CurationChangeBrief:
-        if format not in {"markdown", "plain"}:
-            raise ValueError("unsupported change brief format")
-
-        delta = self.latest_delta()
-        if delta.status == "EMPTY":
-            headline = "No recorded curation runs yet"
-            highlights = [
-                "Record a curation run before comparing operational changes."
-            ]
-            return CurationChangeBrief(
-                status="EMPTY",
-                format=format,
-                headline=headline,
-                highlights=highlights,
-                rendered_text=_render_change_brief(
-                    status="EMPTY",
-                    format=format,
-                    headline=headline,
-                    current_run_id=None,
-                    previous_run_id=None,
-                    highlights=highlights,
-                ),
-                external_actions=[],
-            )
-
-        if delta.current_run is None:
-            raise RuntimeError("change brief missing current run")
-
-        current_run_id = delta.current_run.run_id
-        if delta.status == "BASELINE_ONLY":
-            headline = "Baseline recorded; one more run is required"
-            highlights = [
-                (
-                    "Current recorded run: "
-                    f"{current_run_id}. No run-to-run transition is claimed."
-                )
-            ]
-            return CurationChangeBrief(
-                status="BASELINE_ONLY",
-                format=format,
-                current_run_id=current_run_id,
-                headline=headline,
-                highlights=highlights,
-                rendered_text=_render_change_brief(
-                    status="BASELINE_ONLY",
-                    format=format,
-                    headline=headline,
-                    current_run_id=current_run_id,
-                    previous_run_id=None,
-                    highlights=highlights,
-                ),
-                external_actions=[],
-            )
-
-        if delta.previous_run is None or delta.metrics is None:
-            raise RuntimeError("ready change brief requires complete delta")
-
-        previous_run_id = delta.previous_run.run_id
-        highlights = _change_brief_highlights(delta)
-        headline = "Recorded curation changes since the previous run"
-        return CurationChangeBrief(
-            status="READY",
+        return _change_brief_from_delta(
+            self.latest_delta(),
             format=format,
-            current_run_id=current_run_id,
-            previous_run_id=previous_run_id,
-            headline=headline,
-            highlights=highlights,
-            rendered_text=_render_change_brief(
-                status="READY",
-                format=format,
-                headline=headline,
-                current_run_id=current_run_id,
-                previous_run_id=previous_run_id,
-                highlights=highlights,
-            ),
-            external_actions=[],
         )
 
     def latest_publication_coverage(
         self,
     ) -> CurationPublicationCoverage:
-        history = self.history(limit=1)
-        if history.count == 0:
-            return CurationPublicationCoverage(
+        return _publication_coverage_from_history(self.history(limit=1))
+
+    def operator_overview(
+        self,
+        *,
+        format: CurationChangeBriefFormat = "markdown",
+    ) -> CurationOperatorOverview:
+        history = self.history(limit=2)
+        delta = _delta_from_history(history)
+        brief = _change_brief_from_delta(delta, format=format)
+        coverage = _publication_coverage_from_history(history)
+
+        current = delta.current_run
+        if current is None:
+            return CurationOperatorOverview(
                 status="EMPTY",
-                publishable_count=0,
-                checkpointed_count=0,
-                uncheckpointed_count=0,
+                delta=delta,
+                change_brief=brief,
+                publication_coverage=coverage,
                 external_actions=[],
             )
 
-        current = history.items[0]
-        publishable_ids = sorted(set(current.publishable_opportunity_ids))
-        checkpointed_ids = sorted(set(current.published_opportunity_ids))
-        publishable_set = set(publishable_ids)
-        checkpointed_set = set(checkpointed_ids)
-
-        unexpected = checkpointed_set - publishable_set
-        if unexpected:
-            raise RuntimeError(
-                "publication checkpoint references non-publishable run item"
-            )
-
-        uncheckpointed_ids = sorted(publishable_set - checkpointed_set)
-        if not publishable_ids:
-            status = "NO_PUBLISHABLE"
-        elif not checkpointed_ids:
-            status = "NONE_CHECKPOINTED"
-        elif uncheckpointed_ids:
-            status = "PARTIAL"
-        else:
-            status = "COMPLETE"
-
-        return CurationPublicationCoverage(
-            status=status,
-            run_id=current.run_id,
-            generated_at=current.generated_at,
-            publishable_count=len(publishable_ids),
-            publishable_opportunity_ids=publishable_ids,
-            checkpointed_count=len(checkpointed_ids),
-            checkpointed_opportunity_ids=checkpointed_ids,
-            uncheckpointed_count=len(uncheckpointed_ids),
-            uncheckpointed_publishable_ids=uncheckpointed_ids,
-            latest_checkpointed_at=current.latest_published_at,
+        return CurationOperatorOverview(
+            status=delta.status,
+            current_run=current,
+            delta=delta,
+            change_brief=brief,
+            publication_coverage=coverage,
+            review_opportunity_ids=list(current.review_opportunity_ids),
+            publishable_opportunity_ids=list(current.publishable_opportunity_ids),
+            held_displayed_opportunity_ids=list(
+                current.held_displayed_opportunity_ids
+            ),
+            uncheckpointed_publishable_ids=list(
+                coverage.uncheckpointed_publishable_ids
+            ),
             external_actions=[],
         )
 
@@ -856,3 +675,238 @@ def _render_change_brief(
         ]
     )
     return "\n".join(lines)
+
+
+def _delta_from_history(history: CurationRunHistory) -> CurationRunDelta:
+    if history.count == 0:
+        return CurationRunDelta(
+            status="EMPTY",
+            external_actions=[],
+        )
+
+    current = history.items[0]
+    if history.count == 1:
+        return CurationRunDelta(
+            status="BASELINE_ONLY",
+            current_run=current,
+            external_actions=[],
+        )
+
+    previous = history.items[1]
+    metrics = CurationRunDeltaMetrics(
+        source_error_count=_metric_change(
+            previous.source_error_count,
+            current.source_error_count,
+        ),
+        fetched_opportunity_count=_metric_change(
+            previous.fetched_opportunity_count,
+            current.fetched_opportunity_count,
+        ),
+        new_opportunity_count=_metric_change(
+            previous.new_opportunity_count,
+            current.new_opportunity_count,
+        ),
+        existing_opportunity_count=_metric_change(
+            previous.existing_opportunity_count,
+            current.existing_opportunity_count,
+        ),
+        review_count=_metric_change(
+            previous.review_count,
+            current.review_count,
+        ),
+        publishable_count=_metric_change(
+            previous.publishable_count,
+            current.publishable_count,
+        ),
+        held_count=_metric_change(
+            previous.held_count,
+            current.held_count,
+        ),
+        publication_checkpoint_count=_metric_change(
+            previous.publication_checkpoint_count,
+            current.publication_checkpoint_count,
+        ),
+        published_opportunity_count=_metric_change(
+            len(previous.published_opportunity_ids),
+            len(current.published_opportunity_ids),
+        ),
+    )
+    return CurationRunDelta(
+        status="READY",
+        current_run=current,
+        previous_run=previous,
+        metrics=metrics,
+        started_failing_sources=_entered(
+            current.failed_sources,
+            previous.failed_sources,
+        ),
+        recovered_sources=_entered(
+            previous.failed_sources,
+            current.failed_sources,
+        ),
+        entered_review_ids=_entered(
+            current.review_opportunity_ids,
+            previous.review_opportunity_ids,
+        ),
+        exited_review_ids=_entered(
+            previous.review_opportunity_ids,
+            current.review_opportunity_ids,
+        ),
+        entered_publishable_ids=_entered(
+            current.publishable_opportunity_ids,
+            previous.publishable_opportunity_ids,
+        ),
+        exited_publishable_ids=_entered(
+            previous.publishable_opportunity_ids,
+            current.publishable_opportunity_ids,
+        ),
+        entered_displayed_held_ids=_entered(
+            current.held_displayed_opportunity_ids,
+            previous.held_displayed_opportunity_ids,
+        ),
+        exited_displayed_held_ids=_entered(
+            previous.held_displayed_opportunity_ids,
+            current.held_displayed_opportunity_ids,
+        ),
+        published_only_in_current_run_ids=_entered(
+            current.published_opportunity_ids,
+            previous.published_opportunity_ids,
+        ),
+        published_only_in_previous_run_ids=_entered(
+            previous.published_opportunity_ids,
+            current.published_opportunity_ids,
+        ),
+        external_actions=[],
+    )
+
+
+def _change_brief_from_delta(
+    delta: CurationRunDelta,
+    *,
+    format: CurationChangeBriefFormat,
+) -> CurationChangeBrief:
+    if format not in {"markdown", "plain"}:
+        raise ValueError("unsupported change brief format")
+
+    if delta.status == "EMPTY":
+        headline = "No recorded curation runs yet"
+        highlights = [
+            "Record a curation run before comparing operational changes."
+        ]
+        return CurationChangeBrief(
+            status="EMPTY",
+            format=format,
+            headline=headline,
+            highlights=highlights,
+            rendered_text=_render_change_brief(
+                status="EMPTY",
+                format=format,
+                headline=headline,
+                current_run_id=None,
+                previous_run_id=None,
+                highlights=highlights,
+            ),
+            external_actions=[],
+        )
+
+    if delta.current_run is None:
+        raise RuntimeError("change brief missing current run")
+
+    current_run_id = delta.current_run.run_id
+    if delta.status == "BASELINE_ONLY":
+        headline = "Baseline recorded; one more run is required"
+        highlights = [
+            (
+                "Current recorded run: "
+                f"{current_run_id}. No run-to-run transition is claimed."
+            )
+        ]
+        return CurationChangeBrief(
+            status="BASELINE_ONLY",
+            format=format,
+            current_run_id=current_run_id,
+            headline=headline,
+            highlights=highlights,
+            rendered_text=_render_change_brief(
+                status="BASELINE_ONLY",
+                format=format,
+                headline=headline,
+                current_run_id=current_run_id,
+                previous_run_id=None,
+                highlights=highlights,
+            ),
+            external_actions=[],
+        )
+
+    if delta.previous_run is None or delta.metrics is None:
+        raise RuntimeError("ready change brief requires complete delta")
+
+    previous_run_id = delta.previous_run.run_id
+    highlights = _change_brief_highlights(delta)
+    headline = "Recorded curation changes since the previous run"
+    return CurationChangeBrief(
+        status="READY",
+        format=format,
+        current_run_id=current_run_id,
+        previous_run_id=previous_run_id,
+        headline=headline,
+        highlights=highlights,
+        rendered_text=_render_change_brief(
+            status="READY",
+            format=format,
+            headline=headline,
+            current_run_id=current_run_id,
+            previous_run_id=previous_run_id,
+            highlights=highlights,
+        ),
+        external_actions=[],
+    )
+
+
+def _publication_coverage_from_history(
+    history: CurationRunHistory,
+) -> CurationPublicationCoverage:
+    if history.count == 0:
+        return CurationPublicationCoverage(
+            status="EMPTY",
+            publishable_count=0,
+            checkpointed_count=0,
+            uncheckpointed_count=0,
+            external_actions=[],
+        )
+
+    current = history.items[0]
+    publishable_ids = sorted(set(current.publishable_opportunity_ids))
+    checkpointed_ids = sorted(set(current.published_opportunity_ids))
+    publishable_set = set(publishable_ids)
+    checkpointed_set = set(checkpointed_ids)
+
+    unexpected = checkpointed_set - publishable_set
+    if unexpected:
+        raise RuntimeError(
+            "publication checkpoint references non-publishable run item"
+        )
+
+    uncheckpointed_ids = sorted(publishable_set - checkpointed_set)
+    if not publishable_ids:
+        status = "NO_PUBLISHABLE"
+    elif not checkpointed_ids:
+        status = "NONE_CHECKPOINTED"
+    elif uncheckpointed_ids:
+        status = "PARTIAL"
+    else:
+        status = "COMPLETE"
+
+    return CurationPublicationCoverage(
+        status=status,
+        run_id=current.run_id,
+        generated_at=current.generated_at,
+        publishable_count=len(publishable_ids),
+        publishable_opportunity_ids=publishable_ids,
+        checkpointed_count=len(checkpointed_ids),
+        checkpointed_opportunity_ids=checkpointed_ids,
+        uncheckpointed_count=len(uncheckpointed_ids),
+        uncheckpointed_publishable_ids=uncheckpointed_ids,
+        latest_checkpointed_at=current.latest_published_at,
+        external_actions=[],
+    )

@@ -1040,3 +1040,103 @@ async def test_publication_coverage_tracks_partial_and_complete_checkpoints(
     assert complete.uncheckpointed_publishable_ids == []
     assert complete.uncheckpointed_count == 0
     assert complete.latest_checkpointed_at == NOW + timedelta(minutes=4)
+
+
+def test_operator_overview_empty_uses_one_history_read(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    _, ledger, _, _ = _services(tmp_path, [])
+    original_history = ledger.history
+    calls: list[int] = []
+
+    def tracked_history(*, limit: int = 20):
+        calls.append(limit)
+        return original_history(limit=limit)
+
+    monkeypatch.setattr(ledger, "history", tracked_history)
+
+    overview = ledger.operator_overview(format="plain")
+
+    assert calls == [2]
+    assert overview.status == "EMPTY"
+    assert overview.current_run is None
+    assert overview.delta.status == "EMPTY"
+    assert overview.change_brief.status == "EMPTY"
+    assert overview.publication_coverage.status == "EMPTY"
+    assert overview.external_actions == []
+
+
+@pytest.mark.asyncio
+async def test_operator_overview_composes_same_latest_snapshot_once(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            ),
+            _opportunity(
+                "greenhouse:2",
+                source_url="https://boards.greenhouse.io/acme/jobs/2",
+            ),
+        ],
+    )
+    first = await combined.run(now=NOW)
+    ledger.record_run(first, recorded_at=NOW + timedelta(minutes=1))
+
+    preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=first.run_id,
+            digest_id=first.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=2),
+        ),
+        processed_at=NOW + timedelta(minutes=3),
+    )
+
+    second_time = NOW + timedelta(days=1)
+    second = await combined.run(now=second_time)
+    ledger.record_run(
+        second,
+        recorded_at=second_time + timedelta(minutes=1),
+    )
+
+    original_history = ledger.history
+    calls: list[int] = []
+
+    def tracked_history(*, limit: int = 20):
+        calls.append(limit)
+        return original_history(limit=limit)
+
+    monkeypatch.setattr(ledger, "history", tracked_history)
+
+    overview = ledger.operator_overview(format="markdown")
+
+    assert calls == [2]
+    assert overview.status == "READY"
+    assert overview.current_run is not None
+    assert overview.current_run.run_id == second.run_id
+    assert overview.delta.current_run is not None
+    assert overview.delta.current_run.run_id == second.run_id
+    assert overview.change_brief.current_run_id == second.run_id
+    assert overview.publication_coverage.run_id == second.run_id
+    assert (
+        overview.publishable_opportunity_ids
+        == second.operator_view.publishable.opportunity_ids
+    )
+    assert (
+        overview.uncheckpointed_publishable_ids
+        == overview.publication_coverage.uncheckpointed_publishable_ids
+    )
+    assert overview.external_actions == []

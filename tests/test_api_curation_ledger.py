@@ -737,3 +737,85 @@ def test_api_publication_coverage_distinguishes_no_publishable_and_no_ledger(
     assert no_publishable.json()["publishable_count"] == 0
     assert unavailable.status_code == 503
     assert unavailable.json() == {"detail": "Curation ledger unavailable"}
+
+
+def test_api_operator_overview_composes_latest_run_delta_and_coverage(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=first)
+
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": first["run_id"],
+                "digest_id": first["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        client.post(
+            "/api/v1/curation/publication/confirm",
+            json={
+                "preview": preview,
+                "confirmed_by": "operator",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+        second = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=second)
+
+        response = client.get(
+            "/api/v1/curation/operator/overview?format=plain"
+        )
+
+    assert response.status_code == 200
+    overview = response.json()
+    assert overview["status"] == "READY"
+    assert overview["current_run"]["run_id"] == second["run_id"]
+    assert overview["delta"]["current_run"]["run_id"] == second["run_id"]
+    assert overview["change_brief"]["format"] == "plain"
+    assert overview["change_brief"]["current_run_id"] == second["run_id"]
+    assert overview["publication_coverage"]["run_id"] == second["run_id"]
+    assert (
+        overview["uncheckpointed_publishable_ids"]
+        == overview["publication_coverage"]["uncheckpointed_publishable_ids"]
+    )
+    assert overview["external_actions"] == []
+
+
+def test_api_operator_overview_validates_format_and_requires_ledger(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    enabled_app = _app(opportunities, availability, [])
+    disabled_app = _app(
+        opportunities,
+        availability,
+        [],
+        ledger_enabled=False,
+    )
+
+    with TestClient(enabled_app) as client:
+        invalid = client.get(
+            "/api/v1/curation/operator/overview?format=html"
+        )
+    with TestClient(disabled_app) as client:
+        unavailable = client.get("/api/v1/curation/operator/overview")
+
+    assert invalid.status_code == 422
+    assert unavailable.status_code == 503
+    assert unavailable.json() == {"detail": "Curation ledger unavailable"}
