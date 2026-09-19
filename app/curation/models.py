@@ -31,7 +31,7 @@ class CurationRunRecord(StrictRadarModel):
 
 
 class CurationRunRecordResult(StrictRadarModel):
-    status: Literal["NEW", "IDENTICAL", "CONFLICT"]
+    status: Literal["NEW", "IDENTICAL", "BLOCKED", "CONFLICT"]
     record: CurationRunRecord | None = None
     errors: list[str] = Field(default_factory=list)
 
@@ -42,7 +42,7 @@ class CurationRunRecordResult(StrictRadarModel):
                 raise ValueError("successful run record result requires record")
         else:
             if self.record is not None or not self.errors:
-                raise ValueError("conflict result requires errors only")
+                raise ValueError("blocked/conflict result requires errors only")
         return self
 
 
@@ -135,13 +135,13 @@ class PublicationCheckpoint(StrictRadarModel):
 
 
 class PublicationConfirmResult(StrictRadarModel):
-    status: Literal["RECORDED", "BLOCKED"]
+    status: Literal["RECORDED", "ALREADY_RECORDED", "BLOCKED"]
     checkpoint: PublicationCheckpoint | None = None
     errors: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "PublicationConfirmResult":
-        if self.status == "RECORDED":
+        if self.status in {"RECORDED", "ALREADY_RECORDED"}:
             if self.checkpoint is None or self.errors:
                 raise ValueError("recorded result requires checkpoint only")
         else:
