@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal, Protocol
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.availability.daily_curation import (
@@ -39,6 +39,7 @@ from app.availability.verification_review_session import (
     VerificationReviewSessionPolicy,
 )
 from app.curation.models import (
+    CurationRunHistory,
     CurationRunRecordResult,
     PublicationCheckpointConfirmRequest,
     PublicationCheckpointEvidence,
@@ -75,6 +76,12 @@ class IngestionResponse(BaseModel):
 
 
 class CurationLedgerServiceProtocol(Protocol):
+    def history(
+        self,
+        *,
+        limit: int = 20,
+    ) -> CurationRunHistory: ...
+
     def record_run(
         self,
         run: RefreshCurationOperatorRun,
@@ -333,6 +340,20 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.get(
+        "/curation/history",
+        response_model=CurationRunHistory,
+    )
+    def get_curation_history(
+        limit: int = Query(default=20, ge=1, le=100),
+    ) -> CurationRunHistory:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.history(limit=limit)
 
     @router.post(
         "/curation/ledger/runs",
