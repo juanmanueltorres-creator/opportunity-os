@@ -134,7 +134,8 @@ class DailyCurationService:
                 .list_recently_published_opportunity_ids(
                     since=generated_at - timedelta(
                         days=resolved.publication_cooldown_days
-                    )
+                    ),
+                    until=generated_at,
                 )
             )
         editorial_exclusion_ids = held_ids | publication_exclusion_ids
