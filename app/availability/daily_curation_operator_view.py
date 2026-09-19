@@ -264,6 +264,7 @@ def _render(
         review_items=review_items,
         publishable=publishable,
         held=held,
+        publication_memory=publication_memory,
         options=options,
     )
 
