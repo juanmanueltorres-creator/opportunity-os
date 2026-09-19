@@ -656,3 +656,89 @@ async def test_concurrent_run_record_retries_are_idempotent(tmp_path) -> None:
     assert statuses.count("NEW") == 1
     assert statuses.count("IDENTICAL") == workers - 1
     assert repository.get_run_record(run.run_id) is not None
+
+
+@pytest.mark.asyncio
+async def test_history_uses_recorded_snapshot_and_publication_checkpoints(
+    tmp_path,
+) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+    recorded = ledger.record_run(
+        run,
+        recorded_at=NOW + timedelta(minutes=1),
+    )
+    assert recorded.status == "NEW"
+
+    preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=run.run_id,
+            digest_id=run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    confirmation = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=2),
+        ),
+        processed_at=NOW + timedelta(minutes=3),
+    )
+    assert confirmation.status == "RECORDED"
+
+    history = ledger.history(limit=10)
+
+    assert history.count == 1
+    item = history.items[0]
+    assert item.run_id == run.run_id
+    assert item.recorded_at == NOW + timedelta(minutes=1)
+    assert item.new_opportunity_count == run.source_refresh.created_count
+    assert item.source_error_count == 0
+    assert item.failed_sources == []
+    assert item.review_count == run.operator_view.review_count
+    assert item.publishable_count == run.operator_view.publishable_count
+    assert item.held_count == run.operator_view.held_count
+    assert item.publishable_opportunity_ids == ["greenhouse:1"]
+    assert item.publication_checkpoint_count == 1
+    assert item.published_opportunity_ids == ["greenhouse:1"]
+    assert item.publication_channels == ["WHATSAPP"]
+    assert item.latest_published_at == NOW + timedelta(minutes=2)
+    assert history.external_actions == []
+
+
+@pytest.mark.asyncio
+async def test_history_is_newest_first_and_respects_limit(tmp_path) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    first = await combined.run(now=NOW)
+    ledger.record_run(first, recorded_at=NOW + timedelta(minutes=1))
+
+    second_time = NOW + timedelta(days=1)
+    second = await combined.run(now=second_time)
+    ledger.record_run(
+        second,
+        recorded_at=second_time + timedelta(minutes=1),
+    )
+
+    history = ledger.history(limit=1)
+
+    assert history.count == 1
+    assert history.items[0].run_id == second.run_id
+    assert history.items[0].generated_at == second_time
