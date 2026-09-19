@@ -62,6 +62,12 @@ class SQLiteCurationLedgerRepository:
             )
             conn.execute(
                 """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_publication_preview_unique
+                ON publication_checkpoints(preview_sha256)
+                """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS publication_checkpoint_items (
                     checkpoint_id TEXT NOT NULL,
                     opportunity_id TEXT NOT NULL,
