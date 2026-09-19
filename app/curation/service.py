@@ -10,8 +10,9 @@ from app.availability.refresh_curation_operator import (
 )
 from app.curation.models import (
     CurationChangeBrief,
-    CurationPublicationCoverage,
     CurationChangeBriefFormat,
+    CurationOperatorOverview,
+    CurationPublicationCoverage,
     CurationRunDelta,
     CurationRunDeltaMetrics,
     CurationRunHistory,
