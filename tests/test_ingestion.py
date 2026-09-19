@@ -49,6 +49,9 @@ async def test_ingest_counts_created_and_existing_without_deleting_rows(tmp_path
 
     assert result.created == 1
     assert result.existing == 1
+    assert result.fetched == 2
+    assert result.unique_stored == 2
+    assert result.seen_recorded == 0
     assert repository.get(existing.id) == existing
     assert len(repository.list()) == 2
 
@@ -68,3 +71,34 @@ async def test_connector_failure_leaves_previously_stored_rows_untouched(tmp_pat
 
     assert repository.get(existing.id) == existing
     assert repository.list() == [existing]
+
+
+@pytest.mark.asyncio
+async def test_ingest_deduplicates_seen_observations_within_one_fetch(tmp_path) -> None:
+    availability_module = import_module("app.availability.repository")
+    path = tmp_path / "opportunities.db"
+    repository = SQLiteOpportunityRepository(path)
+    repository.initialize()
+    availability = availability_module.SQLiteAvailabilityRepository(path)
+    availability.initialize()
+    opportunity = _opportunity(job_id="remotive:1", source_id="1")
+
+    class DuplicateConnector:
+        async def fetch(self) -> list[Opportunity]:
+            return [opportunity, opportunity]
+
+    result = await _ingestion_module().ingest(
+        DuplicateConnector(),
+        repository,
+        availability_repository=availability,
+        observed_at=NOW,
+    )
+
+    assert result.fetched == 2
+    assert result.created == 1
+    assert result.existing == 1
+    assert result.unique_stored == 1
+    assert result.seen_recorded == 1
+    observations = availability.list_observations("remotive:1")
+    assert len(observations) == 1
+    assert observations[0].observation_type == "SEEN"
