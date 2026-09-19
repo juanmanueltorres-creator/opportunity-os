@@ -199,3 +199,74 @@ class CurationRunHistory(StrictRadarModel):
         if self.external_actions:
             raise ValueError("history cannot contain external actions")
         return self
+
+
+CurationRunDeltaStatus = Literal["EMPTY", "BASELINE_ONLY", "READY"]
+
+
+class CurationRunMetricChange(StrictRadarModel):
+    previous: int = Field(ge=0)
+    current: int = Field(ge=0)
+    change: int
+
+    @model_validator(mode="after")
+    def validate_change(self) -> "CurationRunMetricChange":
+        if self.change != self.current - self.previous:
+            raise ValueError("metric change must equal current - previous")
+        return self
+
+
+class CurationRunDeltaMetrics(StrictRadarModel):
+    source_error_count: CurationRunMetricChange
+    fetched_opportunity_count: CurationRunMetricChange
+    new_opportunity_count: CurationRunMetricChange
+    existing_opportunity_count: CurationRunMetricChange
+    review_count: CurationRunMetricChange
+    publishable_count: CurationRunMetricChange
+    held_count: CurationRunMetricChange
+    publication_checkpoint_count: CurationRunMetricChange
+    published_opportunity_count: CurationRunMetricChange
+
+
+class CurationRunDelta(StrictRadarModel):
+    status: CurationRunDeltaStatus
+    current_run: CurationRunHistoryItem | None = None
+    previous_run: CurationRunHistoryItem | None = None
+    metrics: CurationRunDeltaMetrics | None = None
+    started_failing_sources: list[str] = Field(default_factory=list)
+    recovered_sources: list[str] = Field(default_factory=list)
+    entered_review_ids: list[str] = Field(default_factory=list)
+    exited_review_ids: list[str] = Field(default_factory=list)
+    entered_publishable_ids: list[str] = Field(default_factory=list)
+    exited_publishable_ids: list[str] = Field(default_factory=list)
+    entered_displayed_held_ids: list[str] = Field(default_factory=list)
+    exited_displayed_held_ids: list[str] = Field(default_factory=list)
+    published_only_in_current_run_ids: list[str] = Field(default_factory=list)
+    published_only_in_previous_run_ids: list[str] = Field(default_factory=list)
+    external_actions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_delta_shape(self) -> "CurationRunDelta":
+        if self.external_actions:
+            raise ValueError("run delta cannot contain external actions")
+        if self.status == "EMPTY":
+            if (
+                self.current_run is not None
+                or self.previous_run is not None
+                or self.metrics is not None
+            ):
+                raise ValueError("empty delta cannot contain run snapshots")
+        elif self.status == "BASELINE_ONLY":
+            if (
+                self.current_run is None
+                or self.previous_run is not None
+                or self.metrics is not None
+            ):
+                raise ValueError("baseline-only delta requires current run only")
+        elif (
+            self.current_run is None
+            or self.previous_run is None
+            or self.metrics is None
+        ):
+            raise ValueError("ready delta requires two runs and metrics")
+        return self

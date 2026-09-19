@@ -9,8 +9,11 @@ from app.availability.refresh_curation_operator import (
     refresh_curation_run_id,
 )
 from app.curation.models import (
+    CurationRunDelta,
+    CurationRunDeltaMetrics,
     CurationRunHistory,
     CurationRunHistoryItem,
+    CurationRunMetricChange,
     CurationRunRecord,
     CurationRunRecordResult,
     PublicationCheckpoint,
@@ -203,6 +206,110 @@ class CurationLedgerService:
             limit=limit,
             count=len(items),
             items=items,
+            external_actions=[],
+        )
+
+    def latest_delta(self) -> CurationRunDelta:
+        history = self.history(limit=2)
+        if history.count == 0:
+            return CurationRunDelta(
+                status="EMPTY",
+                external_actions=[],
+            )
+
+        current = history.items[0]
+        if history.count == 1:
+            return CurationRunDelta(
+                status="BASELINE_ONLY",
+                current_run=current,
+                external_actions=[],
+            )
+
+        previous = history.items[1]
+        metrics = CurationRunDeltaMetrics(
+            source_error_count=_metric_change(
+                previous.source_error_count,
+                current.source_error_count,
+            ),
+            fetched_opportunity_count=_metric_change(
+                previous.fetched_opportunity_count,
+                current.fetched_opportunity_count,
+            ),
+            new_opportunity_count=_metric_change(
+                previous.new_opportunity_count,
+                current.new_opportunity_count,
+            ),
+            existing_opportunity_count=_metric_change(
+                previous.existing_opportunity_count,
+                current.existing_opportunity_count,
+            ),
+            review_count=_metric_change(
+                previous.review_count,
+                current.review_count,
+            ),
+            publishable_count=_metric_change(
+                previous.publishable_count,
+                current.publishable_count,
+            ),
+            held_count=_metric_change(
+                previous.held_count,
+                current.held_count,
+            ),
+            publication_checkpoint_count=_metric_change(
+                previous.publication_checkpoint_count,
+                current.publication_checkpoint_count,
+            ),
+            published_opportunity_count=_metric_change(
+                len(previous.published_opportunity_ids),
+                len(current.published_opportunity_ids),
+            ),
+        )
+
+        return CurationRunDelta(
+            status="READY",
+            current_run=current,
+            previous_run=previous,
+            metrics=metrics,
+            started_failing_sources=_entered(
+                current.failed_sources,
+                previous.failed_sources,
+            ),
+            recovered_sources=_entered(
+                previous.failed_sources,
+                current.failed_sources,
+            ),
+            entered_review_ids=_entered(
+                current.review_opportunity_ids,
+                previous.review_opportunity_ids,
+            ),
+            exited_review_ids=_entered(
+                previous.review_opportunity_ids,
+                current.review_opportunity_ids,
+            ),
+            entered_publishable_ids=_entered(
+                current.publishable_opportunity_ids,
+                previous.publishable_opportunity_ids,
+            ),
+            exited_publishable_ids=_entered(
+                previous.publishable_opportunity_ids,
+                current.publishable_opportunity_ids,
+            ),
+            entered_displayed_held_ids=_entered(
+                current.held_displayed_opportunity_ids,
+                previous.held_displayed_opportunity_ids,
+            ),
+            exited_displayed_held_ids=_entered(
+                previous.held_displayed_opportunity_ids,
+                current.held_displayed_opportunity_ids,
+            ),
+            published_only_in_current_run_ids=_entered(
+                current.published_opportunity_ids,
+                previous.published_opportunity_ids,
+            ),
+            published_only_in_previous_run_ids=_entered(
+                previous.published_opportunity_ids,
+                current.published_opportunity_ids,
+            ),
             external_actions=[],
         )
 
@@ -469,3 +576,15 @@ def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("recorded_at must be timezone-aware")
     return value.astimezone(timezone.utc)
+
+
+def _metric_change(previous: int, current: int) -> CurationRunMetricChange:
+    return CurationRunMetricChange(
+        previous=previous,
+        current=current,
+        change=current - previous,
+    )
+
+
+def _entered(current: list[str], previous: list[str]) -> list[str]:
+    return sorted(set(current) - set(previous))

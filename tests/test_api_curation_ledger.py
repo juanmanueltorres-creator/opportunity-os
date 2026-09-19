@@ -496,3 +496,74 @@ def test_api_curation_history_validates_limit_and_ledger_availability(
     assert invalid.status_code == 422
     assert unavailable.status_code == 503
     assert unavailable.json() == {"detail": "Curation ledger unavailable"}
+
+
+def test_api_latest_curation_delta_compares_two_recorded_runs(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        assert client.post(
+            "/api/v1/curation/ledger/runs",
+            json=first,
+        ).status_code == 200
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": first["run_id"],
+                "digest_id": first["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        confirmation = client.post(
+            "/api/v1/curation/publication/confirm",
+            json={
+                "preview": preview,
+                "confirmed_by": "operator",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert confirmation.json()["status"] == "RECORDED"
+
+        second = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        assert client.post(
+            "/api/v1/curation/ledger/runs",
+            json=second,
+        ).status_code == 200
+
+        response = client.get("/api/v1/curation/history/delta")
+
+    assert response.status_code == 200
+    delta = response.json()
+    assert delta["status"] == "READY"
+    assert delta["current_run"]["run_id"] == second["run_id"]
+    assert delta["previous_run"]["run_id"] == first["run_id"]
+    assert delta["exited_publishable_ids"] == ["greenhouse:1"]
+    assert delta["published_only_in_previous_run_ids"] == ["greenhouse:1"]
+    assert delta["external_actions"] == []
+
+
+def test_api_latest_curation_delta_requires_ledger(tmp_path) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [],
+        ledger_enabled=False,
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/curation/history/delta")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Curation ledger unavailable"}

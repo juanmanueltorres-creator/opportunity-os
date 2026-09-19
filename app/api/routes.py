@@ -39,6 +39,7 @@ from app.availability.verification_review_session import (
     VerificationReviewSessionPolicy,
 )
 from app.curation.models import (
+    CurationRunDelta,
     CurationRunHistory,
     CurationRunRecordResult,
     PublicationCheckpointConfirmRequest,
@@ -76,6 +77,8 @@ class IngestionResponse(BaseModel):
 
 
 class CurationLedgerServiceProtocol(Protocol):
+    def latest_delta(self) -> CurationRunDelta: ...
+
     def history(
         self,
         *,
@@ -340,6 +343,18 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.get(
+        "/curation/history/delta",
+        response_model=CurationRunDelta,
+    )
+    def get_latest_curation_delta() -> CurationRunDelta:
+        if curation_ledger_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Curation ledger unavailable",
+            )
+        return curation_ledger_service.latest_delta()
 
     @router.get(
         "/curation/history",
