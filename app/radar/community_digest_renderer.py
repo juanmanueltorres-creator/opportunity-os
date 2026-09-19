@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
@@ -99,7 +101,8 @@ def _render_item(
     render_format: DigestRenderFormat,
 ) -> list[str]:
     emoji, bucket_label = _BUCKET_LABELS[item.bucket]
-    heading = f"{_number_marker(index)} {emoji} {bucket_label} — {item.title}"
+    title = _safe_inline(item.title, render_format)
+    heading = f"{_number_marker(index)} {emoji} {bucket_label} — {title}"
     if render_format == "whatsapp":
         heading = f"*{heading}*"
     elif render_format == "markdown":
@@ -107,11 +110,11 @@ def _render_item(
 
     lines = [heading]
 
-    company = item.company.strip()
+    company = _safe_inline(item.company, render_format)
     if company:
         lines.append(f"🏢 {company}")
 
-    place = _place_line(item)
+    place = _place_line(item, render_format)
     if place is not None:
         lines.append(place)
 
@@ -132,16 +135,20 @@ def _render_item(
         verified_at = item.last_verified_at.astimezone(timezone)
         lines.append(
             "✅ Verificada abierta: "
-            f"{item.verification_source} · {verified_at:%d/%m/%Y}"
+            f"{_safe_inline(item.verification_source, render_format)} · "
+            f"{verified_at:%d/%m/%Y}"
         )
 
-    lines.append(item.source_url)
+    lines.append(_safe_url(item.source_url))
     return lines
 
 
-def _place_line(item: CommunityDigestItem) -> str | None:
-    location = (item.location or "").strip()
-    remote_policy = (item.remote_policy or "").strip()
+def _place_line(
+    item: CommunityDigestItem,
+    render_format: DigestRenderFormat,
+) -> str | None:
+    location = _safe_inline(item.location or "", render_format)
+    remote_policy = _safe_inline(item.remote_policy or "", render_format)
 
     if remote_policy and location:
         return f"🌎 {remote_policy} · {location}"
@@ -150,6 +157,22 @@ def _place_line(item: CommunityDigestItem) -> str | None:
     if location:
         return f"📌 {location}"
     return None
+
+
+def _safe_inline(value: str, render_format: DigestRenderFormat) -> str:
+    flattened = " ".join(value.split())
+    if not flattened:
+        return ""
+    pattern = (
+        r"([\\*_~`])"
+        if render_format == "whatsapp"
+        else r"([\\`*_{}\[\]()#+.!>|-])"
+    )
+    return re.sub(pattern, r"\\\1", flattened)
+
+
+def _safe_url(value: str) -> str:
+    return "".join(value.split())
 
 
 def _source_label(source_url: str) -> str | None:
