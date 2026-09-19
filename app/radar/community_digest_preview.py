@@ -59,13 +59,21 @@ class CommunityDigestPreviewService:
         policy: CommunityDigestPolicy | None = None,
         render_options: CommunityDigestRenderOptions | None = None,
         excluded_opportunity_ids: set[str] | None = None,
+        candidate_lookback_days: int | None = None,
     ) -> CommunityDigestPreview:
         generated_at = _aware_utc(now)
         resolved_options = render_options or CommunityDigestRenderOptions()
+        resolved_lookback_days = (
+            self.candidate_lookback_days
+            if candidate_lookback_days is None
+            else candidate_lookback_days
+        )
+        if resolved_lookback_days < 1:
+            raise ValueError("candidate_lookback_days must be positive")
 
         opportunities = self.opportunity_repository.list_radar_candidates(
             now=generated_at,
-            lookback_days=self.candidate_lookback_days,
+            lookback_days=resolved_lookback_days,
         )
         excluded = excluded_opportunity_ids or set()
         opportunities = [

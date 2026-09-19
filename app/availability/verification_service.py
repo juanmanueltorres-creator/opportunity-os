@@ -3,7 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 
-from app.availability.models import AvailabilityObservation, OpportunityAvailability
+from app.availability.models import (
+    AvailabilityObservation,
+    AvailabilityState,
+    OpportunityAvailability,
+)
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_models import (
     VERIFICATION_PREVIEW_VERSION,
@@ -111,6 +115,10 @@ class AvailabilityVerificationService:
                 receipt=_receipt_from_observation(
                     request.evidence,
                     existing,
+                    resulting_state=_projected_state(
+                        self.availability_repository,
+                        request.evidence.opportunity_id,
+                    ),
                     processed_at=processed_at,
                 ),
             )
@@ -167,6 +175,10 @@ class AvailabilityVerificationService:
                     receipt=_receipt_from_observation(
                         request.evidence,
                         existing,
+                        resulting_state=_projected_state(
+                            self.availability_repository,
+                            request.evidence.opportunity_id,
+                        ),
                         processed_at=processed_at,
                     ),
                 )
@@ -180,6 +192,10 @@ class AvailabilityVerificationService:
             receipt=_receipt_from_observation(
                 request.evidence,
                 observation,
+                resulting_state=_projected_state(
+                    self.availability_repository,
+                    request.evidence.opportunity_id,
+                ),
                 processed_at=processed_at,
             ),
         )
@@ -256,10 +272,21 @@ def _blocked_preview(
     )
 
 
+def _projected_state(
+    repository: SQLiteAvailabilityRepository,
+    opportunity_id: str,
+) -> AvailabilityState:
+    projected = repository.get(opportunity_id)
+    if projected is None:
+        raise RuntimeError("verification projection missing after persisted observation")
+    return projected.availability_state
+
+
 def _receipt_from_observation(
     evidence: VerificationEvidence,
     observation: AvailabilityObservation,
     *,
+    resulting_state: AvailabilityState,
     processed_at: datetime,
 ) -> VerificationReceipt:
     if (
@@ -280,11 +307,7 @@ def _receipt_from_observation(
         confirmed_by=observation.confirmed_by,
         confirmed_at=observation.confirmed_at,
         processed_at=processed_at,
-        resulting_state=(
-            "VERIFIED_OPEN"
-            if evidence.decision == "OPEN"
-            else "VERIFIED_CLOSED"
-        ),
+        resulting_state=resulting_state,
     )
 
 

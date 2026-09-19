@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from app.availability.daily_curation import (
     DailyCurationPolicy,
     DailyCurationService,
@@ -400,3 +402,65 @@ def test_custom_queue_policy_controls_reverification_hold(tmp_path) -> None:
     assert default_run.publishable.digest.count == 1
     assert strict_run.held.total_count == 1
     assert strict_run.publishable.digest.count == 0
+
+
+def test_daily_run_uses_queue_lookback_for_digest_candidates(tmp_path) -> None:
+    service, repository, _ = _services(tmp_path)
+    repository.upsert(
+        _opportunity(
+            "linkedin-old",
+            source="linkedin",
+            source_url="https://linkedin.com/jobs/view/old",
+            published_at=NOW - timedelta(days=45),
+        )
+    )
+
+    run = service.run(
+        now=NOW,
+        policy=DailyCurationPolicy(
+            queue_policy=VerificationQueuePolicy(
+                candidate_lookback_days=30,
+            ),
+        ),
+    )
+
+    assert run.held.total_count == 0
+    assert run.publishable.candidate_count == 0
+    assert run.publishable.digest.count == 0
+
+
+def test_daily_run_revalidates_queue_after_digest_projection(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    service, repository, _ = _services(tmp_path)
+    repository.upsert(
+        _opportunity(
+            "greenhouse",
+            source="greenhouse",
+            source_url="https://boards.greenhouse.io/acme/jobs/1",
+        )
+    )
+    original_preview = service.digest_preview_service.preview
+
+    def mutating_preview(**kwargs):
+        repository.upsert(
+            _opportunity(
+                "linkedin-race",
+                source="linkedin",
+                source_url="https://linkedin.com/jobs/view/race",
+            )
+        )
+        return original_preview(**kwargs)
+
+    monkeypatch.setattr(
+        service.digest_preview_service,
+        "preview",
+        mutating_preview,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="curation snapshot changed during digest projection",
+    ):
+        service.run(now=NOW)

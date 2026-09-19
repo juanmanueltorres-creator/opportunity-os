@@ -169,7 +169,25 @@ class DailyCurationService:
             policy=resolved.digest_policy,
             render_options=render_options,
             excluded_opportunity_ids=editorial_exclusion_ids,
+            candidate_lookback_days=(
+                resolved.queue_policy.candidate_lookback_days
+            ),
         )
+
+        revalidated_queue = self.queue_service.build(
+            now=generated_at,
+            policy=full_queue_policy,
+        )
+        if revalidated_queue.model_dump(
+            mode="json",
+            exclude_none=False,
+        ) != full_queue.model_dump(
+            mode="json",
+            exclude_none=False,
+        ):
+            raise RuntimeError(
+                "curation snapshot changed during digest projection"
+            )
 
         publishable_ids = {
             item.opportunity_id

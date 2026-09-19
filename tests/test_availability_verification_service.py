@@ -326,3 +326,40 @@ def test_future_confirmation_is_blocked_without_write(tmp_path) -> None:
     assert result.status == "BLOCKED"
     assert result.errors == ["confirmation_in_future"]
     assert availability.list_observations("opp-1") == []
+
+
+def test_older_confirmed_evidence_reports_persisted_projection(tmp_path) -> None:
+    service, _, availability, _ = _service(tmp_path)
+    availability.record_verification(
+        "opp-1",
+        is_open=False,
+        observed_at=NOW + timedelta(minutes=10),
+        evidence_source="official_company_page",
+        source_url="https://careers.example.com/jobs/opp-1",
+    )
+    older_open = _evidence(
+        decision="OPEN",
+        observed_at=NOW,
+        source="archived_official_page",
+        url="https://careers.example.com/jobs/opp-1?snapshot=older",
+    )
+    preview = service.preview(older_open)
+    assert preview.current_state == "VERIFIED_CLOSED"
+
+    result = service.confirm(
+        _request(
+            older_open,
+            preview.preview_sha256,
+            confirmed_at=NOW + timedelta(minutes=20),
+        ),
+        processed_at=NOW + timedelta(minutes=20),
+    )
+
+    assert result.status == "RECORDED"
+    assert result.receipt is not None
+    assert result.receipt.decision == "OPEN"
+    assert result.receipt.resulting_state == "VERIFIED_CLOSED"
+    projected = availability.get("opp-1")
+    assert projected is not None
+    assert projected.availability_state == "VERIFIED_CLOSED"
+    assert len(availability.list_observations("opp-1")) == 2
