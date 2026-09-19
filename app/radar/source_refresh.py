@@ -124,10 +124,10 @@ class SourceRefreshService:
                 SourceRefreshDiagnostic(
                     source=item.name,
                     status="ok",
-                    fetched=result.created + result.existing,
+                    fetched=result.fetched,
                     created=result.created,
                     existing=result.existing,
-                    seen_recorded=result.created + result.existing,
+                    seen_recorded=result.seen_recorded,
                     code="source_refreshed",
                     message="Source refreshed",
                 )
