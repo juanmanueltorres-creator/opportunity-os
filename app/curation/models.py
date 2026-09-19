@@ -30,6 +30,22 @@ class CurationRunRecord(StrictRadarModel):
         return value.astimezone(timezone.utc)
 
 
+class CurationRunRecordResult(StrictRadarModel):
+    status: Literal["NEW", "IDENTICAL", "CONFLICT"]
+    record: CurationRunRecord | None = None
+    errors: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "CurationRunRecordResult":
+        if self.status in {"NEW", "IDENTICAL"}:
+            if self.record is None or self.errors:
+                raise ValueError("successful run record result requires record")
+        else:
+            if self.record is not None or not self.errors:
+                raise ValueError("conflict result requires errors only")
+        return self
+
+
 class PublicationCheckpointEvidence(StrictRadarModel):
     run_id: str = Field(min_length=1)
     digest_id: str = Field(min_length=1)
