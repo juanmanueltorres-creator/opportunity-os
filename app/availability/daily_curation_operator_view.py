@@ -76,6 +76,7 @@ class OperatorReviewItem(StrictRadarModel):
 
 class OperatorPublishableSummary(StrictRadarModel):
     count: int = Field(ge=0)
+    opportunity_ids: list[str] = Field(default_factory=list)
     rendered_digest: str
     format: str
     digest_id: str = Field(min_length=1)
@@ -195,6 +196,10 @@ def render_daily_curation_operator_view(
     )
     publishable = OperatorPublishableSummary(
         count=run.publishable.digest.count,
+        opportunity_ids=[
+            item.opportunity_id
+            for item in run.publishable.digest.items
+        ],
         rendered_digest=run.publishable.rendered_text,
         format=run.publishable.format,
         digest_id=run.publishable.digest.digest_id,
