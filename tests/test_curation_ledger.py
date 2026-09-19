@@ -175,7 +175,8 @@ async def test_publication_preview_requires_recorded_run(tmp_path) -> None:
             digest_id="missing",
             opportunity_ids=["greenhouse:1"],
             channel="WHATSAPP",
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
 
     assert preview.status == "BLOCKED"
@@ -202,7 +203,8 @@ async def test_publication_preview_only_accepts_publishable_ids(tmp_path) -> Non
             digest_id=run.operator_view.publishable.digest_id,
             opportunity_ids=["not-in-digest"],
             channel="WHATSAPP",
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
 
     assert preview.status == "BLOCKED"
@@ -238,7 +240,8 @@ async def test_confirm_publication_records_checkpoint_without_sending(tmp_path) 
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=5),
             note="Posted manually to Equipo Geoespacial",
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
 
     assert preview.status == "READY"
@@ -276,7 +279,8 @@ async def test_repeated_publication_is_blocked(tmp_path) -> None:
             preview=first_preview,
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=5),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
     second_preview = ledger.preview_publication(evidence)
 
@@ -328,14 +332,16 @@ async def test_stale_publication_preview_fails_closed(tmp_path) -> None:
             preview=one,
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=5),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
     stale = ledger.confirm_publication(
         PublicationCheckpointConfirmRequest(
             preview=two,
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=6),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=7),
     )
 
     assert first.status == "RECORDED"
@@ -370,7 +376,8 @@ async def test_confirmation_before_run_is_blocked(tmp_path) -> None:
             preview=preview,
             confirmed_by="operator",
             confirmed_at=NOW - timedelta(seconds=1),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=1),
     )
 
     assert result.status == "BLOCKED"
@@ -403,7 +410,8 @@ async def test_recent_publication_is_excluded_from_next_daily_digest(tmp_path) -
             preview=preview,
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=5),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
 
     next_run = daily.run(now=NOW + timedelta(days=1))
@@ -440,7 +448,8 @@ async def test_publication_cooldown_expires_and_item_can_return(tmp_path) -> Non
             preview=preview,
             confirmed_by="operator",
             confirmed_at=NOW + timedelta(minutes=5),
-        )
+        ),
+        processed_at=NOW + timedelta(minutes=6),
     )
 
     later = daily.run(now=NOW + timedelta(days=31))
@@ -448,3 +457,38 @@ async def test_publication_cooldown_expires_and_item_can_return(tmp_path) -> Non
     assert later.publication_memory.exclusion_ids == []
     assert later.publishable.digest.count == 1
     assert later.publishable.digest.items[0].opportunity_id == "greenhouse:1"
+
+
+@pytest.mark.asyncio
+async def test_future_publication_confirmation_is_blocked(tmp_path) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+    ledger.record_run(run, recorded_at=NOW)
+    preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=run.run_id,
+            digest_id=run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+
+    result = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=10),
+        ),
+        processed_at=NOW + timedelta(minutes=5),
+    )
+
+    assert result.status == "BLOCKED"
+    assert result.errors == ["confirmation_in_future"]
