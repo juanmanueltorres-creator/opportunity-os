@@ -44,7 +44,8 @@ class SourceRefreshRun(StrictRadarModel):
     created_count: int = Field(ge=0)
     existing_count: int = Field(ge=0)
     seen_recorded_count: int = Field(ge=0)
-    closure_inference: bool = False
+    closure_inference: Literal[False] = False
+    external_reads: list[str] = Field(default_factory=list)
     external_actions: list[str] = Field(default_factory=list)
 
     @field_validator("generated_at")
@@ -89,11 +90,16 @@ class SourceRefreshService:
     ) -> SourceRefreshRun:
         generated_at = _aware_utc(now)
         configured = self.configured_source_names
-        selected = _select_connectors(self.connectors, source_names)
+        requested = (
+            None
+            if source_names is None
+            else _normalize_source_names(source_names)
+        )
+        selected = _select_connectors(self.connectors, requested)
         requested = (
             [item.name for item in selected]
-            if source_names is None
-            else list(source_names)
+            if requested is None
+            else requested
         )
 
         diagnostics: list[SourceRefreshDiagnostic] = []
@@ -156,9 +162,21 @@ class SourceRefreshService:
             configured_sources=configured,
             diagnostics=diagnostics,
             closure_inference=False,
+            external_reads=[item.name for item in selected],
             external_actions=[],
             **totals,
         )
+
+
+def _normalize_source_names(source_names: list[str]) -> list[str]:
+    if not source_names:
+        raise ValueError("source names must not be empty")
+    normalized = [name.strip() for name in source_names]
+    if any(not name for name in normalized):
+        raise ValueError("source names must not be blank")
+    if len(normalized) != len(set(normalized)):
+        raise ValueError("source names must be unique")
+    return normalized
 
 
 def _select_connectors(
@@ -168,18 +186,12 @@ def _select_connectors(
     if source_names is None:
         return list(connectors)
 
-    normalized = [name.strip() for name in source_names]
-    if any(not name for name in normalized):
-        raise ValueError("source names must not be blank")
-    if len(normalized) != len(set(normalized)):
-        raise ValueError("source names must be unique")
-
     by_name = {item.name: item for item in connectors}
-    unknown = [name for name in normalized if name not in by_name]
+    unknown = [name for name in source_names if name not in by_name]
     if unknown:
         raise ValueError("requested source is not configured")
 
-    return [by_name[name] for name in normalized]
+    return [by_name[name] for name in source_names]
 
 
 def _run_id(
