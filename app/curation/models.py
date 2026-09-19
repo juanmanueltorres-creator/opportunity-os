@@ -298,3 +298,63 @@ class CurationChangeBrief(StrictRadarModel):
         elif self.current_run_id is None or self.previous_run_id is None:
             raise ValueError("ready brief requires current and previous runs")
         return self
+
+
+CurationPublicationCoverageStatus = Literal[
+    "EMPTY",
+    "NO_PUBLISHABLE",
+    "NONE_CHECKPOINTED",
+    "PARTIAL",
+    "COMPLETE",
+]
+
+
+class CurationPublicationCoverage(StrictRadarModel):
+    status: CurationPublicationCoverageStatus
+    run_id: str | None = None
+    generated_at: datetime | None = None
+    publishable_count: int = Field(ge=0)
+    publishable_opportunity_ids: list[str] = Field(default_factory=list)
+    checkpointed_count: int = Field(ge=0)
+    checkpointed_opportunity_ids: list[str] = Field(default_factory=list)
+    uncheckpointed_count: int = Field(ge=0)
+    uncheckpointed_publishable_ids: list[str] = Field(default_factory=list)
+    latest_checkpointed_at: datetime | None = None
+    external_actions: list[str] = Field(default_factory=list)
+
+    @field_validator("generated_at", "latest_checkpointed_at")
+    @classmethod
+    def coverage_datetimes_must_be_aware(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("datetime must be timezone-aware")
+        return value.astimezone(timezone.utc)
+
+    @model_validator(mode="after")
+    def validate_coverage_shape(self) -> "CurationPublicationCoverage":
+        if self.external_actions:
+            raise ValueError("publication coverage cannot contain external actions")
+        if self.publishable_count != len(self.publishable_opportunity_ids):
+            raise ValueError("publishable count must match IDs")
+        if self.checkpointed_count != len(self.checkpointed_opportunity_ids):
+            raise ValueError("checkpointed count must match IDs")
+        if self.uncheckpointed_count != len(
+            self.uncheckpointed_publishable_ids
+        ):
+            raise ValueError("uncheckpointed count must match IDs")
+        if self.status == "EMPTY":
+            if (
+                self.run_id is not None
+                or self.generated_at is not None
+                or self.publishable_count
+                or self.checkpointed_count
+                or self.uncheckpointed_count
+            ):
+                raise ValueError("empty coverage cannot reference a run")
+        elif self.run_id is None or self.generated_at is None:
+            raise ValueError("non-empty coverage requires a run")
+        return self

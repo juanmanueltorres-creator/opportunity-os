@@ -10,6 +10,7 @@ from app.availability.refresh_curation_operator import (
 )
 from app.curation.models import (
     CurationChangeBrief,
+    CurationPublicationCoverage,
     CurationChangeBriefFormat,
     CurationRunDelta,
     CurationRunDeltaMetrics,
@@ -395,6 +396,55 @@ class CurationLedgerService:
                 previous_run_id=previous_run_id,
                 highlights=highlights,
             ),
+            external_actions=[],
+        )
+
+    def latest_publication_coverage(
+        self,
+    ) -> CurationPublicationCoverage:
+        history = self.history(limit=1)
+        if history.count == 0:
+            return CurationPublicationCoverage(
+                status="EMPTY",
+                publishable_count=0,
+                checkpointed_count=0,
+                uncheckpointed_count=0,
+                external_actions=[],
+            )
+
+        current = history.items[0]
+        publishable_ids = sorted(set(current.publishable_opportunity_ids))
+        checkpointed_ids = sorted(set(current.published_opportunity_ids))
+        publishable_set = set(publishable_ids)
+        checkpointed_set = set(checkpointed_ids)
+
+        unexpected = checkpointed_set - publishable_set
+        if unexpected:
+            raise RuntimeError(
+                "publication checkpoint references non-publishable run item"
+            )
+
+        uncheckpointed_ids = sorted(publishable_set - checkpointed_set)
+        if not publishable_ids:
+            status = "NO_PUBLISHABLE"
+        elif not checkpointed_ids:
+            status = "NONE_CHECKPOINTED"
+        elif uncheckpointed_ids:
+            status = "PARTIAL"
+        else:
+            status = "COMPLETE"
+
+        return CurationPublicationCoverage(
+            status=status,
+            run_id=current.run_id,
+            generated_at=current.generated_at,
+            publishable_count=len(publishable_ids),
+            publishable_opportunity_ids=publishable_ids,
+            checkpointed_count=len(checkpointed_ids),
+            checkpointed_opportunity_ids=checkpointed_ids,
+            uncheckpointed_count=len(uncheckpointed_ids),
+            uncheckpointed_publishable_ids=uncheckpointed_ids,
+            latest_checkpointed_at=current.latest_published_at,
             external_actions=[],
         )
 

@@ -638,3 +638,102 @@ def test_api_change_brief_validates_format_and_requires_ledger(tmp_path) -> None
     assert invalid.status_code == 422
     assert unavailable.status_code == 503
     assert unavailable.json() == {"detail": "Curation ledger unavailable"}
+
+
+def test_api_publication_coverage_reports_uncheckpointed_publishable_ids(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    second = _greenhouse_opportunity().model_copy(
+        update={
+            "id": "greenhouse:2",
+            "source_id": "2",
+            "source_url": "https://boards.greenhouse.io/acme/jobs/2",
+            "title": "GIS Analyst 2",
+        }
+    )
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity(), second],
+    )
+
+    with TestClient(app) as client:
+        run = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        assert client.post(
+            "/api/v1/curation/ledger/runs",
+            json=run,
+        ).status_code == 200
+
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": run["run_id"],
+                "digest_id": run["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        confirmed = client.post(
+            "/api/v1/curation/publication/confirm",
+            json={
+                "preview": preview,
+                "confirmed_by": "operator",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert confirmed.json()["status"] == "RECORDED"
+
+        response = client.get(
+            "/api/v1/curation/history/publication-coverage"
+        )
+
+    assert response.status_code == 200
+    coverage = response.json()
+    assert coverage["status"] == "PARTIAL"
+    assert coverage["publishable_opportunity_ids"] == [
+        "greenhouse:1",
+        "greenhouse:2",
+    ]
+    assert coverage["checkpointed_opportunity_ids"] == ["greenhouse:1"]
+    assert coverage["uncheckpointed_publishable_ids"] == ["greenhouse:2"]
+    assert coverage["uncheckpointed_count"] == 1
+    assert coverage["external_actions"] == []
+
+
+def test_api_publication_coverage_distinguishes_no_publishable_and_no_ledger(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    enabled_app = _app(
+        opportunities,
+        availability,
+        [_remotive_opportunity()],
+    )
+    disabled_app = _app(
+        opportunities,
+        availability,
+        [],
+        ledger_enabled=False,
+    )
+
+    with TestClient(enabled_app) as client:
+        run = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        client.post("/api/v1/curation/ledger/runs", json=run)
+        no_publishable = client.get(
+            "/api/v1/curation/history/publication-coverage"
+        )
+    with TestClient(disabled_app) as client:
+        unavailable = client.get(
+            "/api/v1/curation/history/publication-coverage"
+        )
+
+    assert no_publishable.status_code == 200
+    assert no_publishable.json()["status"] == "NO_PUBLISHABLE"
+    assert no_publishable.json()["publishable_count"] == 0
+    assert unavailable.status_code == 503
+    assert unavailable.json() == {"detail": "Curation ledger unavailable"}

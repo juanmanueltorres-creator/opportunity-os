@@ -943,3 +943,100 @@ async def test_change_brief_renders_recorded_delta_without_causal_claims(
         in brief.rendered_text
     )
     assert "published since" not in brief.rendered_text.lower()
+
+
+def test_publication_coverage_is_empty_without_recorded_runs(tmp_path) -> None:
+    _, ledger, _, _ = _services(tmp_path, [])
+
+    coverage = ledger.latest_publication_coverage()
+
+    assert coverage.status == "EMPTY"
+    assert coverage.run_id is None
+    assert coverage.publishable_count == 0
+    assert coverage.checkpointed_count == 0
+    assert coverage.uncheckpointed_count == 0
+    assert coverage.external_actions == []
+
+
+@pytest.mark.asyncio
+async def test_publication_coverage_tracks_partial_and_complete_checkpoints(
+    tmp_path,
+) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            ),
+            _opportunity(
+                "greenhouse:2",
+                source_url="https://boards.greenhouse.io/acme/jobs/2",
+            ),
+        ],
+    )
+    run = await combined.run(now=NOW)
+    assert run.operator_view.publishable.opportunity_ids == [
+        "greenhouse:1",
+        "greenhouse:2",
+    ]
+    ledger.record_run(run, recorded_at=NOW + timedelta(minutes=1))
+
+    none = ledger.latest_publication_coverage()
+    assert none.status == "NONE_CHECKPOINTED"
+    assert none.uncheckpointed_publishable_ids == [
+        "greenhouse:1",
+        "greenhouse:2",
+    ]
+
+    first_preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=run.run_id,
+            digest_id=run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    first = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=first_preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=2),
+        ),
+        processed_at=NOW + timedelta(minutes=3),
+    )
+    assert first.status == "RECORDED"
+
+    partial = ledger.latest_publication_coverage()
+    assert partial.status == "PARTIAL"
+    assert partial.checkpointed_opportunity_ids == ["greenhouse:1"]
+    assert partial.uncheckpointed_publishable_ids == ["greenhouse:2"]
+    assert partial.uncheckpointed_count == 1
+
+    second_preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=run.run_id,
+            digest_id=run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:2"],
+            channel="WHATSAPP",
+        )
+    )
+    second = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=second_preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=4),
+        ),
+        processed_at=NOW + timedelta(minutes=5),
+    )
+    assert second.status == "RECORDED"
+
+    complete = ledger.latest_publication_coverage()
+    assert complete.status == "COMPLETE"
+    assert complete.checkpointed_opportunity_ids == [
+        "greenhouse:1",
+        "greenhouse:2",
+    ]
+    assert complete.uncheckpointed_publishable_ids == []
+    assert complete.uncheckpointed_count == 0
+    assert complete.latest_checkpointed_at == NOW + timedelta(minutes=4)
