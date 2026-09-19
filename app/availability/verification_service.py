@@ -3,7 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 
-from app.availability.models import (\n    AvailabilityObservation,\n    AvailabilityState,\n    OpportunityAvailability,\n)
+from app.availability.models import (
+    AvailabilityObservation,
+    AvailabilityState,
+    OpportunityAvailability,
+)
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_models import (
     VERIFICATION_PREVIEW_VERSION,
