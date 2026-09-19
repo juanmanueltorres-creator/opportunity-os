@@ -16,6 +16,9 @@ from app.availability.daily_curation_operator_view import (
     DailyCurationOperatorViewOptions,
 )
 from app.availability.models import OpportunityAvailability
+from app.availability.refresh_curation_operator import (
+    RefreshCurationOperatorRun,
+)
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.review_evidence_draft import (
     ReviewEvidenceDraft,
@@ -62,6 +65,18 @@ class IngestionResponse(BaseModel):
 
     created: int
     existing: int
+
+
+class RefreshCurationOperatorServiceProtocol(Protocol):
+    async def run(
+        self,
+        *,
+        now: datetime,
+        source_names: list[str] | None = None,
+        policy: DailyCurationPolicy | None = None,
+        digest_render_options: CommunityDigestRenderOptions | None = None,
+        view_options: DailyCurationOperatorViewOptions | None = None,
+    ) -> RefreshCurationOperatorRun: ...
 
 
 class SourceRefreshServiceProtocol(Protocol):
@@ -155,6 +170,14 @@ class DailyCurationOperatorViewRequest(DailyCurationRequest):
     view_format: Literal["markdown", "plain"] = "markdown"
     include_review_checklists: bool = True
     include_held_details: bool = True
+
+
+class RefreshCurationOperatorRequest(DailyCurationOperatorViewRequest):
+    sources: list[str] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+    )
 
 
 class ReviewEvidenceDraftServiceProtocol(Protocol):
@@ -269,6 +292,7 @@ def create_api_router(
     daily_curation_service: DailyCurationServiceProtocol | None = None,
     daily_curation_operator_view_service: DailyCurationOperatorViewServiceProtocol | None = None,
     source_refresh_service: SourceRefreshServiceProtocol | None = None,
+    refresh_curation_operator_service: RefreshCurationOperatorServiceProtocol | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None,
     timeout_seconds: float,
@@ -279,6 +303,70 @@ def create_api_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     resolved_relationship_memory = relationship_memory or EmptyRelationshipMemory()
+
+    @router.post(
+        "/curation/daily/refresh-view",
+        response_model=RefreshCurationOperatorRun,
+    )
+    async def refresh_and_build_daily_curation_operator_view(
+        request: RefreshCurationOperatorRequest | None = None,
+    ) -> RefreshCurationOperatorRun:
+        if refresh_curation_operator_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Refresh curation operator run unavailable",
+            )
+        resolved = request or RefreshCurationOperatorRequest()
+        try:
+            queue_policy = VerificationQueuePolicy(
+                max_items=max(resolved.review_batch_size, 20),
+                candidate_lookback_days=resolved.candidate_lookback_days,
+                deadline_soon_days=resolved.deadline_soon_days,
+                standard_reverify_after_days=(
+                    resolved.standard_reverify_after_days
+                ),
+                fast_market_reverify_after_days=(
+                    resolved.fast_market_reverify_after_days
+                ),
+                fast_market_max_age_days=resolved.fast_market_max_age_days,
+            )
+            digest_policy = CommunityDigestPolicy(
+                max_items=resolved.digest_max_items,
+                max_per_source=resolved.digest_max_per_source,
+                max_per_bucket=resolved.digest_max_per_bucket,
+                min_freshness_score=resolved.digest_min_freshness_score,
+            )
+            policy = DailyCurationPolicy(
+                review_batch_size=resolved.review_batch_size,
+                held_items_limit=resolved.held_items_limit,
+                queue_policy=queue_policy,
+                digest_policy=digest_policy,
+            )
+            digest_render_options = CommunityDigestRenderOptions(
+                title=resolved.title,
+                timezone_name=resolved.timezone_name,
+                include_intro=resolved.include_intro,
+                include_footer=resolved.include_footer,
+                format=resolved.format,
+            )
+            view_options = DailyCurationOperatorViewOptions(
+                title=resolved.view_title,
+                format=resolved.view_format,
+                include_checklists=resolved.include_review_checklists,
+                include_held_details=resolved.include_held_details,
+            )
+            return await refresh_curation_operator_service.run(
+                now=datetime.now(timezone.utc),
+                source_names=resolved.sources,
+                policy=policy,
+                digest_render_options=digest_render_options,
+                view_options=view_options,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid refresh curation operator options",
+            ) from exc
 
     @router.post(
         "/sources/refresh",
