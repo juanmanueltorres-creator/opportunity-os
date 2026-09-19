@@ -222,6 +222,7 @@ class SQLiteCurationLedgerRepository:
         self,
         *,
         since: datetime,
+        until: datetime,
     ) -> set[str]:
         self._ensure_initialized()
         with self._connect() as conn:
@@ -230,9 +231,10 @@ class SQLiteCurationLedgerRepository:
                 SELECT DISTINCT opportunity_id
                 FROM publication_checkpoint_items
                 WHERE confirmed_at >= ?
+                  AND confirmed_at <= ?
                 ORDER BY opportunity_id ASC
                 """,
-                (since.isoformat(),),
+                (since.isoformat(), until.isoformat()),
             ).fetchall()
         return {str(row["opportunity_id"]) for row in rows}
 
