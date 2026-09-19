@@ -28,6 +28,7 @@ from app.api.routes import (
     VerificationQueueServiceProtocol,
     VerificationReviewSessionServiceProtocol,
     RadarServiceProtocol,
+    SourceRefreshServiceProtocol,
     TargetRadarServiceProtocol,
     create_api_router,
 )
@@ -41,6 +42,7 @@ from app.profiles import load_profile
 from app.radar.community_digest_preview import CommunityDigestPreviewService
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
+from app.radar.source_refresh import SourceRefreshService
 from app.radar.source_catalog import SourceCatalog, load_source_catalog
 from app.radar.sources import SourceRegistry, build_connectors, load_source_config
 from app.radar.taxonomy import AliasRegistry, TaxonomyResolver
@@ -96,6 +98,18 @@ def _availability_verification_enabled() -> bool:
     raise ValueError(
         "OPPORTUNITY_AVAILABILITY_VERIFICATION_ENABLED must be boolean"
     )
+
+
+def _source_refresh_enabled() -> bool:
+    raw = os.getenv(
+        "OPPORTUNITY_SOURCE_REFRESH_ENABLED",
+        "false",
+    ).strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError("OPPORTUNITY_SOURCE_REFRESH_ENABLED must be boolean")
 
 
 def _gmail_read_enabled() -> bool:
@@ -204,6 +218,8 @@ def create_app(
     enable_default_daily_curation: bool = True,
     daily_curation_operator_view_service: DailyCurationOperatorViewServiceProtocol | None = None,
     enable_default_daily_curation_operator_view: bool = True,
+    source_refresh_service: SourceRefreshServiceProtocol | None = None,
+    enable_source_refresh: bool | None = None,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -230,6 +246,11 @@ def create_app(
     )
     resolved_profile = profile if profile is not None else _load_default_profile()
     timeout_seconds = _http_timeout_seconds()
+    source_refresh_enabled = (
+        enable_source_refresh
+        if enable_source_refresh is not None
+        else _source_refresh_enabled()
+    )
     availability_verification_enabled = (
         enable_availability_verification
         if enable_availability_verification is not None
@@ -274,7 +295,35 @@ def create_app(
 
     owned_http_client: httpx.AsyncClient | None = None
     resolved_radar_service = radar_service
+    resolved_source_refresh_service = source_refresh_service
     resolved_community_digest_preview_service = community_digest_preview_service
+
+    configured_connectors = []
+    needs_configured_connectors = (
+        (resolved_radar_service is None and enable_default_radar)
+        or (
+            resolved_source_refresh_service is None
+            and source_refresh_enabled
+        )
+    )
+    if needs_configured_connectors:
+        source_registry = _load_source_registry()
+        owned_http_client = httpx.AsyncClient()
+        configured_connectors = build_connectors(
+            source_registry,
+            owned_http_client,
+            timeout_seconds=timeout_seconds,
+        )
+
+    if (
+        resolved_source_refresh_service is None
+        and source_refresh_enabled
+    ):
+        resolved_source_refresh_service = SourceRefreshService(
+            opportunity_repository=resolved_repository,
+            availability_repository=resolved_availability_repository,
+            connectors=configured_connectors,
+        )
 
     default_extractor: RuleBasedRequirementExtractor | None = None
     needs_default_extractor = (
@@ -296,18 +345,12 @@ def create_app(
             alias_registry=alias_registry,
             taxonomy_path=_taxonomy_path(),
         )
-        source_registry = _load_source_registry()
-        owned_http_client = httpx.AsyncClient()
         if default_extractor is None:
             raise RuntimeError("default extractor unavailable")
         resolved_radar_service = RadarService(
             opportunity_repository=resolved_repository,
             enrichment_repository=enrichment_repository,
-            connectors=build_connectors(
-                source_registry,
-                owned_http_client,
-                timeout_seconds=timeout_seconds,
-            ),
+            connectors=configured_connectors,
             extractor=default_extractor,
             resolver=resolver,
             availability_repository=resolved_availability_repository,
@@ -454,6 +497,7 @@ def create_app(
             daily_curation_operator_view_service=(
                 resolved_daily_curation_operator_view_service
             ),
+            source_refresh_service=resolved_source_refresh_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
