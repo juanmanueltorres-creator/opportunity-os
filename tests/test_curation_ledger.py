@@ -141,7 +141,7 @@ async def test_record_run_is_idempotent_for_exact_snapshot(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_same_run_id_with_different_payload_is_conflict(tmp_path) -> None:
+async def test_derived_run_field_tampering_is_blocked(tmp_path) -> None:
     combined, ledger, _, _ = _services(
         tmp_path,
         [
@@ -162,8 +162,8 @@ async def test_same_run_id_with_different_payload_is_conflict(tmp_path) -> None:
         recorded_at=NOW + timedelta(minutes=1),
     )
 
-    assert result.status == "CONFLICT"
-    assert result.errors == ["run_id_payload_conflict"]
+    assert result.status == "BLOCKED"
+    assert result.errors == ["run_partial_failure_snapshot_mismatch"]
 
 
 @pytest.mark.asyncio
@@ -491,3 +491,135 @@ async def test_future_publication_confirmation_is_blocked(tmp_path) -> None:
 
     assert result.status == "BLOCKED"
     assert result.errors == ["confirmation_in_future"]
+
+
+@pytest.mark.asyncio
+async def test_exact_publication_confirm_retry_is_idempotent(tmp_path) -> None:
+    combined, ledger, _, repository = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+    ledger.record_run(run, recorded_at=NOW)
+    preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=run.run_id,
+            digest_id=run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    request = PublicationCheckpointConfirmRequest(
+        preview=preview,
+        confirmed_by="operator",
+        confirmed_at=NOW + timedelta(minutes=5),
+        note="Posted manually",
+    )
+
+    first = ledger.confirm_publication(
+        request,
+        processed_at=NOW + timedelta(minutes=6),
+    )
+    second = ledger.confirm_publication(
+        request,
+        processed_at=NOW + timedelta(minutes=7),
+    )
+
+    assert first.status == "RECORDED"
+    assert second.status == "ALREADY_RECORDED"
+    assert first.checkpoint is not None
+    assert second.checkpoint is not None
+    assert first.checkpoint.checkpoint_id == second.checkpoint.checkpoint_id
+    assert repository.publication_count() == 1
+
+
+@pytest.mark.asyncio
+async def test_same_opportunity_can_be_published_again_in_new_run_after_cooldown(
+    tmp_path,
+) -> None:
+    combined, ledger, _, repository = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    first_run = await combined.run(now=NOW)
+    ledger.record_run(first_run, recorded_at=NOW)
+    first_preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=first_run.run_id,
+            digest_id=first_run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    first = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=first_preview,
+            confirmed_by="operator",
+            confirmed_at=NOW + timedelta(minutes=5),
+        ),
+        processed_at=NOW + timedelta(minutes=6),
+    )
+    assert first.status == "RECORDED"
+
+    later_at = NOW + timedelta(days=31)
+    second_run = await combined.run(now=later_at)
+    assert second_run.operator_view.publishable.opportunity_ids == [
+        "greenhouse:1"
+    ]
+    ledger.record_run(
+        second_run,
+        recorded_at=later_at + timedelta(minutes=1),
+    )
+    second_preview = ledger.preview_publication(
+        PublicationCheckpointEvidence(
+            run_id=second_run.run_id,
+            digest_id=second_run.operator_view.publishable.digest_id,
+            opportunity_ids=["greenhouse:1"],
+            channel="WHATSAPP",
+        )
+    )
+    assert second_preview.status == "READY"
+
+    second = ledger.confirm_publication(
+        PublicationCheckpointConfirmRequest(
+            preview=second_preview,
+            confirmed_by="operator",
+            confirmed_at=later_at + timedelta(minutes=5),
+        ),
+        processed_at=later_at + timedelta(minutes=6),
+    )
+
+    assert second.status == "RECORDED"
+    assert repository.publication_count() == 2
+
+
+@pytest.mark.asyncio
+async def test_run_record_before_generation_is_blocked(tmp_path) -> None:
+    combined, ledger, _, _ = _services(
+        tmp_path,
+        [
+            _opportunity(
+                "greenhouse:1",
+                source_url="https://boards.greenhouse.io/acme/jobs/1",
+            )
+        ],
+    )
+    run = await combined.run(now=NOW)
+
+    result = ledger.record_run(
+        run,
+        recorded_at=NOW - timedelta(seconds=1),
+    )
+
+    assert result.status == "BLOCKED"
+    assert result.errors == ["recorded_at_before_run"]
