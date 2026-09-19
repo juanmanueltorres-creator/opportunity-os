@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import sqlite3
+from typing import Literal
 
 from app.curation.models import CurationRunRecord, PublicationCheckpoint
 
@@ -86,7 +87,7 @@ class SQLiteCurationLedgerRepository:
         record: CurationRunRecord,
         *,
         payload_json: str,
-    ) -> LiteralDisposition:
+    ) -> Literal["NEW", "IDENTICAL", "CONFLICT"]:
         self._ensure_initialized()
         with self._connect() as conn:
             row = conn.execute(
@@ -254,5 +255,3 @@ class SQLiteCurationLedgerRepository:
             ).fetchall()
         return {str(row["opportunity_id"]) for row in rows}
 
-
-LiteralDisposition = str
