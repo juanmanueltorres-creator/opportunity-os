@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from app.models.domain import Opportunity, SearchIntent
 from app.radar.models import DailyRadarBatch, RadarAssessment, SourceDiagnostic, Tier
@@ -62,6 +63,8 @@ def select_daily_batch(
     seen_ids: set[str] = set()
     seen_source_requisitions: set[tuple[str, str]] = set()
     company_counts: dict[str, int] = {}
+    source_counts: dict[str, int] = {}
+    source_category_counts: dict[str, int] = {}
 
     for item in eligible:
         opportunity = item.opportunity
@@ -70,6 +73,8 @@ def select_daily_batch(
             _normalize(opportunity.source_id),
         )
         company_key = _normalize(opportunity.company)
+        selection_source = _selection_source(item)
+        source_category = _selection_source_category(item)
 
         if opportunity.id in seen_ids or source_identity in seen_source_requisitions:
             continue
@@ -79,11 +84,30 @@ def select_daily_batch(
             continue
         if company_counts.get(company_key, 0) >= policy.max_per_company:
             continue
+        if (
+            policy.max_per_source is not None
+            and selection_source is not None
+            and source_counts.get(selection_source, 0) >= policy.max_per_source
+        ):
+            continue
+        if (
+            policy.max_per_source_category is not None
+            and source_category is not None
+            and source_category_counts.get(source_category, 0)
+            >= policy.max_per_source_category
+        ):
+            continue
 
         selected.append(item)
         seen_ids.add(opportunity.id)
         seen_source_requisitions.add(source_identity)
         company_counts[company_key] = company_counts.get(company_key, 0) + 1
+        if selection_source is not None:
+            source_counts[selection_source] = source_counts.get(selection_source, 0) + 1
+        if source_category is not None:
+            source_category_counts[source_category] = (
+                source_category_counts.get(source_category, 0) + 1
+            )
 
         if len(selected) >= policy.max_items:
             break
@@ -228,6 +252,33 @@ def _is_inside_cooldown(
 
     normalized_contact = last_contact.astimezone(timezone.utc)
     return now - normalized_contact < timedelta(days=policy.company_role_cooldown_days)
+
+
+def _selection_source(item: RadarAssessment) -> str | None:
+    source_url = (
+        item.enrichment.canonical_url.value
+        if item.enrichment.canonical_url is not None
+        else item.opportunity.source_url
+    )
+    try:
+        host = (urlsplit(source_url).hostname or "").casefold()
+    except ValueError:
+        host = ""
+    if host.startswith("www."):
+        host = host[4:]
+    if host:
+        return host
+
+    fallback = _normalize(item.opportunity.source)
+    return fallback or None
+
+
+def _selection_source_category(item: RadarAssessment) -> str | None:
+    category = item.enrichment.source_category
+    if category is None:
+        return None
+    normalized = _normalize(str(category.value))
+    return normalized or None
 
 
 def _count_tiers(items: list[RadarAssessment]) -> dict[str, int]:

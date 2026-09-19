@@ -78,7 +78,13 @@ def assess_career(
     preferred = _career_requirements(enrichment, importance="preferred")
 
     if not mandatory and not preferred:
-        return assess_opportunity(opportunity, track_profile, now=assessment_time)
+        base = assess_opportunity(opportunity, track_profile, now=assessment_time)
+        return _apply_career_freshness_policy(
+            base,
+            opportunity,
+            enrichment,
+            assessment_time,
+        )
 
     required_terms, _ = _resolved_terms(
         [requirement for requirement in mandatory if requirement.kind == "skill"],
@@ -99,6 +105,7 @@ def assess_career(
         }
     )
     base = assess_opportunity(score_opportunity, track_profile, now=assessment_time)
+    freshness_fit = _freshness_fit(opportunity, enrichment, assessment_time)
     domain_fit, matched_domains = _career_domain_fit(opportunity, enrichment, track)
     evidence_requirements = _career_evidence_requirements(mandatory, preferred)
     if evidence_requirements:
@@ -153,14 +160,14 @@ def assess_career(
         + 0.20 * domain_fit
         + 0.20 * evidence_fit
         + 0.10 * base.location_fit
-        + 0.10 * base.freshness_fit,
+        + 0.10 * freshness_fit,
         1,
     )
     recommendation = _recommend(overall_score, risks)
     explanation = (
         f"mandatory={mandatory_fit:.1f}; domain={domain_fit:.1f}; "
         f"evidence={evidence_fit:.1f}; location={base.location_fit:.1f}; "
-        f"freshness={base.freshness_fit:.1f}; matched={strengths}; "
+        f"freshness={freshness_fit:.1f}; matched={strengths}; "
         f"gaps={gaps}; risks={risks}"
     )
 
@@ -171,7 +178,7 @@ def assess_career(
         domain_fit=domain_fit,
         evidence_fit=evidence_fit,
         location_fit=base.location_fit,
-        freshness_fit=base.freshness_fit,
+        freshness_fit=freshness_fit,
         strengths=strengths,
         gaps=gaps,
         risks=risks,
@@ -205,7 +212,7 @@ def assess_income(
         profile,
         track,
     )
-    freshness_fit = _freshness_fit(opportunity, assessment_time)
+    freshness_fit = _freshness_fit(opportunity, enrichment, assessment_time)
 
     income_viability = round(
         0.35 * capability_fit
@@ -244,7 +251,13 @@ def best_track_assessments(
     income: list[IncomeAssessment] = []
 
     for track in effective_tracks(profile):
-        eligibility = evaluate_eligibility(opportunity, enrichment, profile, track)
+        eligibility = evaluate_eligibility(
+            opportunity,
+            enrichment,
+            profile,
+            track,
+            now=now,
+        )
         if not eligibility.eligible:
             continue
 
@@ -804,10 +817,33 @@ def _barrier_status(
     return 50.0
 
 
-def _freshness_fit(opportunity: Opportunity, now: datetime) -> float:
+def _freshness_fit(
+    opportunity: Opportunity,
+    enrichment: OpportunityEnrichment,
+    now: datetime,
+) -> float:
+    if (
+        enrichment.freshness_policy == "deadline_sensitive"
+        and enrichment.application_deadline is not None
+    ):
+        deadline = enrichment.application_deadline.value
+        return 100.0 if now.date() <= deadline.date() else 0.0
+
     if opportunity.published_at is None:
         return 50.0
+
     age_days = max(0.0, (now - opportunity.published_at).total_seconds() / 86400.0)
+    if enrichment.freshness_policy == "fast_market_project":
+        if age_days <= 1:
+            return 100.0
+        if age_days <= 3:
+            return 85.0
+        if age_days <= 7:
+            return 50.0
+        if age_days <= 14:
+            return 20.0
+        return 0.0
+
     if age_days <= 7:
         return 100.0
     if age_days <= 30:
@@ -815,6 +851,41 @@ def _freshness_fit(opportunity: Opportunity, now: datetime) -> float:
     if age_days <= 90:
         return 25.0
     return 0.0
+
+
+def _apply_career_freshness_policy(
+    base: OpportunityAssessment,
+    opportunity: Opportunity,
+    enrichment: OpportunityEnrichment,
+    now: datetime,
+) -> OpportunityAssessment:
+    freshness_fit = _freshness_fit(opportunity, enrichment, now)
+    if freshness_fit == base.freshness_fit:
+        return base
+
+    overall_score = round(
+        0.40 * base.mandatory_fit
+        + 0.20 * base.domain_fit
+        + 0.20 * base.evidence_fit
+        + 0.10 * base.location_fit
+        + 0.10 * freshness_fit,
+        1,
+    )
+    recommendation = _recommend(overall_score, base.risks)
+    explanation = (
+        f"mandatory={base.mandatory_fit:.1f}; domain={base.domain_fit:.1f}; "
+        f"evidence={base.evidence_fit:.1f}; location={base.location_fit:.1f}; "
+        f"freshness={freshness_fit:.1f}; matched={base.strengths}; "
+        f"gaps={base.gaps}; risks={base.risks}"
+    )
+    return base.model_copy(
+        update={
+            "overall_score": overall_score,
+            "freshness_fit": freshness_fit,
+            "recommendation": recommendation,
+            "explanation": explanation,
+        }
+    )
 
 
 def _recommend(score: float, risks: list[str]) -> Recommendation:

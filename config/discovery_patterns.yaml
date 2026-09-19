@@ -1,0 +1,61 @@
+version: discovery-patterns-v1
+
+packs:
+  freelance_geo:
+    purpose: Find project-based geospatial work with concrete deliverables.
+    terms:
+      - GIS freelance
+      - QGIS freelance
+      - remote sensing freelance
+      - geospatial Python contract
+      - PostGIS contract
+      - cartography contract
+      - photogrammetry freelance
+      - Civil 3D GIS
+      - spatial data contract
+      - Earth observation consulting
+
+  geospatial_lateral:
+    purpose: Find roles where geospatial capability is important even when GIS is absent from the title.
+    terms:
+      - spatial data
+      - Earth observation
+      - environmental data
+      - land data
+      - geomatics
+      - surveying
+      - cadastre
+      - infrastructure GIS
+      - asset management GIS
+      - environmental analyst
+
+  geoscience:
+    purpose: Find domain roles that benefit from geospatial capability.
+    terms:
+      - geology
+      - exploration geology
+      - hydrogeology
+      - mining data
+      - environmental geoscience
+      - geological data
+      - mine GIS
+
+  entry:
+    purpose: Find lower-friction professional entry points.
+    terms:
+      - junior
+      - trainee
+      - internship
+      - graduate
+      - early career
+      - assistant
+      - analyst I
+
+  contractor_networks:
+    purpose: Find organizations that maintain specialist or freelancer networks without assuming an active opening.
+    terms:
+      - geospatial contractor network
+      - GIS consulting subcontractor
+      - freelance developer network
+      - remote sensing consultant network
+      - project-based geospatial support

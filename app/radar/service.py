@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 
+from app.availability.repository import SQLiteAvailabilityRepository
 from app.connectors.base import ConnectorError
 from app.models.domain import CandidateProfile, Opportunity
 from app.radar.confidence import score_confidence
@@ -55,6 +56,7 @@ class RadarService:
         connectors: list[ConfiguredConnector],
         extractor: RuleBasedRequirementExtractor,
         resolver: TaxonomyResolver,
+        availability_repository: SQLiteAvailabilityRepository | None = None,
         policy: RadarPolicy | None = None,
         history: ApplicationHistory | None = None,
         scoring_version: str = "v0.2a1",
@@ -66,6 +68,7 @@ class RadarService:
         self.connectors = list(connectors)
         self.extractor = extractor
         self.resolver = resolver
+        self.availability_repository = availability_repository
         self.policy = policy or RadarPolicy()
         self.history = history or EmptyApplicationHistory()
         self.scoring_version = scoring_version.strip()
@@ -77,7 +80,7 @@ class RadarService:
         now: datetime,
     ):
         run_at = _aware_utc(now)
-        diagnostics = await self._ingest_sources()
+        diagnostics = await self._ingest_sources(now=run_at)
 
         candidates = self.opportunity_repository.list_radar_candidates(
             now=run_at,
@@ -133,6 +136,7 @@ class RadarService:
                 opportunity,
                 enrichment,
                 profile,
+                now=run_at,
             )
             confidence = score_confidence(enrichment, career, income)
             ranked_items.append(
@@ -173,15 +177,28 @@ class RadarService:
     ) -> Opportunity:
         opportunity = manual.to_opportunity(_aware_utc(now))
         stored, _ = self.opportunity_repository.upsert(opportunity)
+        if self.availability_repository is not None:
+            self.availability_repository.record_seen(
+                stored.id,
+                observed_at=_aware_utc(now),
+                evidence_source=manual.source,
+                source_url=manual.source_url,
+            )
         return stored
 
-    async def _ingest_sources(self) -> list[SourceDiagnostic]:
+    async def _ingest_sources(
+        self,
+        *,
+        now: datetime,
+    ) -> list[SourceDiagnostic]:
         diagnostics: list[SourceDiagnostic] = []
         for configured in self.connectors:
             try:
                 result = await ingest(
                     configured.connector,
                     self.opportunity_repository,
+                    availability_repository=self.availability_repository,
+                    observed_at=now,
                 )
             except ConnectorError:
                 diagnostics.append(
@@ -212,9 +229,17 @@ def _aggregate_eligibility(
     opportunity: Opportunity,
     enrichment,
     profile: CandidateProfile,
+    *,
+    now: datetime,
 ) -> EligibilityResult:
     results = [
-        evaluate_eligibility(opportunity, enrichment, profile, track)
+        evaluate_eligibility(
+            opportunity,
+            enrichment,
+            profile,
+            track,
+            now=now,
+        )
         for track in effective_tracks(profile)
     ]
     if not results:

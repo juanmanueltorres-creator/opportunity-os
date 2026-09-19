@@ -1,0 +1,196 @@
+version: source-catalog-v2
+
+sources:
+  - key: greenhouse
+    aliases: [boards.greenhouse.io]
+    category: DIRECT_ATS
+    authority: DIRECT_OFFICIAL
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job]
+    publishable: true
+    verification_required: false
+
+  - key: lever
+    aliases: [jobs.lever.co]
+    category: DIRECT_ATS
+    authority: DIRECT_OFFICIAL
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job]
+    publishable: true
+    verification_required: false
+
+  - key: ashby
+    aliases: [jobs.ashbyhq.com]
+    category: DIRECT_ATS
+    authority: DIRECT_OFFICIAL
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job]
+    publishable: true
+    verification_required: false
+
+  - key: remotive
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, remote]
+    publishable: true
+    verification_required: true
+
+  - key: workana
+    aliases: [workana.com]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, project]
+    publishable: true
+    verification_required: true
+
+  - key: freelancer
+    aliases: [freelancer.com, freelancer.com.ar]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, project]
+    publishable: true
+    verification_required: true
+
+  - key: cadcrowd
+    aliases: [cadcrowd.com]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, project, cad]
+    publishable: true
+    verification_required: true
+
+  - key: kolabtree
+    aliases: [kolabtree.com]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, consulting, research]
+    publishable: true
+    verification_required: true
+
+  - key: guru
+    aliases: [guru.com]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, project]
+    publishable: true
+    verification_required: true
+
+  - key: peopleperhour
+    aliases: [peopleperhour.com]
+    category: FREELANCE_MARKETPLACE
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    freshness_policy: fast_market_project
+    default_channel_tags: [freelance, project]
+    publishable: true
+    verification_required: true
+
+  - key: getonboard
+    aliases: [getonbrd.com, getonbrd.cl]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job, contract, latam]
+    publishable: true
+    verification_required: true
+
+  - key: geo_careers
+    aliases: [geo-careers.com]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, geospatial]
+    publishable: true
+    verification_required: true
+
+  - key: spatialnode
+    aliases: [spatialnode.net]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, geospatial]
+    publishable: true
+    verification_required: true
+
+  - key: earthworks
+    aliases: [earthworks-jobs.com]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, geoscience]
+    publishable: true
+    verification_required: true
+
+  - key: climatebase
+    aliases: [climatebase.org]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, climate]
+    publishable: true
+    verification_required: true
+
+  - key: terrado
+    aliases: [terra.do]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, climate]
+    publishable: true
+    verification_required: true
+
+  - key: linkedin
+    aliases: [linkedin.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job]
+    publishable: true
+    verification_required: true
+
+  - key: indeed
+    aliases: [indeed.com, indeed.com.ar]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job]
+    publishable: true
+    verification_required: true
+
+  - key: computrabajo
+    aliases: [computrabajo.com, computrabajo.com.ar]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, latam]
+    publishable: true
+    verification_required: true
+
+  - key: hiringcafe
+    aliases: [hiring.cafe]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery]
+    publishable: false
+    verification_required: true
+
+  - key: reddit
+    aliases: [reddit.com]
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, discovery]
+    publishable: false
+    verification_required: true

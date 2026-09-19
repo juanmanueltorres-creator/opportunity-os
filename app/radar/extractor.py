@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import re
 from typing import Protocol
+from urllib.parse import unquote_plus, urlsplit, urlunsplit
 
 from app.models.domain import Opportunity
 from app.radar.models import (
@@ -11,6 +12,7 @@ from app.radar.models import (
     OpportunityEnrichment,
     Requirement,
 )
+from app.radar.source_catalog import SourceCatalog, SourceCatalogEntry
 
 MANDATORY_CUES = (
     "required",
@@ -75,6 +77,7 @@ _KNOWLEDGE_SECTION_PREFIXES = (
 )
 
 _DIRECT_ATS_SOURCES = {"greenhouse", "lever", "ashby"}
+_TRACKING_QUERY_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 _LANGUAGE_TERMS = {
     "english",
     "inglés",
@@ -109,10 +112,21 @@ class RequirementExtractor(Protocol):
 
 
 class RuleBasedRequirementExtractor:
-    def __init__(self, *, extractor_version: str = "rules-v3") -> None:
-        if not extractor_version.strip():
+    def __init__(
+        self,
+        *,
+        extractor_version: str = "rules-v5",
+        source_catalog: SourceCatalog | None = None,
+    ) -> None:
+        base_version = extractor_version.strip()
+        if not base_version:
             raise ValueError("extractor_version is required")
-        self.extractor_version = extractor_version.strip()
+        self.source_catalog = source_catalog
+        self.extractor_version = (
+            f"{base_version}+{source_catalog.version}"
+            if source_catalog is not None
+            else base_version
+        )
 
     def extract(self, opportunity: Opportunity) -> OpportunityEnrichment:
         requirements: dict[tuple[str, str], Requirement] = {}
@@ -159,11 +173,31 @@ class RuleBasedRequirementExtractor:
             None,
         )
 
-        source_reliability = _source_reliability(opportunity.source)
+        source_entry = (
+            self.source_catalog.resolve(opportunity.source, opportunity.source_url)
+            if self.source_catalog is not None
+            else None
+        )
+        source_reliability = _source_reliability(
+            opportunity.source,
+            source_entry=source_entry,
+        )
         source_freshness_quality = _freshness_quality(
             opportunity,
             source_reliability=source_reliability,
+            source_entry=source_entry,
         )
+        source_category = _source_category(opportunity, source_entry)
+        freshness_policy = (
+            "deadline_sensitive"
+            if application_deadline is not None
+            else (
+                source_entry.freshness_policy
+                if source_entry is not None
+                else "standard_job"
+            )
+        )
+        canonical_url = _canonical_url(opportunity.source_url)
 
         region = None
         if opportunity.location and opportunity.location.strip():
@@ -189,10 +223,22 @@ class RuleBasedRequirementExtractor:
             salary_currency=salary_currency,
             requirements=list(requirements.values()),
             application_contact_hints=application_contact_hints,
-            application_mode=_application_mode(opportunity, application_contact_hints),
+            application_mode=_application_mode(
+                opportunity,
+                application_contact_hints,
+                source_entry=source_entry,
+            ),
             source_reliability=source_reliability,
             source_freshness_quality=source_freshness_quality,
+            freshness_policy=freshness_policy,
+            channel_tags=(
+                list(source_entry.default_channel_tags)
+                if source_entry is not None
+                else []
+            ),
             application_deadline=application_deadline,
+            source_category=source_category,
+            canonical_url=canonical_url,
             extractor_version=self.extractor_version,
             taxonomy_versions={},
             created_at=datetime.now(timezone.utc),
@@ -546,15 +592,33 @@ def _extract_published_email_hints(
 def _application_mode(
     opportunity: Opportunity,
     hints: list[ApplicationContactHint],
+    *,
+    source_entry: SourceCatalogEntry | None = None,
 ) -> str:
     if any(hint.kind == "PUBLISHED_EMAIL" for hint in hints):
         return "DIRECT_EMAIL"
-    if opportunity.source.casefold() in _DIRECT_ATS_SOURCES:
+    if (
+        opportunity.source.casefold() in _DIRECT_ATS_SOURCES
+        or (source_entry is not None and source_entry.category == "DIRECT_ATS")
+    ):
         return "HOSTED_MANUAL"
     return "UNKNOWN"
 
 
-def _source_reliability(source: str) -> str:
+def _source_reliability(
+    source: str,
+    *,
+    source_entry: SourceCatalogEntry | None = None,
+) -> str:
+    if source_entry is not None:
+        if source_entry.category == "DIRECT_ATS":
+            return "DIRECT_ATS"
+        if source_entry.authority == "DIRECT_OFFICIAL":
+            return "DIRECT_OFFICIAL"
+        if source_entry.authority == "DIRECT_PLATFORM":
+            return "AGGREGATOR"
+        return "UNKNOWN"
+
     normalized = source.casefold()
     if normalized in _DIRECT_ATS_SOURCES:
         return "DIRECT_ATS"
@@ -565,14 +629,86 @@ def _source_reliability(source: str) -> str:
     return "UNKNOWN"
 
 
-def _freshness_quality(opportunity: Opportunity, *, source_reliability: str) -> str:
+def _freshness_quality(
+    opportunity: Opportunity,
+    *,
+    source_reliability: str,
+    source_entry: SourceCatalogEntry | None = None,
+) -> str:
     if opportunity.published_at is None:
         return "DISCOVERED_AT_ONLY"
+    if source_entry is not None:
+        return source_entry.freshness_mode
     if source_reliability == "AGGREGATOR":
         return "DELAYED_TIMESTAMP"
     if source_reliability in {"DIRECT_ATS", "DIRECT_OFFICIAL"}:
         return "DIRECT_TIMESTAMP"
     return "UNKNOWN"
+
+
+def _source_category(
+    opportunity: Opportunity,
+    source_entry: SourceCatalogEntry | None,
+) -> DerivedValue[str] | None:
+    if source_entry is None:
+        return None
+    source_matches = source_entry.matches(opportunity.source)
+    source_text = (
+        opportunity.source
+        if source_matches
+        else opportunity.source_url
+    )
+    return DerivedValue[str](
+        value=source_entry.category,
+        source_text=source_text,
+        source_field=("source" if source_matches else "source_url"),
+        extraction_method="approved_alias",
+        confidence=1.0,
+    )
+
+
+def _canonical_url(source_url: str) -> DerivedValue[str]:
+    canonical = _strip_tracking_query(source_url)
+    return DerivedValue[str](
+        value=canonical,
+        source_text=source_url,
+        source_field="source_url",
+        extraction_method="explicit_rule",
+        confidence=1.0,
+    )
+
+
+def _strip_tracking_query(source_url: str) -> str:
+    try:
+        parts = urlsplit(source_url)
+    except ValueError:
+        return source_url
+    if parts.scheme.casefold() not in {"http", "https"} or not parts.netloc:
+        return source_url
+
+    kept_query = [
+        part
+        for part in parts.query.split("&")
+        if not _is_tracking_query_part(part)
+    ]
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            "&".join(kept_query),
+            parts.fragment,
+        )
+    )
+
+
+def _is_tracking_query_part(part: str) -> bool:
+    raw_key = part.split("=", 1)[0]
+    key = unquote_plus(raw_key).casefold()
+    return (
+        key.startswith("utm_")
+        or key in _TRACKING_QUERY_KEYS
+    )
 
 
 def _extract_salary(

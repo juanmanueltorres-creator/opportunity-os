@@ -20,6 +20,7 @@ def _opportunity(
     title: str = "Example Role",
     description: str = "Example description",
     source: str = "example",
+    source_url: str | None = None,
     required_skills: list[str] | None = None,
     preferred_skills: list[str] | None = None,
     location: str | None = None,
@@ -30,7 +31,7 @@ def _opportunity(
         id=f"{source}:1",
         source=source,
         source_id="1",
-        source_url=f"https://example.com/{source}/1",
+        source_url=source_url or f"https://example.com/{source}/1",
         company="Example Co",
         title=title,
         description=description,
@@ -171,3 +172,117 @@ def test_parseable_salary_and_deadline_keep_provenance() -> None:
         2026, 9, 15, tzinfo=timezone.utc
     )
     assert enrichment.application_deadline.source_text == "Apply by 2026-09-15."
+
+def test_source_catalog_enriches_manual_marketplace_opportunity_and_cleans_tracking() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+    source_url = (
+        "https://www.workana.com/job/example-project"
+        "?project_id=42&utm_source=chatgpt.com&fbclid=tracking"
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(
+            source="manual",
+            source_url=source_url,
+            published_at=NOW,
+        )
+    )
+
+    assert enrichment.extractor_version == "rules-v5+source-catalog-v2"
+    assert enrichment.source_category is not None
+    assert enrichment.source_category.value == "FREELANCE_MARKETPLACE"
+    assert enrichment.source_category.source_text == source_url
+    assert enrichment.channel_tags == ["freelance", "project"]
+    assert enrichment.source_reliability == "AGGREGATOR"
+    assert enrichment.source_freshness_quality == "DIRECT_TIMESTAMP"
+    assert enrichment.freshness_policy == "fast_market_project"
+    assert enrichment.canonical_url is not None
+    assert enrichment.canonical_url.value == (
+        "https://www.workana.com/job/example-project?project_id=42"
+    )
+    assert enrichment.canonical_url.source_text == source_url
+
+
+def test_explicit_deadline_overrides_source_freshness_policy() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(
+            source="workana",
+            source_url="https://workana.com/job/deadline-project",
+            description="Apply by 2026-09-15.",
+            published_at=NOW,
+        )
+    )
+
+    assert enrichment.freshness_policy == "deadline_sensitive"
+
+
+def test_discovery_only_catalog_source_remains_low_authority() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(
+            source="manual",
+            source_url="https://www.reddit.com/r/gis/comments/example",
+            published_at=NOW,
+        )
+    )
+
+    assert enrichment.source_category is not None
+    assert enrichment.source_category.value == "COMMUNITY_SIGNAL"
+    assert enrichment.channel_tags == ["community", "discovery"]
+    assert enrichment.source_reliability == "UNKNOWN"
+    assert enrichment.source_freshness_quality == "DISCOVERED_AT_ONLY"
+
+
+def test_canonical_url_preserves_non_tracking_query_parameters() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(
+            source="workana",
+            source_url=(
+                "https://workana.com/job/example"
+                "?project=abc&utm_medium=chat&lang=es&gclid=tracking"
+            ),
+        )
+    )
+
+    assert enrichment.canonical_url is not None
+    assert enrichment.canonical_url.value == (
+        "https://workana.com/job/example?project=abc&lang=es"
+    )
+
+
+def test_without_catalog_existing_source_semantics_remain_backward_compatible() -> None:
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        extractor_version="rules-v3",
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(source="remotive", published_at=NOW)
+    )
+
+    assert enrichment.extractor_version == "rules-v3"
+    assert enrichment.source_reliability == "AGGREGATOR"
+    assert enrichment.source_freshness_quality == "DELAYED_TIMESTAMP"
+    assert enrichment.source_category is None
+    assert enrichment.channel_tags == []
+    assert enrichment.canonical_url is not None

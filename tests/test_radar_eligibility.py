@@ -176,3 +176,54 @@ def test_closed_posting_is_a_hard_fail() -> None:
 
     assert result.eligible is False
     assert "posting_closed" in result.hard_fail_reasons
+
+def test_explicit_passed_deadline_is_a_hard_fail() -> None:
+    result = evaluate_eligibility(
+        _opportunity(status="open"),
+        _enrichment(
+            application_deadline=_derived(
+                datetime(2026, 8, 27, tzinfo=timezone.utc),
+                field="description",
+            )
+        ),
+        _profile(),
+        _track(),
+        now=NOW,
+    )
+
+    assert result.eligible is False
+    assert "posting_deadline_passed" in result.hard_fail_reasons
+
+
+def test_deadline_remains_eligible_through_its_calendar_date() -> None:
+    result = evaluate_eligibility(
+        _opportunity(status="open"),
+        _enrichment(
+            application_deadline=_derived(
+                datetime(2026, 8, 28, tzinfo=timezone.utc),
+                field="description",
+            )
+        ),
+        _profile(),
+        _track(),
+        now=NOW,
+    )
+
+    assert result.eligible is True
+    assert "posting_deadline_passed" not in result.hard_fail_reasons
+
+
+def test_old_posting_without_explicit_closed_evidence_stays_eligible() -> None:
+    result = evaluate_eligibility(
+        _opportunity(
+            status="open",
+            published_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        ),
+        _enrichment(),
+        _profile(),
+        _track(),
+        now=NOW,
+    )
+
+    assert result.eligible is True
+    assert result.hard_fail_reasons == []

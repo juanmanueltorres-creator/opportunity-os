@@ -425,3 +425,106 @@ def test_unverified_experience_never_awards_income_capability() -> None:
     assert assessment.capability_fit == 0.0
     assert assessment.matched_capabilities == []
     assert "3 years kitchen operations" in assessment.gaps
+
+def test_fast_market_project_decays_faster_than_standard_job() -> None:
+    track = _track(
+        "income",
+        intents=["INCOME_NOW"],
+        skills=["Python"],
+        accepted_work_modes=["remote"],
+    )
+    profile = _profile(tracks=[track])
+    opportunity = _opportunity(
+        remote_policy="remote",
+        published_at=NOW - timedelta(days=10),
+    )
+
+    standard = assess_income(
+        opportunity,
+        _enrichment([_requirement("Python")], freshness_policy="standard_job"),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+    fast = assess_income(
+        opportunity,
+        _enrichment(
+            [_requirement("Python")],
+            freshness_policy="fast_market_project",
+        ),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+
+    assert standard.freshness_fit == 75.0
+    assert fast.freshness_fit == 20.0
+    assert fast.income_viability < standard.income_viability
+
+
+def test_deadline_sensitive_opportunity_stays_fresh_while_deadline_is_active() -> None:
+    track = _track(
+        "income",
+        intents=["INCOME_NOW"],
+        skills=["Python"],
+        accepted_work_modes=["remote"],
+    )
+    profile = _profile(tracks=[track])
+    old_posting = _opportunity(
+        remote_policy="remote",
+        published_at=NOW - timedelta(days=60),
+    )
+    deadline = _derived(NOW + timedelta(days=2), field="description")
+
+    assessment = assess_income(
+        old_posting,
+        _enrichment(
+            [_requirement("Python")],
+            freshness_policy="deadline_sensitive",
+            application_deadline=deadline,
+        ),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+
+    assert assessment.freshness_fit == 100.0
+
+
+def test_fast_market_policy_also_changes_career_freshness() -> None:
+    track = _track(
+        "career",
+        intents=["CAREER"],
+        skills=["Python"],
+        domains=["technology"],
+        roles=["Example Role"],
+    )
+    profile = _profile(tracks=[track])
+    opportunity = _opportunity(
+        required_skills=["Python"],
+        published_at=NOW - timedelta(days=10),
+    )
+
+    standard = assess_career(
+        opportunity,
+        _enrichment([], freshness_policy="standard_job"),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+    fast = assess_career(
+        opportunity,
+        _enrichment([], freshness_policy="fast_market_project"),
+        profile,
+        track,
+        _resolver(),
+        now=NOW,
+    )
+
+    assert standard.freshness_fit == 75.0
+    assert fast.freshness_fit == 20.0
+    assert fast.overall_score < standard.overall_score
