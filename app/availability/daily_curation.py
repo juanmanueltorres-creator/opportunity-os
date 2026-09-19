@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 
@@ -24,6 +24,7 @@ from app.radar.community_digest_preview import (
 )
 from app.radar.community_digest_renderer import CommunityDigestRenderOptions
 from app.radar.models import StrictRadarModel
+from app.curation.repository import SQLiteCurationLedgerRepository
 
 
 DAILY_CURATION_VERSION = "daily-curation-run-v1"
@@ -40,12 +41,17 @@ class DailyCurationPolicy:
     digest_policy: CommunityDigestPolicy = field(
         default_factory=CommunityDigestPolicy
     )
+    publication_cooldown_days: int = 30
 
     def __post_init__(self) -> None:
         if not 1 <= self.review_batch_size <= 20:
             raise ValueError("review_batch_size must be within 1..20")
         if not 1 <= self.held_items_limit <= 100:
             raise ValueError("held_items_limit must be within 1..100")
+        if not 1 <= self.publication_cooldown_days <= 365:
+            raise ValueError(
+                "publication_cooldown_days must be within 1..365"
+            )
 
 
 class DailyCurationHeld(StrictRadarModel):
@@ -56,6 +62,12 @@ class DailyCurationHeld(StrictRadarModel):
     reason_counts: dict[str, int] = Field(default_factory=dict)
 
 
+class DailyCurationPublicationMemory(StrictRadarModel):
+    cooldown_days: int = Field(ge=1, le=365)
+    exclusion_ids: list[str] = Field(default_factory=list)
+    exclusion_count: int = Field(ge=0)
+
+
 class DailyCurationRun(StrictRadarModel):
     run_version: str = DAILY_CURATION_VERSION
     run_id: str = Field(min_length=1)
@@ -63,6 +75,7 @@ class DailyCurationRun(StrictRadarModel):
     review: VerificationReviewSession
     publishable: CommunityDigestPreview
     held: DailyCurationHeld
+    publication_memory: DailyCurationPublicationMemory
     counts: dict[str, int] = Field(default_factory=dict)
     external_actions: list[str] = Field(default_factory=list)
 
@@ -88,10 +101,12 @@ class DailyCurationService:
         queue_service: VerificationQueueService,
         review_session_service: VerificationReviewSessionService,
         digest_preview_service: CommunityDigestPreviewService,
+        curation_ledger_repository: SQLiteCurationLedgerRepository | None = None,
     ) -> None:
         self.queue_service = queue_service
         self.review_session_service = review_session_service
         self.digest_preview_service = digest_preview_service
+        self.curation_ledger_repository = curation_ledger_repository
 
     def run(
         self,
@@ -112,6 +127,17 @@ class DailyCurationService:
             policy=full_queue_policy,
         )
         held_ids = {item.opportunity_id for item in full_queue.items}
+        publication_exclusion_ids: set[str] = set()
+        if self.curation_ledger_repository is not None:
+            publication_exclusion_ids = (
+                self.curation_ledger_repository
+                .list_recently_published_opportunity_ids(
+                    since=generated_at - timedelta(
+                        days=resolved.publication_cooldown_days
+                    )
+                )
+            )
+        editorial_exclusion_ids = held_ids | publication_exclusion_ids
 
         review = self.review_session_service.build(
             now=generated_at,
@@ -138,17 +164,24 @@ class DailyCurationService:
             now=generated_at,
             policy=resolved.digest_policy,
             render_options=render_options,
-            excluded_opportunity_ids=held_ids,
+            excluded_opportunity_ids=editorial_exclusion_ids,
         )
 
         publishable_ids = {
             item.opportunity_id
             for item in publishable.digest.items
         }
-        overlap = publishable_ids & held_ids
-        if overlap:
+        held_overlap = publishable_ids & held_ids
+        if held_overlap:
             raise RuntimeError(
                 "publishable digest overlaps verification-held opportunities"
+            )
+        publication_overlap = (
+            publishable_ids & publication_exclusion_ids
+        )
+        if publication_overlap:
+            raise RuntimeError(
+                "publishable digest overlaps recently published opportunities"
             )
 
         held_items = full_queue.items[: resolved.held_items_limit]
@@ -160,11 +193,17 @@ class DailyCurationService:
             reason_counts=dict(full_queue.reason_counts),
         )
 
+        publication_memory = DailyCurationPublicationMemory(
+            cooldown_days=resolved.publication_cooldown_days,
+            exclusion_ids=sorted(publication_exclusion_ids),
+            exclusion_count=len(publication_exclusion_ids),
+        )
         counts = {
             "review": review.count,
             "publishable": publishable.digest.count,
             "held": full_queue.count,
             "held_shown": len(held_items),
+            "recently_published": len(publication_exclusion_ids),
         }
         return DailyCurationRun(
             run_id=_run_id(
@@ -173,11 +212,13 @@ class DailyCurationService:
                 review=review,
                 publishable=publishable,
                 held=held,
+                publication_memory=publication_memory,
             ),
             generated_at=generated_at,
             review=review,
             publishable=publishable,
             held=held,
+            publication_memory=publication_memory,
             counts=counts,
             external_actions=[],
         )
@@ -205,6 +246,7 @@ def _run_id(
     review: VerificationReviewSession,
     publishable: CommunityDigestPreview,
     held: DailyCurationHeld,
+    publication_memory: DailyCurationPublicationMemory,
 ) -> str:
     payload = {
         "run_version": DAILY_CURATION_VERSION,
@@ -214,12 +256,17 @@ def _run_id(
             "held_items_limit": policy.held_items_limit,
             "queue_policy": asdict(policy.queue_policy),
             "digest_policy": asdict(policy.digest_policy),
+            "publication_cooldown_days": policy.publication_cooldown_days,
         },
         "review_session_id": review.session_id,
         "publishable_digest_id": publishable.digest.digest_id,
         "held_ids": [item.opportunity_id for item in held.items],
         "held_total_count": held.total_count,
         "held_reason_counts": held.reason_counts,
+        "publication_memory": publication_memory.model_dump(
+            mode="json",
+            exclude_none=False,
+        ),
     }
     canonical = json.dumps(
         payload,
