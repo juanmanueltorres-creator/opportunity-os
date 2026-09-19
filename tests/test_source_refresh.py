@@ -100,6 +100,7 @@ async def test_refresh_ingests_sources_and_records_seen(tmp_path) -> None:
     assert run.existing_count == 0
     assert run.seen_recorded_count == 1
     assert run.closure_inference is False
+    assert run.external_reads == ["greenhouse:example"]
     assert run.external_actions == []
     assert opportunities.get("greenhouse:1") is not None
     state = availability.get("greenhouse:1")
@@ -284,6 +285,12 @@ async def test_unknown_source_subset_fails_before_any_fetch_or_write(tmp_path) -
 @pytest.mark.asyncio
 async def test_duplicate_or_blank_source_subset_fails_closed(tmp_path) -> None:
     service, _, _ = _service(tmp_path, [])
+
+    with pytest.raises(ValueError, match="source names must not be empty"):
+        await service.run(
+            now=NOW,
+            source_names=[],
+        )
 
     with pytest.raises(ValueError, match="source names must be unique"):
         await service.run(
