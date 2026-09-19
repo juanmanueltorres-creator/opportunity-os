@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Barrier
+import sqlite3
 
 import pytest
 
@@ -742,3 +743,19 @@ async def test_history_is_newest_first_and_respects_limit(tmp_path) -> None:
     assert history.count == 1
     assert history.items[0].run_id == second.run_id
     assert history.items[0].generated_at == second_time
+
+
+def test_history_checkpoint_lookup_index_is_initialized(tmp_path) -> None:
+    path = tmp_path / "curation-index.db"
+    repository = SQLiteCurationLedgerRepository(path)
+    repository.initialize()
+
+    with sqlite3.connect(path) as conn:
+        indexes = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA index_list(publication_checkpoints)"
+            ).fetchall()
+        }
+
+    assert "idx_publication_checkpoints_run_time" in indexes
