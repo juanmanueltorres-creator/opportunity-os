@@ -382,3 +382,39 @@ async def test_refresh_curation_requires_timezone_aware_now(tmp_path) -> None:
         await service.run(
             now=datetime(2026, 9, 19, 1, 30),
         )
+
+
+@pytest.mark.asyncio
+async def test_refresh_normalizes_post_fetch_discovery_time_into_snapshot(
+    tmp_path,
+) -> None:
+    fetched_after_snapshot = _opportunity(
+        "greenhouse:future",
+        source="greenhouse",
+        source_url="https://boards.greenhouse.io/acme/jobs/future",
+    ).model_copy(
+        update={
+            "discovered_at": NOW + timedelta(minutes=1),
+            "published_at": None,
+        }
+    )
+    service, opportunities, _ = _service(
+        tmp_path,
+        [
+            ConfiguredConnector(
+                name="greenhouse:acme",
+                connector=StaticConnector([fetched_after_snapshot]),
+            )
+        ],
+    )
+
+    run = await service.run(now=NOW)
+
+    stored = opportunities.get("greenhouse:future")
+    assert stored is not None
+    assert stored.discovered_at == NOW
+    assert run.source_refresh.created_count == 1
+    assert run.operator_view.publishable_count == 1
+    assert run.operator_view.publishable.opportunity_ids == [
+        "greenhouse:future"
+    ]

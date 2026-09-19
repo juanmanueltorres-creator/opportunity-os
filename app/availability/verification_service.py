@@ -176,6 +176,10 @@ class AvailabilityVerificationService:
                         request.evidence,
                         existing,
                         processed_at=processed_at,
+                        resulting_state=_current_availability_state(
+                            self.availability_repository,
+                            request.evidence.opportunity_id,
+                        ),
                     ),
                 )
             return VerificationConfirmResult(
@@ -274,11 +278,11 @@ def _current_availability_state(
     opportunity_id: str,
 ) -> AvailabilityState:
     current = repository.get(opportunity_id)
-    return (
-        current.availability_state
-        if current is not None
-        else "UNVERIFIED"
-    )
+    if current is None:
+        raise RuntimeError(
+            "verification projection missing after persisted observation"
+        )
+    return current.availability_state
 
 def _receipt_from_observation(
     evidence: VerificationEvidence,

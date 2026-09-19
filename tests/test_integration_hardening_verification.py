@@ -264,3 +264,56 @@ def test_review_card_signature_blocks_client_side_policy_tampering(
 
     assert result.status == "BLOCKED_STALE_CARD"
     assert result.errors == ["review_card_hash_mismatch"]
+
+
+
+def test_concurrent_matching_write_returns_projected_receipt(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    opportunities.upsert(
+        _opportunity(
+            "opp-1",
+            source="manual",
+            source_url="https://company.example/jobs/opp-1",
+        )
+    )
+    service = AvailabilityVerificationService(
+        opportunity_repository=opportunities,
+        availability_repository=availability,
+    )
+    evidence = VerificationEvidence(
+        opportunity_id="opp-1",
+        decision="OPEN",
+        observed_at=NOW,
+        evidence_kind="OFFICIAL_COMPANY_PAGE",
+        evidence_source="official.concurrent",
+        source_url="https://company.example/jobs/opp-1",
+    )
+    preview = service.preview(evidence)
+    original_record = availability.record
+
+    def concurrent_record(observation, **kwargs):
+        original_record(observation)
+        return False
+
+    monkeypatch.setattr(
+        availability,
+        "record_if_unchanged",
+        concurrent_record,
+    )
+
+    result = service.confirm(
+        VerificationConfirmRequest(
+            evidence=evidence,
+            preview_sha256=preview.preview_sha256,
+            confirmed_by="operator",
+            confirmed_at=NOW,
+        ),
+        processed_at=NOW + timedelta(seconds=1),
+    )
+
+    assert result.status == "ALREADY_RECORDED"
+    assert result.receipt is not None
+    assert result.receipt.resulting_state == "VERIFIED_OPEN"
