@@ -145,7 +145,9 @@ async def test_refresh_happens_before_curation_and_official_ats_is_publishable(
     assert run.operator_view.publishable_count == 1
     assert run.operator_view.held_count == 0
     assert run.operator_view.review_count == 0
-    assert "greenhouse:1" in run.operator_view.publishable.rendered_digest
+    assert "https://boards.greenhouse.io/acme/jobs/1" in (
+        run.operator_view.publishable.rendered_digest
+    )
     state = availability.get("greenhouse:1")
     assert state is not None
     assert state.last_seen_at == NOW
@@ -246,7 +248,9 @@ async def test_all_source_failures_still_project_existing_stored_state(
     assert run.source_refresh.ok_count == 0
     assert run.source_refresh.error_count == 1
     assert run.operator_view.publishable_count == 1
-    assert "greenhouse:stored" in run.operator_view.publishable.rendered_digest
+    assert "https://boards.greenhouse.io/acme/jobs/stored" in (
+        run.operator_view.publishable.rendered_digest
+    )
 
 
 @pytest.mark.asyncio
