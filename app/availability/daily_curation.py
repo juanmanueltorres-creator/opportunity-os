@@ -17,6 +17,7 @@ from app.availability.verification_review_session import (
     VerificationReviewSessionPolicy,
     VerificationReviewSessionService,
 )
+from app.curation.repository import SQLiteCurationLedgerRepository
 from app.radar.community_digest import CommunityDigestPolicy
 from app.radar.community_digest_preview import (
     CommunityDigestPreview,
@@ -127,6 +128,17 @@ class DailyCurationService:
             policy=full_queue_policy,
         )
         held_ids = {item.opportunity_id for item in full_queue.items}
+        recently_published_ids: set[str] = set()
+        if (
+            self.curation_ledger_repository is not None
+            and self.publication_cooldown_days > 0
+        ):
+            recently_published_ids = (
+                self.curation_ledger_repository.list_recently_published_opportunity_ids(
+                    since=generated_at
+                    - timedelta(days=self.publication_cooldown_days),
+                )
+            )
         publication_exclusion_ids: set[str] = set()
         if self.curation_ledger_repository is not None:
             publication_exclusion_ids = (
@@ -262,6 +274,7 @@ def _run_id(
         "review_session_id": review.session_id,
         "publishable_digest_id": publishable.digest.digest_id,
         "held_ids": [item.opportunity_id for item in held.items],
+        "recently_published_ids": recently_published_ids,
         "held_total_count": held.total_count,
         "held_reason_counts": held.reason_counts,
         "publication_memory": publication_memory.model_dump(
