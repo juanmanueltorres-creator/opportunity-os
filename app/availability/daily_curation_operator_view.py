@@ -90,6 +90,12 @@ class OperatorHeldSummary(StrictRadarModel):
     displayed_ids: list[str] = Field(default_factory=list)
 
 
+class OperatorPublicationMemorySummary(StrictRadarModel):
+    cooldown_days: int = Field(ge=1, le=365)
+    exclusion_count: int = Field(ge=0)
+    exclusion_ids: list[str] = Field(default_factory=list)
+
+
 class DailyCurationOperatorView(StrictRadarModel):
     view_version: str = OPERATOR_VIEW_VERSION
     run_id: str = Field(min_length=1)
@@ -101,6 +107,7 @@ class DailyCurationOperatorView(StrictRadarModel):
     review_items: list[OperatorReviewItem] = Field(default_factory=list)
     publishable: OperatorPublishableSummary
     held: OperatorHeldSummary
+    publication_memory: OperatorPublicationMemorySummary
     rendered_view: str
     format: OperatorViewFormat
     external_actions: list[str] = Field(default_factory=list)
@@ -194,6 +201,11 @@ def render_daily_curation_operator_view(
         },
         displayed_ids=[item.opportunity_id for item in run.held.items],
     )
+    publication_memory = OperatorPublicationMemorySummary(
+        cooldown_days=run.publication_memory.cooldown_days,
+        exclusion_count=run.publication_memory.exclusion_count,
+        exclusion_ids=list(run.publication_memory.exclusion_ids),
+    )
     publishable = OperatorPublishableSummary(
         count=run.publishable.digest.count,
         opportunity_ids=[
@@ -209,6 +221,7 @@ def render_daily_curation_operator_view(
         review_items=review_items,
         publishable=publishable,
         held=held,
+        publication_memory=publication_memory,
         options=resolved,
     )
     return DailyCurationOperatorView(
@@ -221,6 +234,7 @@ def render_daily_curation_operator_view(
         review_items=review_items,
         publishable=publishable,
         held=held,
+        publication_memory=publication_memory,
         rendered_view=rendered,
         format=resolved.format,
         external_actions=[],
@@ -233,6 +247,7 @@ def _render(
     review_items: list[OperatorReviewItem],
     publishable: OperatorPublishableSummary,
     held: OperatorHeldSummary,
+    publication_memory: OperatorPublicationMemorySummary,
     options: DailyCurationOperatorViewOptions,
 ) -> str:
     if options.format == "markdown":
@@ -241,6 +256,7 @@ def _render(
             review_items=review_items,
             publishable=publishable,
             held=held,
+            publication_memory=publication_memory,
             options=options,
         )
     return _render_plain(
@@ -258,6 +274,7 @@ def _render_markdown(
     review_items: list[OperatorReviewItem],
     publishable: OperatorPublishableSummary,
     held: OperatorHeldSummary,
+    publication_memory: OperatorPublicationMemorySummary,
     options: DailyCurationOperatorViewOptions,
 ) -> str:
     lines = [
@@ -268,7 +285,9 @@ def _render_markdown(
         (
             f"**Review:** {run.review.count} · "
             f"**Publishable:** {run.publishable.digest.count} · "
-            f"**Held:** {run.held.total_count}"
+            f"**Held:** {run.held.total_count} · "
+            f"**Published memory:** "
+            f"{publication_memory.exclusion_count}"
         ),
         "",
         "## 🔎 Review ahora",
@@ -333,6 +352,13 @@ def _render_markdown(
     lines.extend(
         [
             "",
+            "## ♻️ Ya publicados recientemente",
+            "",
+            (
+                f"En cooldown: **{publication_memory.exclusion_count}** "
+                f"durante {publication_memory.cooldown_days} días."
+            ),
+            "",
             "---",
             "Vista read-only: no verifica, no publica y no envía.",
         ]
@@ -346,6 +372,7 @@ def _render_plain(
     review_items: list[OperatorReviewItem],
     publishable: OperatorPublishableSummary,
     held: OperatorHeldSummary,
+    publication_memory: OperatorPublicationMemorySummary,
     options: DailyCurationOperatorViewOptions,
 ) -> str:
     lines = [
@@ -354,7 +381,8 @@ def _render_plain(
         (
             f"Review {run.review.count} | "
             f"Publishable {run.publishable.digest.count} | "
-            f"Held {run.held.total_count}"
+            f"Held {run.held.total_count} | "
+            f"Published memory {publication_memory.exclusion_count}"
         ),
         "",
         "REVIEW AHORA",
@@ -398,6 +426,12 @@ def _render_plain(
         )
     lines.extend(
         [
+            "",
+            "YA PUBLICADOS RECIENTEMENTE",
+            (
+                f"En cooldown: {publication_memory.exclusion_count} "
+                f"durante {publication_memory.cooldown_days} días."
+            ),
             "",
             "Vista read-only: no verifica, no publica y no envía.",
         ]
