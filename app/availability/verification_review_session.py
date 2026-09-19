@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
+import os
+import secrets
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -30,8 +33,14 @@ ReviewCheckCode = Literal[
     "CAPTURE_EVIDENCE_URL",
 ]
 
-REVIEW_SESSION_VERSION = "verification-review-session-v2"\n\n_REVIEW_CARD_KEY_TEXT = os.getenv("OPPORTUNITY_REVIEW_CARD_SIGNING_KEY", "")\n_REVIEW_CARD_SIGNING_KEY = (\n    hashlib.sha256(_REVIEW_CARD_KEY_TEXT.encode("utf-8")).digest()\n    if _REVIEW_CARD_KEY_TEXT\n    else secrets.token_bytes(32)\n)
+REVIEW_SESSION_VERSION = "verification-review-session-v2"
 
+_REVIEW_CARD_KEY_TEXT = os.getenv("OPPORTUNITY_REVIEW_CARD_SIGNING_KEY", "")
+_REVIEW_CARD_SIGNING_KEY = (
+    hashlib.sha256(_REVIEW_CARD_KEY_TEXT.encode("utf-8")).digest()
+    if _REVIEW_CARD_KEY_TEXT
+    else secrets.token_bytes(32)
+)
 
 @dataclass(frozen=True)
 class VerificationReviewSessionPolicy:
