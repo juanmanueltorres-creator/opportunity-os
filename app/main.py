@@ -12,6 +12,9 @@ from app.availability.daily_curation_operator_view import (
     DailyCurationOperatorViewService,
 )
 from app.availability.repository import SQLiteAvailabilityRepository
+from app.availability.refresh_curation_operator import (
+    RefreshCurationOperatorService,
+)
 from app.availability.review_evidence_draft import ReviewEvidenceDraftService
 from app.availability.verification_service import AvailabilityVerificationService
 from app.availability.verification_queue import VerificationQueueService
@@ -28,6 +31,7 @@ from app.api.routes import (
     VerificationQueueServiceProtocol,
     VerificationReviewSessionServiceProtocol,
     RadarServiceProtocol,
+    RefreshCurationOperatorServiceProtocol,
     SourceRefreshServiceProtocol,
     TargetRadarServiceProtocol,
     create_api_router,
@@ -220,6 +224,8 @@ def create_app(
     enable_default_daily_curation_operator_view: bool = True,
     source_refresh_service: SourceRefreshServiceProtocol | None = None,
     enable_source_refresh: bool | None = None,
+    refresh_curation_operator_service: RefreshCurationOperatorServiceProtocol | None = None,
+    enable_default_refresh_curation_operator: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -459,6 +465,24 @@ def create_app(
             )
         )
 
+    resolved_refresh_curation_operator_service = (
+        refresh_curation_operator_service
+    )
+    if (
+        resolved_refresh_curation_operator_service is None
+        and enable_default_refresh_curation_operator
+        and resolved_source_refresh_service is not None
+        and resolved_daily_curation_operator_view_service is not None
+    ):
+        resolved_refresh_curation_operator_service = (
+            RefreshCurationOperatorService(
+                source_refresh_service=resolved_source_refresh_service,
+                operator_view_service=(
+                    resolved_daily_curation_operator_view_service
+                ),
+            )
+        )
+
     resolved_target_service = target_service
     if resolved_target_service is None and enable_default_targets:
         resolved_target_service = _load_default_target_service(
@@ -498,6 +522,9 @@ def create_app(
                 resolved_daily_curation_operator_view_service
             ),
             source_refresh_service=resolved_source_refresh_service,
+            refresh_curation_operator_service=(
+                resolved_refresh_curation_operator_service
+            ),
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
