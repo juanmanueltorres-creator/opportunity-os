@@ -238,6 +238,50 @@ class SQLiteCurationLedgerRepository:
             ).fetchall()
         return {str(row["opportunity_id"]) for row in rows}
 
+    def get_publication_by_preview_sha256(
+        self,
+        preview_sha256: str,
+    ) -> PublicationCheckpoint | None:
+        self._ensure_initialized()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT payload_json
+                FROM publication_checkpoints
+                WHERE preview_sha256 = ?
+                ORDER BY confirmed_at ASC, checkpoint_id ASC
+                LIMIT 1
+                """,
+                (preview_sha256,),
+            ).fetchone()
+        if row is None:
+            return None
+        return PublicationCheckpoint.model_validate_json(row["payload_json"])
+
+    def list_published_opportunity_ids_for_run(
+        self,
+        *,
+        run_id: str,
+        opportunity_ids: list[str],
+    ) -> set[str]:
+        self._ensure_initialized()
+        if not opportunity_ids:
+            return set()
+        placeholders = ",".join("?" for _ in opportunity_ids)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT items.opportunity_id
+                FROM publication_checkpoint_items AS items
+                JOIN publication_checkpoints AS checkpoints
+                  ON checkpoints.checkpoint_id = items.checkpoint_id
+                WHERE checkpoints.run_id = ?
+                  AND items.opportunity_id IN ({placeholders})
+                """,
+                (run_id, *opportunity_ids),
+            ).fetchall()
+        return {str(row["opportunity_id"]) for row in rows}
+
     def list_published_opportunity_ids(
         self,
         opportunity_ids: list[str],
