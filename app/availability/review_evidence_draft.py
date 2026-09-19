@@ -13,6 +13,7 @@ from app.availability.verification_models import (
     VerificationEvidence,
     VerificationEvidenceKind,
     VerificationPreview,
+    normalize_http_source_url,
 )
 from app.availability.verification_review_session import (
     VerificationReviewCard,
@@ -57,13 +58,7 @@ class ReviewEvidenceDraftRequest(StrictRadarModel):
     @field_validator("source_url")
     @classmethod
     def source_url_must_be_http(cls, value: str) -> str:
-        normalized = value.strip()
-        if not (
-            normalized.startswith("https://")
-            or normalized.startswith("http://")
-        ):
-            raise ValueError("source_url must use http or https")
-        return normalized
+        return normalize_http_source_url(value)
 
     @field_validator("note")
     @classmethod

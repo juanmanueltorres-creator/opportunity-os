@@ -192,7 +192,7 @@ def test_source_catalog_enriches_manual_marketplace_opportunity_and_cleans_track
         )
     )
 
-    assert enrichment.extractor_version == "rules-v4+source-catalog-v2"
+    assert enrichment.extractor_version == "rules-v5+source-catalog-v2"
     assert enrichment.source_category is not None
     assert enrichment.source_category.value == "FREELANCE_MARKETPLACE"
     assert enrichment.source_category.source_text == source_url
@@ -286,3 +286,48 @@ def test_without_catalog_existing_source_semantics_remain_backward_compatible() 
     assert enrichment.source_category is None
     assert enrichment.channel_tags == []
     assert enrichment.canonical_url is not None
+
+
+def test_catalog_host_provenance_points_to_source_url() -> None:
+    catalog_module = import_module("app.radar.source_catalog")
+    catalog = catalog_module.load_source_catalog(Path("config/source_catalog.yaml"))
+    extractor = _extractor_module().RuleBasedRequirementExtractor(
+        source_catalog=catalog,
+    )
+    enrichment = extractor.extract(
+        _opportunity(
+            source="manual",
+            source_url="https://www.workana.com/job/provenance",
+        )
+    )
+
+    assert enrichment.source_category is not None
+    assert enrichment.source_category.source_field == "source_url"
+
+
+def test_canonical_url_preserves_signed_query_tokens_verbatim() -> None:
+    extractor = _extractor_module().RuleBasedRequirementExtractor()
+    source_url = (
+        "https://jobs.example.org/opening"
+        "?signature=a%2Bb%2Fc%3D&redirect=https%3A%2F%2Fx.example%2Fa%2Bb"
+        "&utm_source=remove-me&empty=&flag"
+    )
+
+    enrichment = extractor.extract(
+        _opportunity(source_url=source_url)
+    )
+
+    assert enrichment.canonical_url is not None
+    assert enrichment.canonical_url.value == (
+        "https://jobs.example.org/opening"
+        "?signature=a%2Bb%2Fc%3D&redirect=https%3A%2F%2Fx.example%2Fa%2Bb"
+        "&empty=&flag"
+    )
+
+
+def test_default_extractor_version_invalidates_pre_source_intelligence_cache() -> None:
+    enrichment = _extractor_module().RuleBasedRequirementExtractor().extract(
+        _opportunity()
+    )
+
+    assert enrichment.extractor_version == "rules-v5"

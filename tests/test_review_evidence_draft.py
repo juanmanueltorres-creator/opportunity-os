@@ -320,3 +320,62 @@ def test_draft_id_is_deterministic_for_same_card_evidence_and_preview(tmp_path) 
     assert left.status == right.status == "READY"
     assert left.draft_id == right.draft_id
     assert left.model_dump() == right.model_dump()
+
+
+def test_review_card_hash_binds_displayed_role_identity(tmp_path) -> None:
+    draft, review, opportunities, _ = _services(tmp_path)
+    opportunities.upsert(_opportunity("linkedin"))
+    original = _card(review)
+    tampered = original.model_copy(update={"title": "Different role"})
+
+    result = draft.build(
+        ReviewEvidenceDraftRequest(
+            card=tampered,
+            decision="OPEN",
+            observed_at=NOW - timedelta(minutes=5),
+            evidence_kind="MANUAL_REVIEW",
+            evidence_source="operator.review",
+            source_url=original.review_url,
+        ),
+        now=NOW,
+    )
+
+    assert result.status == "BLOCKED_STALE_CARD"
+    assert result.errors == ["review_card_hash_mismatch"]
+
+
+def test_evidence_draft_rejects_http_url_without_valid_host() -> None:
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match="source_url must use http or https with a valid host",
+    ):
+        ReviewEvidenceDraftRequest(
+            card=_dummy_card_for_url_validation(),
+            decision="OPEN",
+            observed_at=NOW,
+            evidence_kind="MANUAL_REVIEW",
+            evidence_source="operator.review",
+            source_url="https://not a url",
+        )
+
+
+def _dummy_card_for_url_validation():
+    from app.availability.verification_review_session import VerificationReviewCard
+
+    return VerificationReviewCard(
+        rank=1,
+        card_sha256="0" * 64,
+        opportunity_id="url-check",
+        title="GIS Analyst",
+        company="Example",
+        review_url="https://example.com/job",
+        availability_state="UNVERIFIED",
+        priority_score=80,
+        reason_codes=["SOURCE_REQUIRES_VERIFICATION"],
+        suggested_action="VERIFY_CURRENT_SOURCE",
+        checklist=["CONFIRM_LISTING_LOADS"],
+        acceptable_evidence_kinds=["MANUAL_REVIEW"],
+        external_actions=[],
+    )

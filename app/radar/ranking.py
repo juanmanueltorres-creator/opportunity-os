@@ -36,10 +36,10 @@ class RadarPolicy:
     selection_mode: SelectionMode = "income_first"
     max_items: int = 20
     max_per_company: int = 2
-    max_per_source: int | None = None
-    max_per_source_category: int | None = None
     candidate_lookback_days: int = 30
     company_role_cooldown_days: int = 0
+    max_per_source: int | None = None
+    max_per_source_category: int | None = None
 
     def __post_init__(self) -> None:
         if not (

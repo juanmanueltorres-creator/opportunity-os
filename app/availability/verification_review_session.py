@@ -211,6 +211,8 @@ def _card_sha256(
 ) -> str:
     payload = {
         "opportunity_id": item.opportunity_id,
+        "title": item.title,
+        "company": item.company,
         "review_url": item.source_url,
         "source_key": item.source_key,
         "source_category": item.source_category,
@@ -248,6 +250,8 @@ def _card_sha256(
 def review_card_sha256(card: VerificationReviewCard) -> str:
     payload = {
         "opportunity_id": card.opportunity_id,
+        "title": card.title,
+        "company": card.company,
         "review_url": card.review_url,
         "source_key": card.source_key,
         "source_category": card.source_category,

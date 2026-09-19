@@ -304,6 +304,15 @@ async def test_duplicate_or_blank_source_subset_fails_closed(tmp_path) -> None:
             source_names=["  "],
         )
 
+    with pytest.raises(
+        ValueError,
+        match="source names must not contain surrounding whitespace",
+    ):
+        await service.run(
+            now=NOW,
+            source_names=[" remotive "],
+        )
+
 
 @pytest.mark.asyncio
 async def test_empty_registry_returns_explicit_empty_refresh(tmp_path) -> None:

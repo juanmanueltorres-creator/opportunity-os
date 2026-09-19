@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import re
 from typing import Protocol
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import unquote_plus, urlsplit, urlunsplit
 
 from app.models.domain import Opportunity
 from app.radar.models import (
@@ -115,7 +115,7 @@ class RuleBasedRequirementExtractor:
     def __init__(
         self,
         *,
-        extractor_version: str = "rules-v4",
+        extractor_version: str = "rules-v5",
         source_catalog: SourceCatalog | None = None,
     ) -> None:
         base_version = extractor_version.strip()
@@ -652,15 +652,18 @@ def _source_category(
 ) -> DerivedValue[str] | None:
     if source_entry is None:
         return None
+    matched_source_field = source_entry.matches(opportunity.source)
     source_text = (
         opportunity.source
-        if source_entry.matches(opportunity.source)
+        if matched_source_field
         else opportunity.source_url
     )
     return DerivedValue[str](
         value=source_entry.category,
         source_text=source_text,
-        source_field="source",
+        source_field=(
+            "source" if matched_source_field else "source_url"
+        ),
         extraction_method="approved_alias",
         confidence=1.0,
     )
@@ -685,20 +688,26 @@ def _strip_tracking_query(source_url: str) -> str:
     if parts.scheme.casefold() not in {"http", "https"} or not parts.netloc:
         return source_url
 
-    kept_query = [
-        (key, value)
-        for key, value in parse_qsl(parts.query, keep_blank_values=True)
-        if not (
-            key.casefold().startswith("utm_")
-            or key.casefold() in _TRACKING_QUERY_KEYS
-        )
-    ]
+    kept_segments: list[str] = []
+    for segment in parts.query.split("&"):
+        if not segment:
+            kept_segments.append(segment)
+            continue
+        raw_key = segment.partition("=")[0]
+        decoded_key = unquote_plus(raw_key).casefold()
+        if (
+            decoded_key.startswith("utm_")
+            or decoded_key in _TRACKING_QUERY_KEYS
+        ):
+            continue
+        kept_segments.append(segment)
+
     return urlunsplit(
         (
             parts.scheme,
             parts.netloc,
             parts.path,
-            urlencode(kept_query, doseq=True),
+            "&".join(kept_segments),
             parts.fragment,
         )
     )

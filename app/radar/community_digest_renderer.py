@@ -99,7 +99,8 @@ def _render_item(
     render_format: DigestRenderFormat,
 ) -> list[str]:
     emoji, bucket_label = _BUCKET_LABELS[item.bucket]
-    heading = f"{_number_marker(index)} {emoji} {bucket_label} — {item.title}"
+    safe_title = _safe_inline_text(item.title)
+    heading = f"{_number_marker(index)} {emoji} {bucket_label} — {safe_title}"
     if render_format == "whatsapp":
         heading = f"*{heading}*"
     elif render_format == "markdown":
@@ -107,7 +108,7 @@ def _render_item(
 
     lines = [heading]
 
-    company = item.company.strip()
+    company = _safe_inline_text(item.company)
     if company:
         lines.append(f"🏢 {company}")
 
@@ -132,16 +133,32 @@ def _render_item(
         verified_at = item.last_verified_at.astimezone(timezone)
         lines.append(
             "✅ Verificada abierta: "
-            f"{item.verification_source} · {verified_at:%d/%m/%Y}"
+            f"{_safe_inline_text(item.verification_source)} · "
+            f"{verified_at:%d/%m/%Y}"
         )
 
     lines.append(item.source_url)
     return lines
 
 
+def _safe_inline_text(value: str) -> str:
+    normalized = " ".join(value.split())
+    controls = str.maketrans(
+        {
+            "*": "∗",
+            "_": "＿",
+            "~": "∼",
+            "`": "ˋ",
+            "[": "［",
+            "]": "］",
+        }
+    )
+    return normalized.translate(controls).strip()
+
+
 def _place_line(item: CommunityDigestItem) -> str | None:
-    location = (item.location or "").strip()
-    remote_policy = (item.remote_policy or "").strip()
+    location = _safe_inline_text(item.location or "")
+    remote_policy = _safe_inline_text(item.remote_policy or "")
 
     if remote_policy and location:
         return f"🌎 {remote_policy} · {location}"

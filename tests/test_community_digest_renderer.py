@@ -221,3 +221,26 @@ def test_renderer_does_not_claim_verification_for_unverified_item() -> None:
     text = render_community_digest(_digest([_item("unverified")]))
 
     assert "Verificada abierta" not in text
+
+
+def test_renderer_neutralizes_untrusted_inline_formatting_and_newlines() -> None:
+    text = render_community_digest(
+        _digest(
+            [
+                _item(
+                    "unsafe",
+                    title="GIS\n*Admin* [click](https://evil.example)",
+                    company="Acme\n_Inc_",
+                    location="Argentina\n~hidden~",
+                )
+            ]
+        )
+    )
+
+    assert "GIS\n*Admin*" not in text
+    assert "*Admin*" not in text
+    assert "[click]" not in text
+    assert "Acme\n_Inc_" not in text
+    assert "GIS ∗Admin∗ ［click］(https://evil.example)" in text
+    assert "🏢 Acme ＿Inc＿" in text
+    assert "Argentina ∼hidden∼" in text

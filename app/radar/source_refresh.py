@@ -174,6 +174,14 @@ def _normalize_source_names(source_names: list[str]) -> list[str]:
     normalized = [name.strip() for name in source_names]
     if any(not name for name in normalized):
         raise ValueError("source names must not be blank")
+    if any(name != normalized_name for name, normalized_name in zip(
+        source_names,
+        normalized,
+        strict=True,
+    )):
+        raise ValueError(
+            "source names must not contain surrounding whitespace"
+        )
     if len(normalized) != len(set(normalized)):
         raise ValueError("source names must be unique")
     return normalized

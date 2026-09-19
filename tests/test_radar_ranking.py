@@ -214,3 +214,17 @@ def test_source_diversity_caps_must_be_positive_when_configured() -> None:
         match="max_per_source_category must be positive",
     ):
         RadarPolicy(max_per_source_category=0)
+
+
+def test_radar_policy_preserves_legacy_positional_field_order() -> None:
+    from dataclasses import fields
+
+    names = [field.name for field in fields(RadarPolicy)]
+    assert names[12:18] == [
+        "max_items",
+        "max_per_company",
+        "candidate_lookback_days",
+        "company_role_cooldown_days",
+        "max_per_source",
+        "max_per_source_category",
+    ]

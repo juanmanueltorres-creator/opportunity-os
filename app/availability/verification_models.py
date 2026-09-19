@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 
@@ -56,13 +57,7 @@ class VerificationEvidence(StrictRadarModel):
     @field_validator("source_url")
     @classmethod
     def source_url_must_be_http(cls, value: str) -> str:
-        normalized = value.strip()
-        if not (
-            normalized.startswith("https://")
-            or normalized.startswith("http://")
-        ):
-            raise ValueError("source_url must use http or https")
-        return normalized
+        return normalize_http_source_url(value)
 
     @field_validator("note")
     @classmethod
@@ -73,6 +68,27 @@ class VerificationEvidence(StrictRadarModel):
         if not normalized:
             raise ValueError("note must not be blank")
         return normalized
+
+
+def normalize_http_source_url(value: str) -> str:
+    normalized = value.strip()
+    try:
+        parts = urlsplit(normalized)
+        hostname = parts.hostname
+    except ValueError as exc:
+        raise ValueError(
+            "source_url must use http or https with a valid host"
+        ) from exc
+    if (
+        parts.scheme.casefold() not in {"http", "https"}
+        or not parts.netloc
+        or not hostname
+        or any(char.isspace() for char in parts.netloc)
+    ):
+        raise ValueError(
+            "source_url must use http or https with a valid host"
+        )
+    return normalized
 
 
 class VerificationPreview(StrictRadarModel):

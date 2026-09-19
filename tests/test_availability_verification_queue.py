@@ -348,3 +348,35 @@ def test_direct_official_near_deadline_does_not_create_manual_review_work(
     queue = service.build(now=NOW)
 
     assert queue.count == 0
+
+
+def test_deadline_bearing_fast_market_keeps_fast_market_review_semantics(
+    tmp_path,
+) -> None:
+    service, repository, availability = _service(tmp_path)
+    stored, _ = repository.upsert(
+        _opportunity(
+            "workana-deadline",
+            source="workana",
+            source_url="https://workana.com/job/deadline",
+            description="QGIS project. Apply by 2026-09-20.",
+            published_at=NOW - timedelta(days=3),
+        )
+    )
+
+    queue = service.build(now=NOW)
+
+    assert queue.count == 1
+    assert queue.items[0].freshness_policy == "deadline_sensitive"
+    assert "FAST_MARKET_UNVERIFIED" in queue.items[0].reason_codes
+
+    availability.record_verification(
+        stored.id,
+        is_open=True,
+        observed_at=NOW - timedelta(days=3),
+        evidence_source="workana",
+    )
+    stale = service.build(now=NOW)
+
+    assert stale.count == 1
+    assert stale.items[0].reason_codes == ["VERIFICATION_STALE"]
