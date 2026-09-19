@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 
-from app.availability.models import AvailabilityObservation, OpportunityAvailability
+from app.availability.models import (\n    AvailabilityObservation,\n    AvailabilityState,\n    OpportunityAvailability,\n)
 from app.availability.repository import SQLiteAvailabilityRepository
 from app.availability.verification_models import (
     VERIFICATION_PREVIEW_VERSION,
@@ -112,6 +112,10 @@ class AvailabilityVerificationService:
                     request.evidence,
                     existing,
                     processed_at=processed_at,
+                    resulting_state=_current_availability_state(
+                        self.availability_repository,
+                        request.evidence.opportunity_id,
+                    ),
                 ),
             )
 
@@ -181,6 +185,10 @@ class AvailabilityVerificationService:
                 request.evidence,
                 observation,
                 processed_at=processed_at,
+                resulting_state=_current_availability_state(
+                    self.availability_repository,
+                    request.evidence.opportunity_id,
+                ),
             ),
         )
 
@@ -256,11 +264,24 @@ def _blocked_preview(
     )
 
 
+
+def _current_availability_state(
+    repository: SQLiteAvailabilityRepository,
+    opportunity_id: str,
+) -> AvailabilityState:
+    current = repository.get(opportunity_id)
+    return (
+        current.availability_state
+        if current is not None
+        else "UNVERIFIED"
+    )
+
 def _receipt_from_observation(
     evidence: VerificationEvidence,
     observation: AvailabilityObservation,
     *,
     processed_at: datetime,
+    resulting_state: AvailabilityState,
 ) -> VerificationReceipt:
     if (
         observation.confirmed_by is None
@@ -280,11 +301,7 @@ def _receipt_from_observation(
         confirmed_by=observation.confirmed_by,
         confirmed_at=observation.confirmed_at,
         processed_at=processed_at,
-        resulting_state=(
-            "VERIFIED_OPEN"
-            if evidence.decision == "OPEN"
-            else "VERIFIED_CLOSED"
-        ),
+        resulting_state=resulting_state,
     )
 
 

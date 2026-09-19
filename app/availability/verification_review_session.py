@@ -30,7 +30,7 @@ ReviewCheckCode = Literal[
     "CAPTURE_EVIDENCE_URL",
 ]
 
-REVIEW_SESSION_VERSION = "verification-review-session-v1"
+REVIEW_SESSION_VERSION = "verification-review-session-v2"\n\n_REVIEW_CARD_KEY_TEXT = os.getenv("OPPORTUNITY_REVIEW_CARD_SIGNING_KEY", "")\n_REVIEW_CARD_SIGNING_KEY = (\n    hashlib.sha256(_REVIEW_CARD_KEY_TEXT.encode("utf-8")).digest()\n    if _REVIEW_CARD_KEY_TEXT\n    else secrets.token_bytes(32)\n)
 
 
 @dataclass(frozen=True)
@@ -211,6 +211,8 @@ def _card_sha256(
 ) -> str:
     payload = {
         "opportunity_id": item.opportunity_id,
+        "title": item.title,
+        "company": item.company,
         "review_url": item.source_url,
         "source_key": item.source_key,
         "source_category": item.source_category,
@@ -242,12 +244,18 @@ def _card_sha256(
         separators=(",", ":"),
         ensure_ascii=False,
     )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hmac.new(
+        _REVIEW_CARD_SIGNING_KEY,
+        canonical.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def review_card_sha256(card: VerificationReviewCard) -> str:
     payload = {
         "opportunity_id": card.opportunity_id,
+        "title": card.title,
+        "company": card.company,
         "review_url": card.review_url,
         "source_key": card.source_key,
         "source_category": card.source_category,
@@ -279,7 +287,11 @@ def review_card_sha256(card: VerificationReviewCard) -> str:
         separators=(",", ":"),
         ensure_ascii=False,
     )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hmac.new(
+        _REVIEW_CARD_SIGNING_KEY,
+        canonical.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def _checklist(item: VerificationQueueItem) -> list[ReviewCheckCode]:
@@ -359,6 +371,11 @@ def _session_id(
                 "last_seen_at": (
                     card.last_seen_at.isoformat()
                     if card.last_seen_at is not None
+                    else None
+                ),
+                "application_deadline": (
+                    card.application_deadline.isoformat()
+                    if card.application_deadline is not None
                     else None
                 ),
                 "last_verified_at": (

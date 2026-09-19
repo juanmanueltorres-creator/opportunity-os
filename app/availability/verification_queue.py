@@ -196,12 +196,16 @@ def _queue_item(
         if enrichment.application_deadline is not None
         else None
     )
+    is_fast_market = (
+        source_entry is not None
+        and source_entry.freshness_policy == "fast_market_project"
+    )
     if deadline is not None and now.date() > deadline.date():
         return None
 
     if _fast_market_too_old(
         opportunity=opportunity,
-        enrichment=enrichment,
+        is_fast_market=is_fast_market,
         now=now,
         max_age_days=policy.fast_market_max_age_days,
     ):
@@ -228,7 +232,7 @@ def _queue_item(
     if (
         state == "UNVERIFIED"
         and needs_verification
-        and enrichment.freshness_policy == "fast_market_project"
+        and is_fast_market
     ):
         reasons.append("FAST_MARKET_UNVERIFIED")
 
@@ -247,7 +251,7 @@ def _queue_item(
         and _verification_is_stale(
             availability.last_verified_at,
             now=now,
-            freshness_policy=enrichment.freshness_policy,
+            is_fast_market=is_fast_market,
             policy=policy,
         )
     ):
@@ -311,12 +315,12 @@ def _verification_is_stale(
     last_verified_at: datetime,
     *,
     now: datetime,
-    freshness_policy: str,
+    is_fast_market: bool,
     policy: VerificationQueuePolicy,
 ) -> bool:
     max_age_days = (
         policy.fast_market_reverify_after_days
-        if freshness_policy == "fast_market_project"
+        if is_fast_market
         else policy.standard_reverify_after_days
     )
     return now - last_verified_at > timedelta(days=max_age_days)
@@ -325,11 +329,11 @@ def _verification_is_stale(
 def _fast_market_too_old(
     *,
     opportunity: Opportunity,
-    enrichment: OpportunityEnrichment,
+    is_fast_market: bool,
     now: datetime,
     max_age_days: int,
 ) -> bool:
-    if enrichment.freshness_policy != "fast_market_project":
+    if not is_fast_market:
         return False
     if opportunity.published_at is None:
         return False

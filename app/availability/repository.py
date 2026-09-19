@@ -249,6 +249,52 @@ class SQLiteAvailabilityRepository:
             )
         return True
 
+    def get_many(
+        self,
+        opportunity_ids: list[str],
+    ) -> dict[str, OpportunityAvailability]:
+        unique_ids = list(dict.fromkeys(opportunity_ids))
+        if not unique_ids:
+            return {}
+
+        self._ensure_initialized()
+        grouped: dict[str, list[AvailabilityObservation]] = {
+            opportunity_id: []
+            for opportunity_id in unique_ids
+        }
+        with self._connect() as conn:
+            for offset in range(0, len(unique_ids), 900):
+                chunk = unique_ids[offset : offset + 900]
+                placeholders = ",".join("?" for _ in chunk)
+                rows = conn.execute(
+                    f"""
+                    SELECT
+                        opportunity_id,
+                        observation_type,
+                        observed_at,
+                        evidence_source,
+                        source_url,
+                        note,
+                        evidence_kind,
+                        confirmed_by,
+                        confirmed_at,
+                        preview_sha256
+                    FROM opportunity_availability_observations
+                    WHERE opportunity_id IN ({placeholders})
+                    ORDER BY opportunity_id ASC, observed_at ASC, id ASC
+                    """,
+                    chunk,
+                ).fetchall()
+                for row in rows:
+                    observation = AvailabilityObservation.model_validate(dict(row))
+                    grouped[observation.opportunity_id].append(observation)
+
+        return {
+            opportunity_id: _project(opportunity_id, observations)
+            for opportunity_id, observations in grouped.items()
+            if observations
+        }
+
     def get(self, opportunity_id: str) -> OpportunityAvailability | None:
         observations = self.list_observations(opportunity_id)
         if not observations:

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 
@@ -33,6 +34,29 @@ VerificationConfirmStatus = Literal[
 VERIFICATION_PREVIEW_VERSION = "availability-verification-preview-v1"
 
 
+
+def validated_http_url(value: str) -> str:
+    normalized = value.strip()
+    try:
+        parsed = urlsplit(normalized)
+        hostname = parsed.hostname
+    except ValueError as exc:
+        raise ValueError(
+            "source_url must use http or https with a valid host"
+        ) from exc
+    if (
+        parsed.scheme.casefold() not in {"http", "https"}
+        or not parsed.netloc
+        or not hostname
+        or any(character.isspace() for character in normalized)
+        or any(ord(character) < 32 for character in normalized)
+    ):
+        raise ValueError(
+            "source_url must use http or https with a valid host"
+        )
+    return normalized
+
+
 class VerificationEvidence(StrictRadarModel):
     opportunity_id: str = Field(min_length=1)
     decision: VerificationDecision
@@ -56,13 +80,7 @@ class VerificationEvidence(StrictRadarModel):
     @field_validator("source_url")
     @classmethod
     def source_url_must_be_http(cls, value: str) -> str:
-        normalized = value.strip()
-        if not (
-            normalized.startswith("https://")
-            or normalized.startswith("http://")
-        ):
-            raise ValueError("source_url must use http or https")
-        return normalized
+        return validated_http_url(value)
 
     @field_validator("note")
     @classmethod
