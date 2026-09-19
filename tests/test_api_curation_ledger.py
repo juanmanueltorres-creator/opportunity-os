@@ -419,3 +419,80 @@ def test_injected_ledger_service_requires_repository_for_default_daily_curation(
             enable_default_targets=False,
             enable_default_relationships=False,
         )
+
+
+def test_api_curation_history_reports_recorded_run_and_publication(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    app = _app(
+        opportunities,
+        availability,
+        [_greenhouse_opportunity()],
+    )
+
+    with TestClient(app) as client:
+        run = client.post(
+            "/api/v1/curation/daily/refresh-view"
+        ).json()
+        record = client.post(
+            "/api/v1/curation/ledger/runs",
+            json=run,
+        )
+        assert record.status_code == 200
+
+        preview = client.post(
+            "/api/v1/curation/publication/preview",
+            json={
+                "run_id": run["run_id"],
+                "digest_id": run["operator_view"]["publishable"]["digest_id"],
+                "opportunity_ids": ["greenhouse:1"],
+                "channel": "WHATSAPP",
+            },
+        ).json()
+        confirm = client.post(
+            "/api/v1/curation/publication/confirm",
+            json={
+                "preview": preview,
+                "confirmed_by": "operator",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert confirm.status_code == 200
+        assert confirm.json()["status"] == "RECORDED"
+
+        history = client.get("/api/v1/curation/history?limit=5")
+
+    assert history.status_code == 200
+    payload = history.json()
+    assert payload["limit"] == 5
+    assert payload["count"] == 1
+    item = payload["items"][0]
+    assert item["run_id"] == run["run_id"]
+    assert item["new_opportunity_count"] == 1
+    assert item["published_opportunity_ids"] == ["greenhouse:1"]
+    assert item["publication_checkpoint_count"] == 1
+    assert item["publication_channels"] == ["WHATSAPP"]
+    assert payload["external_actions"] == []
+
+
+def test_api_curation_history_validates_limit_and_ledger_availability(
+    tmp_path,
+) -> None:
+    opportunities, availability = _repositories(tmp_path)
+    enabled_app = _app(opportunities, availability, [])
+    disabled_app = _app(
+        opportunities,
+        availability,
+        [],
+        ledger_enabled=False,
+    )
+
+    with TestClient(enabled_app) as client:
+        invalid = client.get("/api/v1/curation/history?limit=0")
+    with TestClient(disabled_app) as client:
+        unavailable = client.get("/api/v1/curation/history")
+
+    assert invalid.status_code == 422
+    assert unavailable.status_code == 503
+    assert unavailable.json() == {"detail": "Curation ledger unavailable"}
