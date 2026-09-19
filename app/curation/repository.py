@@ -96,6 +96,7 @@ class SQLiteCurationLedgerRepository:
     ) -> Literal["NEW", "IDENTICAL", "CONFLICT"]:
         self._ensure_initialized()
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
                 """
                 SELECT payload_sha256
