@@ -195,10 +195,14 @@ def render_daily_curation_operator_view(
         total_count=run.held.total_count,
         shown_count=run.held.shown_count,
         omitted_count=run.held.omitted_count,
-        reason_counts={
-            _REASON_LABELS.get(reason, reason): count
-            for reason, count in run.held.reason_counts.items()
-        },
+        reason_counts=(
+            {
+                _REASON_LABELS.get(reason, reason): count
+                for reason, count in run.held.reason_counts.items()
+            }
+            if resolved.include_held_details
+            else {}
+        ),
         displayed_ids=[item.opportunity_id for item in run.held.items],
     )
     publication_memory = OperatorPublicationMemorySummary(
@@ -398,6 +402,7 @@ def _render_plain(
                     f"Por qué: {', '.join(item.why)}",
                     f"Siguiente paso: {item.next_action}",
                     f"Fuente: {item.review_url}",
+                    f"Draft endpoint: {item.next_endpoint}",
                 ]
             )
             if item.checklist:

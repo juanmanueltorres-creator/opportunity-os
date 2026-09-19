@@ -171,12 +171,13 @@ class SourceRefreshService:
 def _normalize_source_names(source_names: list[str]) -> list[str]:
     if not source_names:
         raise ValueError("source names must not be empty")
-    normalized = [name.strip() for name in source_names]
-    if any(not name for name in normalized):
+    if any(not name.strip() for name in source_names):
         raise ValueError("source names must not be blank")
-    if len(normalized) != len(set(normalized)):
+    if any(name != name.strip() for name in source_names):
+        raise ValueError("source names must not contain surrounding whitespace")
+    if len(source_names) != len(set(source_names)):
         raise ValueError("source names must be unique")
-    return normalized
+    return list(source_names)
 
 
 def _select_connectors(

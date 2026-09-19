@@ -37,7 +37,15 @@ async def ingest(
     stored_ids: set[str] = set()
 
     for opportunity in opportunities:
-        stored, was_created = repository.upsert(opportunity)
+        snapshot_opportunity = opportunity
+        if (
+            observed_at is not None
+            and opportunity.discovered_at > observed_at
+        ):
+            snapshot_opportunity = opportunity.model_copy(
+                update={"discovered_at": observed_at}
+            )
+        stored, was_created = repository.upsert(snapshot_opportunity)
         stored_ids.add(stored.id)
         if (
             availability_repository is not None
