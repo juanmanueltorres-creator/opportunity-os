@@ -137,6 +137,7 @@ async def test_record_run_is_idempotent_for_exact_snapshot(tmp_path) -> None:
     assert second.record is not None
     assert first.record.run_id == run.run_id
     assert first.record.publishable_opportunity_ids == ["greenhouse:1"]
+    assert second.record.recorded_at == first.record.recorded_at
 
 
 @pytest.mark.asyncio
@@ -175,8 +176,7 @@ async def test_publication_preview_requires_recorded_run(tmp_path) -> None:
             digest_id="missing",
             opportunity_ids=["greenhouse:1"],
             channel="WHATSAPP",
-        ),
-        processed_at=NOW + timedelta(minutes=6),
+        )
     )
 
     assert preview.status == "BLOCKED"
@@ -203,8 +203,7 @@ async def test_publication_preview_only_accepts_publishable_ids(tmp_path) -> Non
             digest_id=run.operator_view.publishable.digest_id,
             opportunity_ids=["not-in-digest"],
             channel="WHATSAPP",
-        ),
-        processed_at=NOW + timedelta(minutes=6),
+        )
     )
 
     assert preview.status == "BLOCKED"
