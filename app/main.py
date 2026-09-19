@@ -21,10 +21,13 @@ from app.availability.verification_queue import VerificationQueueService
 from app.availability.verification_review_session import (
     VerificationReviewSessionService,
 )
+from app.curation.repository import SQLiteCurationLedgerRepository
+from app.curation.service import CurationLedgerService
 from app.adapters.gmail_read.service import GmailReadService
 from app.api.routes import (
     AvailabilityVerificationServiceProtocol,
     CommunityDigestPreviewServiceProtocol,
+    CurationLedgerServiceProtocol,
     DailyCurationOperatorViewServiceProtocol,
     DailyCurationServiceProtocol,
     ReviewEvidenceDraftServiceProtocol,
@@ -226,6 +229,9 @@ def create_app(
     enable_source_refresh: bool | None = None,
     refresh_curation_operator_service: RefreshCurationOperatorServiceProtocol | None = None,
     enable_default_refresh_curation_operator: bool = True,
+    curation_ledger_repository: SQLiteCurationLedgerRepository | None = None,
+    curation_ledger_service: CurationLedgerServiceProtocol | None = None,
+    enable_default_curation_ledger: bool = True,
     profile: CandidateProfile | None = None,
     remotive_connector: JobConnector | None = None,
     radar_service: RadarServiceProtocol | None = None,
@@ -251,6 +257,22 @@ def create_app(
         or SQLiteAvailabilityRepository(resolved_repository.path)
     )
     resolved_profile = profile if profile is not None else _load_default_profile()
+    resolved_curation_ledger_repository = (
+        curation_ledger_repository
+        or (
+            SQLiteCurationLedgerRepository(resolved_repository.path)
+            if enable_default_curation_ledger
+            else None
+        )
+    )
+    resolved_curation_ledger_service = curation_ledger_service
+    if (
+        resolved_curation_ledger_service is None
+        and resolved_curation_ledger_repository is not None
+    ):
+        resolved_curation_ledger_service = CurationLedgerService(
+            repository=resolved_curation_ledger_repository,
+        )
     timeout_seconds = _http_timeout_seconds()
     source_refresh_enabled = (
         enable_source_refresh
@@ -449,6 +471,7 @@ def create_app(
                 resolved_verification_review_session_service
             ),
             digest_preview_service=resolved_community_digest_preview_service,
+            curation_ledger_repository=resolved_curation_ledger_repository,
         )
 
     resolved_daily_curation_operator_view_service = (
@@ -493,6 +516,8 @@ def create_app(
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         resolved_repository.initialize()
         resolved_availability_repository.initialize()
+        if resolved_curation_ledger_repository is not None:
+            resolved_curation_ledger_repository.initialize()
         if enrichment_repository is not None:
             enrichment_repository.initialize()
         try:
@@ -525,6 +550,7 @@ def create_app(
             refresh_curation_operator_service=(
                 resolved_refresh_curation_operator_service
             ),
+            curation_ledger_service=resolved_curation_ledger_service,
             profile=resolved_profile,
             remotive_connector=remotive_connector,
             timeout_seconds=timeout_seconds,
