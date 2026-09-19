@@ -38,9 +38,6 @@ from app.availability.verification_review_session import (
     VerificationReviewSession,
     VerificationReviewSessionPolicy,
 )
-from app.availability.refresh_curation_operator import (
-    RefreshCurationOperatorRun,
-)
 from app.curation.models import (
     CurationRunRecordResult,
     PublicationCheckpointConfirmRequest,
@@ -93,6 +90,8 @@ class CurationLedgerServiceProtocol(Protocol):
     def confirm_publication(
         self,
         request: PublicationCheckpointConfirmRequest,
+        *,
+        processed_at: datetime,
     ) -> PublicationConfirmResult: ...
 
 
@@ -378,7 +377,10 @@ def create_api_router(
                 status_code=503,
                 detail="Curation ledger unavailable",
             )
-        return curation_ledger_service.confirm_publication(request)
+        return curation_ledger_service.confirm_publication(
+            request,
+            processed_at=datetime.now(timezone.utc),
+        )
 
     @router.post(
         "/curation/daily/refresh-view",
