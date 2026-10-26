@@ -96,6 +96,43 @@ sources:
     publishable: true
     verification_required: true
 
+  # New public API collectors (live status is reported by the daily job).
+  - key: jobicy
+    aliases: [jobicy.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job, remote]
+    publishable: true
+    verification_required: true
+
+  - key: himalayas
+    aliases: [himalayas.app]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, remote, worldwide]
+    publishable: true
+    verification_required: true
+
+  - key: remoteok
+    aliases: [remoteok.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, remote]
+    publishable: true
+    verification_required: true
+
+  - key: arbeitnow
+    aliases: [arbeitnow.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DIRECT_TIMESTAMP
+    default_channel_tags: [job, remote]
+    publishable: true
+    verification_required: true
+
   - key: getonboard
     aliases: [getonbrd.com, getonbrd.cl]
     category: JOB_BOARD
