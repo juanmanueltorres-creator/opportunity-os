@@ -89,6 +89,7 @@ GLOBAL_LOCATION_MARKERS = ("anywhere", "worldwide", "global", "any location")
 
 
 def _restricted_location(location: str) -> bool:
+    location = location.casefold().strip()
     if any(global_marker in location for global_marker in GLOBAL_LOCATION_MARKERS):
         return False
     parts = [part.strip(" .()") for part in re.split(r"[,;/]", location)]
