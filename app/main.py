@@ -49,6 +49,7 @@ from app.profiles import load_profile
 from app.radar.community_digest_preview import CommunityDigestPreviewService
 from app.radar.extractor import RuleBasedRequirementExtractor
 from app.radar.service import RadarService
+from app.radar.selector import ApplicationHistory
 from app.radar.source_refresh import SourceRefreshService
 from app.radar.source_catalog import SourceCatalog, load_source_catalog
 from app.radar.sources import SourceRegistry, build_connectors, load_source_config
@@ -246,6 +247,8 @@ def create_app(
     enable_default_refresh_curation_operator: bool = True,
     curation_ledger_repository: SQLiteCurationLedgerRepository | None = None,
     curation_ledger_service: CurationLedgerServiceProtocol | None = None,
+    enrichment_repository: SQLiteEnrichmentRepository | None = None,
+    application_history: ApplicationHistory | None = None,
     enable_default_curation_ledger: bool = True,
     community_digest_preview_service: CommunityDigestPreviewServiceProtocol | None = None,
     enable_default_community_digest_preview: bool = True,
@@ -368,7 +371,7 @@ def create_app(
         )
 
     if resolved_radar_service is None and enable_default_radar:
-        enrichment_repository = SQLiteEnrichmentRepository(resolved_repository.path)
+        enrichment_repository = enrichment_repository or SQLiteEnrichmentRepository(resolved_repository.path)
         alias_registry = AliasRegistry.load(_alias_registry_path())
         resolver = TaxonomyResolver(
             alias_registry=alias_registry,
@@ -383,6 +386,7 @@ def create_app(
             extractor=default_extractor,
             resolver=resolver,
             availability_repository=resolved_availability_repository,
+            history=application_history,
         )
     else:
         enrichment_repository = None
@@ -578,4 +582,11 @@ def create_app(
     return api
 
 
-app = create_app()
+_selected_storage = os.getenv("OPPORTUNITY_STORAGE_BACKEND", "sqlite").strip().lower()
+if _selected_storage == "postgres":
+    from app.postgres_bootstrap import create_postgres_app
+    app = create_postgres_app()
+elif _selected_storage == "sqlite":
+    app = create_app()
+else:
+    raise RuntimeError("OPPORTUNITY_STORAGE_BACKEND must be postgres or sqlite")
