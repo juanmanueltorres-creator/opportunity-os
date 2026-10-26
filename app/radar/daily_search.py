@@ -73,6 +73,26 @@ NON_LATAM_EXCLUSIVE = re.compile(
     r"\b(?:united states only|us only|usa only|only us|only usa|"
     r"europe only|eu only|canada only|uk only|only europe|"
     r"residents of the united states only)\b", re.I)
+# When an upstream API declares a country/countries as its remote work zone,
+# a list entirely outside LATAM must never be interpreted as eligible in Argentina.
+# Keep ANYWHERE/WORLDWIDE marked UNKNOWN, not YES.
+RESTRICTED_LOCATIONS = frozenset({
+    "united states", "usa", "us", "u.s.", "united kingdom", "uk",
+    "canada", "philippines", "india", "poland", "israel",
+    "sweden", "hungary", "europe", "european union", "eu",
+    "germany", "spain", "portugal", "france", "italy",
+    "netherlands", "australia", "singapore", "new zealand",
+    "japan", "south korea", "united arab emirates", "uae",
+    "new york", "london", "berlin", "stockholm", "toronto",
+})
+GLOBAL_LOCATION_MARKERS = ("anywhere", "worldwide", "global", "any location")
+
+
+def _restricted_location(location: str) -> bool:
+    if any(global_marker in location for global_marker in GLOBAL_LOCATION_MARKERS):
+        return False
+    parts = [part.strip(" .()") for part in re.split(r"[,;/]", location)]
+    return bool(parts) and all(part in RESTRICTED_LOCATIONS for part in parts)
 REQUIRES_ENGLISH = re.compile(
     r"\b(?:fluent english required|english (?:is )?required|"
     r"advanced english required|c1 english|english c1|"
@@ -223,6 +243,8 @@ class JobMatch:
 
 def classify(job: Opportunity) -> JobMatch | None:
     title = _normalize(job.title)
+    if re.search(r"\b(?:contrato\s+sena|sena\s+apprentice)\b", title):
+        return None
     body = _normalize(text_only(job.description)[:4500])
     scores: list[tuple[int, str, list[str]]] = []
     for track, opts in TRACKS.items():
@@ -257,7 +279,7 @@ def classify(job: Opportunity) -> JobMatch | None:
         eligible = "YES"
         evidence = "Ubicación declarada: " + (job.location or "")
         score += 14 if remote else 8
-    elif NON_LATAM_EXCLUSIVE.search(location):
+    elif NON_LATAM_EXCLUSIVE.search(location) or _restricted_location(location):
         eligible = "NO"
         evidence = "Restricción geográfica explícita: " + (job.location or "")
         score -= 60
@@ -266,6 +288,9 @@ def classify(job: Opportunity) -> JobMatch | None:
         score += 4
     if "córdoba" in location or "cordoba" in location or "san juan" in location:
         score += 14
+    if job.source == "getonboard" and remote:
+        # Ranking preference for a regional platform, NOT evidence of AR eligibility.
+        score += 12
 
     work_language = "UNKNOWN"
     language_evidence = None
@@ -310,7 +335,9 @@ def rank(jobs: list[Opportunity], *, now: datetime, max_age_days: int = 30,
         match = classify(job)
         if not match or match.argentina_eligible == "NO" or match.score < 45:
             continue
-        key = (job.source, job.source_id)
+        # Cross-source duplicates often appear on more than one public job board.
+        # Preserve the most useful source link, never duplicate the same employer+role.
+        key = ("company-role", _normalize(job.company), _normalize(job.title))
         prior = matched.get(key)
         if prior is None or match.score > prior.score:
             matched[key] = match
