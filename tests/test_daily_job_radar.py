@@ -101,3 +101,28 @@ def test_private_sync_missing_secret_never_accesses_database(monkeypatch):
 
 def test_html_is_not_evidence_of_team_language():
     assert text_only("<p>Python &amp; QGIS</p>")=="Python & QGIS"
+
+
+def test_getonbrd_official_epoch_and_company_expand():
+    published=1792936800
+    payload={"data":[{
+      "id":"remote-55",
+      "attributes":{
+        "title":"Desarrollador fullstack",
+        "description":"Desarrollo de servicios y API",
+        "remote":True,"remote_modality":"fully_remote",
+        "remote_zone":"Latin America",
+        "countries":["Argentina","Chile"],
+        "published_at":published,
+        "company":{"data":{"id":"company-10","type":"company"}}
+      },
+      "links":{"public_url":"https://www.getonbrd.com/jobs/fullstack-remoto"}
+    }],
+    "included":[{"type":"company","id":"company-10",
+                 "attributes":{"name":"Startup LATAM"}}]}
+    out=parse_getonbrd(payload,now=NOW)
+    assert len(out)==1
+    assert out[0].company=="Startup LATAM"
+    assert out[0].location=="Latin America"
+    assert out[0].published_at==datetime.fromtimestamp(published,tz=timezone.utc)
+    assert classify(out[0]).argentina_eligible=="YES"
