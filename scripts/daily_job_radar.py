@@ -27,11 +27,13 @@ async def main() -> int:
         # Do not expose connection strings, driver error messages or private data.
         state = {"status": "ERROR", "kind": type(exc).__name__}
         error = True
+    excluded = set(state.pop("_excluded_ids", []))
+    visible_matches = [item for item in matches if item.job.id not in excluded]
     public = {
         "generated_at": now.isoformat(),
         "sources": diagnostics,
         "raw_jobs_seen": len(jobs),
-        "matches": [item.as_public_dict() for item in matches],
+        "matches": [item.as_public_dict() for item in visible_matches],
         "persistence": state,
         "caveats": [
             "Vacantes pendientes de verificación manual (no aplicar automáticamente).",
@@ -50,12 +52,12 @@ async def main() -> int:
     lines = ["# Opportunity OS — radar diario", "",
              f"Fecha UTC: {now.strftime('%Y-%m-%d %H:%M')}",
              f"Fuente(s): {', '.join(f'{k}={v}' for k,v in diagnostics.items())}",
-             f"Vacantes fuente: {len(jobs)} | preselección: {len(matches)}",
+             f"Vacantes fuente: {len(jobs)} | recomendaciones: {len(visible_matches)}",
              f"Persistencia Supabase: {state['status']} (creadas={state.get('created',0)})",
              "", "## Vacantes sugeridas", "",
              "| Afinidad | Empresa y puesto | Fuente | Argentina | Idioma | CV sugerido |",
              "|---:|---|---|---|---|---|"]
-    for match in matches[:25]:
+    for match in visible_matches[:25]:
         row = match.as_public_dict()
         def clean(x: object) -> str:
             return str(x or "").replace("|", "/").replace("\n", " ").replace("\r", " ")[:180]
@@ -71,7 +73,7 @@ async def main() -> int:
     if os.getenv("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
             fh.write(report)
-    print(f"Sources={len(diagnostics)} jobs={len(jobs)} shortlist={len(matches)} db={state['status']}")
+    print(f"Sources={len(diagnostics)} jobs={len(jobs)} shortlist={len(visible_matches)} db={state['status']}")
     if error:
         return 1
     if not jobs and not any(str(v).startswith("OK") for v in diagnostics.values()):
