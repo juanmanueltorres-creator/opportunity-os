@@ -194,3 +194,157 @@ sources:
     default_channel_tags: [community, discovery]
     publishable: false
     verification_required: true
+
+  # LATAM / Cordoba expansion — inventory entries, not active collectors.
+  # Aggregators, community signals and company directories stay discovery-only.
+  - key: startupjobs_ar
+    aliases: [startupjobs.ar]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, argentina, startup]
+    publishable: false
+    verification_required: true
+
+  - key: startupjobs_cl
+    aliases: [startupjobs.cl]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, chile, startup]
+    publishable: false
+    verification_required: true
+
+  - key: startupjobs_mx
+    aliases: [startupjobs.mx]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, mexico, startup]
+    publishable: false
+    verification_required: true
+
+  - key: derecruiters
+    aliases: [derecruiters.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, startup, latam]
+    publishable: true
+    verification_required: true
+
+  - key: remotos_latam
+    aliases: [remotoslatam.com]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, remote, latam]
+    publishable: false
+    verification_required: true
+
+  - key: alerta_empleo_remoto
+    aliases: [empleos.buscoempleoremoto.com]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, remote, latam]
+    publishable: false
+    verification_required: true
+
+  - key: cordoba_startup_monitor
+    aliases: [corlab.cordoba.gob.ar]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: UNKNOWN
+    default_channel_tags: [company, discovery, cordoba, startup]
+    publishable: false
+    verification_required: true
+
+  - key: innovab_cordoba
+    aliases: [innovab.cordoba.gob.ar]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: UNKNOWN
+    default_channel_tags: [company, discovery, cordoba]
+    publishable: false
+    verification_required: true
+
+  - key: cordoba_cluster
+    aliases: [cordobacluster.com]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: UNKNOWN
+    default_channel_tags: [company, discovery, cordoba, technology]
+    publishable: false
+    verification_required: true
+
+  - key: unc_geologia
+    aliases: [fcefyn.unc.edu.ar]
+    category: NICHE_JOB_BOARD
+    authority: DIRECT_OFFICIAL
+    freshness_mode: UNKNOWN
+    default_channel_tags: [job, geoscience, geospatial, cordoba]
+    publishable: true
+    verification_required: true
+
+  - key: geodojo
+    aliases: [geodojo.ai]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [discovery, job, geospatial, latam]
+    publishable: false
+    verification_required: true
+
+  - key: geoinquietos_ar
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, geospatial, argentina]
+    publishable: false
+    verification_required: true
+
+  - key: frontendcafe
+    aliases: [frontend.cafe]
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, software, argentina, latam]
+    publishable: false
+    verification_required: true
+
+  - key: devschile
+    aliases: [devschile.cl]
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, software, chile]
+    publishable: false
+    verification_required: true
+
+  - key: cuti_uruguay
+    aliases: [cuti.org.uy]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: UNKNOWN
+    default_channel_tags: [company, discovery, uruguay, technology]
+    publishable: false
+    verification_required: true
+
+  - key: uruguay_xxi
+    aliases: [uruguayxxi.gub.uy]
+    category: DISCOVERY_INDEX
+    authority: DISCOVERY_ONLY
+    freshness_mode: UNKNOWN
+    default_channel_tags: [company, discovery, uruguay, technology]
+    publishable: false
+    verification_required: true
+
+  - key: ycombinator_jobs
+    aliases: [ycombinator.com, workatastartup.com]
+    category: JOB_BOARD
+    authority: DIRECT_PLATFORM
+    freshness_mode: DELAYED_TIMESTAMP
+    default_channel_tags: [job, startup, worldwide]
+    publishable: true
+    verification_required: true
