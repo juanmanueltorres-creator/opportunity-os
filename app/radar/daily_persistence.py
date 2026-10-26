@@ -23,6 +23,7 @@ def persist(matches: list[JobMatch]) -> dict[str, Any]:
     created = 0
     existing = 0
     skipped_applied = 0
+    excluded_applied_ids: list[str] = []
     with psycopg.connect(dsn, connect_timeout=10, sslmode="require",
                          row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
@@ -42,6 +43,7 @@ def persist(matches: list[JobMatch]) -> dict[str, Any]:
                 )
                 if cursor.fetchone()["applied"]:
                     skipped_applied += 1
+                    excluded_applied_ids.append(job.id)
                     continue
                 cursor.execute(
                     """
@@ -78,4 +80,5 @@ def persist(matches: list[JobMatch]) -> dict[str, Any]:
                     existing += 1
         conn.commit()
     return {"status": "OK", "created": created, "existing": existing,
-            "skipped_applied": skipped_applied, "history_checked": True}
+            "skipped_applied": skipped_applied, "history_checked": True,
+            "_excluded_ids": excluded_applied_ids}
