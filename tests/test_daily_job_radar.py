@@ -126,3 +126,46 @@ def test_getonbrd_official_epoch_and_company_expand():
     assert out[0].location=="Latin America"
     assert out[0].published_at==datetime.fromtimestamp(published,tz=timezone.utc)
     assert classify(out[0]).argentina_eligible=="YES"
+
+
+def test_explicit_foreign_country_restrictions_never_rank_for_argentina():
+    from app.radar.daily_search import _restricted_location
+    for country in ("India", "Philippines", "United States",
+                    "Canada, Israel, UK", "Poland, United States",
+                    "USA", "Sweden, UK", "Europe", "Hungary"):
+        assert _restricted_location(country)
+        candidate=classify(job(location=country))
+        assert candidate is not None and candidate.argentina_eligible=="NO"
+        assert rank([job(location=country)],now=NOW)==[]
+
+
+def test_worldwide_and_latam_remain_unverified_or_evidenced():
+    from app.radar.daily_search import _restricted_location
+    assert not _restricted_location("Anywhere")
+    assert not _restricted_location("Worldwide")
+    assert not _restricted_location("Argentina, Chile")
+    assert classify(job(location="Anywhere")).argentina_eligible=="UNKNOWN"
+    assert classify(job(location="Argentina")).argentina_eligible=="YES"
+
+
+def test_getonboard_remote_boost_does_not_claim_ar_eligibility():
+    other=job(location="Remote")
+    regional=other.model_copy(update={"id":"getonboard:2","source":"getonboard","source_id":"2"})
+    a=classify(other)
+    b=classify(regional)
+    assert b is not None and a is not None
+    assert b.score>a.score
+    assert b.argentina_eligible=="UNKNOWN"
+
+
+def test_duplicate_company_role_from_different_feeds_returns_one():
+    original=job(title="Python Developer",location="LATAM")
+    mirror=original.model_copy(update={
+      "id":"jobicy:321","source":"jobicy","source_id":"321",
+      "source_url":"https://jobicy.com/jobs/321"
+    })
+    assert len(rank([original,mirror],now=NOW))==1
+
+
+def test_colombian_sena_training_program_excluded_from_general_radar():
+    assert classify(job(title="Aprendiz de Inteligencia Artificial Contrato Sena")) is None
