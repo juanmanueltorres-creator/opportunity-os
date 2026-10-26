@@ -6,7 +6,15 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from app.relationships.models import CareerContact, RelationshipAccount, RelationshipEvent
-from app.repositories.postgres import _connect
+import os
+
+def _connect():
+    dsn = os.getenv("OPPORTUNITY_POSTGRES_WRITE_DSN")
+    if not dsn:
+        raise RuntimeError("PostgreSQL writer not configured; no SQLite fallback")
+    import psycopg
+    from psycopg.rows import dict_row
+    return psycopg.connect(dsn, connect_timeout=8, sslmode="require", row_factory=dict_row)
 
 
 class PostgresRelationshipRepository:
