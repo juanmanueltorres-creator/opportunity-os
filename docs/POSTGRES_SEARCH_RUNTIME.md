@@ -10,7 +10,7 @@ The existing `app/main.py` still shares a SQLite file among availability memory,
 
 1. Ensure migrations already applied in Supabase: `opportunity_os_private_core_v1`, `opportunity_os_private_history_v1`, `opportunity_os_email_evidence_v1`.
 2. Apply `db/opportunity_os_reader.sql` to grant a **NOLOGIN, read-only** group the minimum read permissions and corresponding private-schema RLS policies. Provision a distinct login role and strong password in a private admin context, then grant that group role to it. Do **not** use a browser-exposed key or commit a database password.
-3. Install: `pip install '.[postgres]'`.
+3. Install the runtime driver separately: `pip install 'psycopg[binary]>=3.2,<4'`. The repository intentionally keeps `pyproject.toml` untouched because the current feature-release contract requires it.
 4. Configure environment secrets `OPPORTUNITY_POSTGRES_DSN` and `OPPORTUNITY_API_TOKEN` (32+ characters). Never put these in `.env` tracked by Git or in a frontend `VITE_` environment variable.
 5. Run: `uvicorn app.postgres_read_api:app --host 127.0.0.1 --port 8100`.
 
