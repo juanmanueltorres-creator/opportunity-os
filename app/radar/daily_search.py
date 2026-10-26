@@ -95,6 +95,8 @@ def text_only(value: object) -> str:
 
 
 def parse_date(value: object) -> datetime | None:
+    if isinstance(value, (float, int)) and 946684800 <= value <= 4102444800:
+        return datetime.fromtimestamp(value, tz=timezone.utc)
     if not isinstance(value, str) or not value.strip():
         return None
     try:
@@ -123,6 +125,12 @@ def parse_getonbrd(payload: object, *, now: datetime) -> list[Opportunity]:
     if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
         raise ValueError("invalid Get on Board payload")
     results: list[Opportunity] = []
+    included = {}
+    for item in payload.get("included", []):
+        if isinstance(item, dict) and item.get("type") == "company":
+            company_attrs = item.get("attributes") or {}
+            if isinstance(company_attrs, dict):
+                included[str(item.get("id"))] = text_only(company_attrs.get("name"))
     for entry in payload["data"]:
         if not isinstance(entry, dict):
             continue
@@ -142,14 +150,21 @@ def parse_getonbrd(payload: object, *, now: datetime) -> list[Opportunity]:
             continue
         title = text_only(attrs.get("title"))
         company_obj = attrs.get("company")
+        related = company_obj.get("data") if isinstance(company_obj, dict) else None
+        rel_id = related.get("id") if isinstance(related, dict) else None
+        related_attrs = related.get("attributes") if isinstance(related, dict) else None
         company = text_only(attrs.get("company_name") or (
-            company_obj.get("name") if isinstance(company_obj, dict) else ""))
+            related_attrs.get("name") if isinstance(related_attrs, dict) else None
+        ) or (company_obj.get("name") if isinstance(company_obj, dict) else None)
+          or included.get(str(rel_id), ""))
         job_id = str(entry.get("id") or "").strip()
         if not job_id or not title or not company:
             continue
         description = text_only(attrs.get("description") or attrs.get("description_headline") or title)
+        countries = attrs.get("countries")
+        country_text = ", ".join(str(x) for x in countries) if isinstance(countries, list) else ""
         location = text_only(attrs.get("location") or attrs.get("location_name") or
-                             attrs.get("remote_zone") or "")
+                             attrs.get("remote_zone") or country_text)
         policy = text_only(attrs.get("remote_modality") or attrs.get("remote_type") or "")
         if attrs.get("remote") is True or REMOTE_WORDS.search(policy):
             policy = "remote"
@@ -319,7 +334,7 @@ async def discover() -> tuple[list[Opportunity], dict[str, str]]:
             for page in range(1, MAX_PAGES_PER_CATEGORY + 1):
                 try:
                     response = await client.get(GETONBRD_ENDPOINT.format(category=category),
-                                                params={"page": page, "per_page": 30})
+                                                params=[("page", page), ("per_page", 30), ("expand[]", "company")])
                     response.raise_for_status()
                     part = parse_getonbrd(response.json(), now=now)
                     count += len(part)
