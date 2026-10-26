@@ -184,6 +184,11 @@ def _normalize(value: str) -> str:
     return _SPACE.sub(" ", value.casefold()).strip()
 
 
+def _contains_term(text: str, term: str) -> bool:
+    # Do not match 'GIS' within reGIStered or 'SIG' within deSIGn.
+    return re.search(r"(?<!\\w)" + re.escape(term.casefold()) + r"(?!\\w)", text) is not None
+
+
 @dataclass(frozen=True)
 class JobMatch:
     job: Opportunity
@@ -221,8 +226,8 @@ def classify(job: Opportunity) -> JobMatch | None:
     body = _normalize(text_only(job.description)[:4500])
     scores: list[tuple[int, str, list[str]]] = []
     for track, opts in TRACKS.items():
-        found_title = [kw for kw in opts["terms"] if kw.casefold() in title]
-        found_body = [kw for kw in opts["terms"] if kw.casefold() in body]
+        found_title = [kw for kw in opts["terms"] if _contains_term(title, kw)]
+        found_body = [kw for kw in opts["terms"] if _contains_term(body, kw)]
         if not found_title:
             # Pure body matches too often produce tangential job recommendations.
             continue
