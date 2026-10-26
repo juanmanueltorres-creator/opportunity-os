@@ -134,7 +134,7 @@ def parse_getonbrd(payload: object, *, now: datetime) -> list[Opportunity]:
         source_url = None
         for candidate in (links.get("public_url"), links.get("web"), attrs.get("url"),
                           attrs.get("public_url"), attrs.get("external_url"),
-                          links.get("self")):
+                          ):
             source_url = _known_https(candidate, hosts=("getonbrd.com", "getonbrd.cl", "getonbrd.com.ar"))
             if source_url:
                 break
@@ -156,7 +156,7 @@ def parse_getonbrd(payload: object, *, now: datetime) -> list[Opportunity]:
         elif ONSITE_WORDS.search(policy):
             policy = "onsite"
         results.append(Opportunity(
-            id=f"getonbrd:{job_id}", source="getonbrd", source_id=job_id,
+            id=f"getonboard:{job_id}", source="getonboard", source_id=job_id,
             source_url=source_url, company=company, title=title,
             description=description, location=location or None,
             remote_policy=policy or None,
@@ -219,7 +219,11 @@ def classify(job: Opportunity) -> JobMatch | None:
         return None
     score, track, found = max(scores, key=lambda x: (x[0], x[1] == "gis_geoscience"))
     location = _normalize(job.location or "")
-    remote = bool(REMOTE_WORDS.search(job.remote_policy or "") or REMOTE_WORDS.search(location))
+    remote = bool(REMOTE_WORDS.search(job.remote_policy or "") or REMOTE_WORDS.search(location)
+                  or re.search(r"\\b(?:100%|fully|totalmente)\\s+(?:remote|remoto|remota)\\b", body, re.I))
+    if not remote and not any(k in location for k in ARGENTINA_MARKERS):
+        # A non-remote job outside Argentina is not a viable short-term target.
+        return None
     if remote:
         mode = "REMOTE"
     elif ONSITE_WORDS.search(job.remote_policy or ""):
@@ -325,6 +329,6 @@ async def discover() -> tuple[list[Opportunity], dict[str, str]]:
                 except (httpx.HTTPError, ValueError) as exc:
                     errors.append(type(exc).__name__)
                     break
-            diagnostics[source_key] = (f"OK ({count} parsed)" if not errors
+            diagnostics[source_key] = (f"OK ({count} parsed)" if count and not errors else "EMPTY_OR_UNMAPPED" if not errors
                                        else "ERROR " + ",".join(errors))
     return jobs, diagnostics
