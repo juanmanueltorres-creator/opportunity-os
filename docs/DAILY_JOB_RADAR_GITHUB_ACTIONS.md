@@ -5,11 +5,29 @@ Buscar **cada día a las 09:23 (Argentina)** puestos relacionados con software/I
 
 El flujo `.github/workflows/daily-opportunity-radar.yml` usa Python 3.12 y `scripts/daily_job_radar.py`. Tiene disparador programado y manual, y sube un artefacto por ejecución: `daily-opportunity-radar`, con `jobs.json` + `jobs.md`.
 
-### Fuentes implementadas (no son 38 scrapers)
+### Fuentes implementadas (no son 42 scrapers)
 - Remotive: API oficial, listado remoto retrasado ~24 horas. [Documentación](https://remotive.com/remote-jobs/api). Limitar a una consulta diaria y enlazar siempre a Remotive como fuente.
 - Get on Board: endpoint público JSON:API por categorías `programming`, `operations-management`, `machine-learning-ai` (hasta dos páginas por categoría). El parser exige URL HTTPS real del portal y datos mínimos, de lo contrario descarta el registro. El acceso HTTP y los atributos JSON:API deben validarse en una ejecución real. Si la fuente falla se registra en el informe y el resto sigue.
 
-Las otras 36 entradas del catálogo son referencias, no colectores activos. No inventar empleos ni cambiar el estado de una fuente sin consulta real.
+Se añadieron cuatro fuentes públicas más con conectores reales: **Jobicy** (JSON API remoto, últimos 7 días), **Himalayas** (JSON API remoto con restricciones por país y vencimiento), **Remote OK** (feed JSON con atribución y aviso legal) y **Arbeitnow** (listado JSON, principalmente Europa/remoto). El procesamiento es conservador: cada fuente puede fallar sin romper las otras y una vacante siempre conserva su URL original. Remotive y Get on Board continúan activos. Total: **6 proveedores conectados en código**, **42 fuentes catalogadas**; las otras 36 son referencias sin recolector activo. Las fuentes están sujetas a sus políticas oficiales y la ejecución debe validarse con resultados reales. No inventar empleos ni cambiar el estado de una fuente sin consulta real.
+
+
+### Nuevas fuentes: endpoints y límites
+
+| Fuente | API pública | Extracción diaria | Condiciones |
+| --- | --- | --- | --- |
+| Jobicy | `https://jobicy.com/api/v2/remote-jobs` | 100 registros recientes | Link al aviso original, respetar atribución y no consultar con frecuencia excesiva |
+| Himalayas | `https://himalayas.app/jobs/api` | Hasta 3 páginas x 20 vacantes | Conservar literalmente `applicationLink`, acreditar a Himalayas, respetar vencimientos y límites |
+| Remote OK | `https://remoteok.com/api` | Una consulta | Enlace obligatorio a la publicación en Remote OK y atribución |
+| Arbeitnow | `https://www.arbeitnow.com/api/job-board-api` | Una consulta | Enlace al anuncio y a Arbeitnow; descartar roles presenciales fuera de Argentina |
+
+Documentación original:
+- https://jobicy.com/jobs-rss-feed
+- https://himalayas.app/docs/remote-jobs-api
+- https://remoteok.com/faq
+- https://www.arbeitnow.com/terms
+
+**Límite operativo:** sumar fuentes no significa mejorar la cantidad de vacantes elegibles. Muchos resultados remotos son EE. UU./Europa o exigen inglés. Se priorizan Argentina/LATAM y roles acordes a los perfiles; la elegibilidad no verificada permanece `UNKNOWN`.
 
 ### Ranking de puestos
 - **Búsqueda por títulos:** software/datos/IA, GIS/minería, gestión/compras/operaciones, diseño interactivo, gastronomía/abastecimiento.

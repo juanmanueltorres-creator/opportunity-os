@@ -324,6 +324,11 @@ async def discover() -> tuple[list[Opportunity], dict[str, str]]:
     now = datetime.now(timezone.utc)
     async with httpx.AsyncClient(timeout=20, follow_redirects=False,
                                  headers={"User-Agent": "OpportunityOS-PersonalRadar/1.0"}) as client:
+        # Import lazily to avoid the parsers' text/date utilities import cycle.
+        from app.radar.extra_public_sources import collect_extended_sources
+        additional_jobs, additional_diagnostics = await collect_extended_sources(client, now=now)
+        jobs.extend(additional_jobs)
+        diagnostics.update(additional_diagnostics)
         try:
             jobs.extend(await RemotiveConnector(client, timeout_seconds=20).fetch())
             diagnostics["remotive"] = "OK"
