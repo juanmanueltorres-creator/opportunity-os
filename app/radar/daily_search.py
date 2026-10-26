@@ -186,7 +186,7 @@ def _normalize(value: str) -> str:
 
 def _contains_term(text: str, term: str) -> bool:
     # Do not match 'GIS' within reGIStered or 'SIG' within deSIGn.
-    return re.search(r"(?<!\\w)" + re.escape(term.casefold()) + r"(?!\\w)", text) is not None
+    return re.search(r"(?<!\w)" + re.escape(term.casefold()) + r"(?!\w)", text) is not None
 
 
 @dataclass(frozen=True)
