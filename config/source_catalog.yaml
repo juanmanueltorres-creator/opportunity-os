@@ -232,6 +232,32 @@ sources:
     publishable: false
     verification_required: true
 
+  # Small public employment communities. Signals, NOT verified jobs.
+  # Do not scrape private groups or treat self-posts as active requisitions.
+  - key: reddit_devsarg_jobs
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, discovery, job, software, argentina]
+    publishable: false
+    verification_required: true
+
+  - key: reddit_empleos_ar
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, discovery, job, argentina]
+    publishable: false
+    verification_required: true
+
+  - key: reddit_cordoba_jobs
+    category: COMMUNITY_SIGNAL
+    authority: DISCOVERY_ONLY
+    freshness_mode: DISCOVERED_AT_ONLY
+    default_channel_tags: [community, discovery, job, cordoba]
+    publishable: false
+    verification_required: true
+
   # LATAM / Cordoba expansion — inventory entries, not active collectors.
   # Aggregators, community signals and company directories stay discovery-only.
   - key: startupjobs_ar
