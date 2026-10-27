@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 from app.radar.daily_search import discover, rank
+from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
 from app.radar.daily_persistence import persist
 
 
@@ -17,7 +18,10 @@ async def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
     jobs, diagnostics = await discover()
-    matches = rank(jobs, now=now, limit=35)
+    candidate_pool = rank(jobs, now=now, limit=200)
+    confirmed, review = partition_cordoba_matches(candidate_pool)
+    matches = confirmed[:35]
+    review = review[:20]
     state = {"status": "NOT_CONFIGURED", "created": 0, "existing": 0,
              "history_checked": False}
     error = False
@@ -33,7 +37,9 @@ async def main() -> int:
         "generated_at": now.isoformat(),
         "sources": diagnostics,
         "raw_jobs_seen": len(jobs),
-        "matches": [item.as_public_dict() for item in visible_matches],
+        "matches": [dict(item.as_public_dict(), search_lane=candidate_lane(item)) for item in visible_matches],
+        "needs_review": [dict(item.as_public_dict(), search_lane="REVIEW") for item in review],
+        "geographic_filter": "CORDOBA_LOCAL_OR_CONFIRMED_REMOTE_ARGENTINA",
         "persistence": state,
         "caveats": [
             "Vacantes pendientes de verificación manual (no aplicar automáticamente).",
@@ -52,7 +58,7 @@ async def main() -> int:
     lines = ["# Opportunity OS — radar diario", "",
              f"Fecha UTC: {now.strftime('%Y-%m-%d %H:%M')}",
              f"Fuente(s): {', '.join(f'{k}={v}' for k,v in diagnostics.items())}",
-             f"Vacantes fuente: {len(jobs)} | recomendaciones: {len(visible_matches)}",
+             f"Vacantes fuente: {len(jobs)} | confirmadas: {len(visible_matches)} | por revisar: {len(review)}",
              f"Persistencia Supabase: {state['status']} (creadas={state.get('created',0)})",
              "", "## Vacantes sugeridas", "",
              "| Afinidad | Empresa y puesto | Fuente | Argentina | Idioma | CV sugerido |",
@@ -62,9 +68,17 @@ async def main() -> int:
         def clean(x: object) -> str:
             return str(x or "").replace("|", "/").replace("\n", " ").replace("\r", " ")[:180]
         lines.append(f"| {row['score']} | [{clean(row['company'])} — {clean(row['title'])}]({row['source_url']}) | {row['source']} | {row['argentina_eligible']} | {row['work_language']} | {row['cv_track_sugerido']} |")
+    lines.extend(["", "## Revisar elegibilidad (NO confirmadas)", "",
+                  "| Afinidad | Empresa y puesto | Ubicación | Razón |",
+                  "|---:|---|---|---|"])
+    for match in review[:15]:
+        row = match.as_public_dict()
+        lines.append(f"| {row['score']} | [{clean(row['company'])} — {clean(row['title'])}]({row['source_url']}) | {clean(row['location'])} | Remoto sin prueba de elegibilidad AR o modalidad Córdoba sin confirmar |")
     lines.extend(["", "## Observaciones", "",
                   "- Las vacantes son señales de búsqueda y deben revisarse en su página oficial.",
-                  "- Las preferencias priorizan Argentina/LATAM y penalizan inglés avanzado exigido.",
+                  "- Confirmadas: remoto explícitamente elegible desde Argentina, o presencial/híbrido explícitamente en Córdoba.",
+                  "- Por revisar: remoto con país elegible desconocido o modalidad no declarada en Córdoba.",
+                  "- Presencial/híbrido fuera de Córdoba e inglés laboral avanzado obligatorio quedan fuera del shortlist.",
                   "- El historial de Gmail/Drive permanece privado en Supabase; no se publica en este archivo.",
                   "- Los PDF del CV no se generan ni se publican desde GitHub Actions.",
                   ""])
