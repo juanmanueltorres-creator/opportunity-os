@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -21,7 +20,12 @@ from app import postgres_read_api as storage
 from app.postgres_workflow_api import app
 
 log = logging.getLogger(__name__)
-MODEL_DEFAULT = "gemini-3.5-flash-lite"
+FREE_GEMINI_MODEL = "gemini-2.5-flash-lite"
+
+
+def _free_tier_confirmed() -> bool:
+    """User-operated guard: billing tier cannot be inferred from an API key."""
+    return os.getenv("GEMINI_FREE_TIER_CONFIRMED", "").strip().lower() in {"1", "true", "yes"}
 DASHBOARD_FILE = Path(__file__).with_name("dashboard.html")
 
 
@@ -67,8 +71,9 @@ def dashboard() -> HTMLResponse:
 def dashboard_status() -> dict:
     """No database connection or AI key is exposed to the browser."""
     return {
-        "ai_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
-        "model": os.getenv("GEMINI_MODEL", MODEL_DEFAULT),
+        "ai_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()) and _free_tier_confirmed(),
+        "model": FREE_GEMINI_MODEL,
+        "free_tier_confirmed": _free_tier_confirmed(),
         "candidate_context_configured": bool(os.getenv("OPPORTUNITY_CANDIDATE_CONTEXT", "").strip()),
     }
 
@@ -80,9 +85,14 @@ async def gemini_review(payload: Annotated[ReviewRequest, Body()]) -> Review:
     if not key:
         raise HTTPException(503, "Configurá GEMINI_API_KEY en el servidor para activar Gemini")
 
-    model = os.getenv("GEMINI_MODEL", MODEL_DEFAULT)
-    if not re.fullmatch(r"gemini-[a-z0-9.-]{1,64}", model):
-        raise HTTPException(503, "Nombre de modelo Gemini inválido")
+    if not _free_tier_confirmed():
+        raise HTTPException(
+            503,
+            "Uso gratuito no habilitado: verificá que tu proyecto sea Free Tier "
+            "y configurá GEMINI_FREE_TIER_CONFIRMED=true",
+        )
+    # Intentionally fixed to a verified free-tier model. No paid model or fallback.
+    model = FREE_GEMINI_MODEL
 
     rows = storage._select(
         """SELECT id, company, title, description, location, remote_mode,
