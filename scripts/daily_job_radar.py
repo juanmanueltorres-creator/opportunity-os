@@ -63,10 +63,10 @@ async def main() -> int:
              "", "## Vacantes sugeridas", "",
              "| Afinidad | Empresa y puesto | Fuente | Argentina | Idioma | CV sugerido |",
              "|---:|---|---|---|---|---|"]
+    def clean(x: object) -> str:
+            return str(x or "").replace("|", "/").replace("\n", " ").replace("\r", " ")[:180]
     for match in visible_matches[:25]:
         row = match.as_public_dict()
-        def clean(x: object) -> str:
-            return str(x or "").replace("|", "/").replace("\n", " ").replace("\r", " ")[:180]
         lines.append(f"| {row['score']} | [{clean(row['company'])} — {clean(row['title'])}]({row['source_url']}) | {row['source']} | {row['argentina_eligible']} | {row['work_language']} | {row['cv_track_sugerido']} |")
     lines.extend(["", "## Revisar elegibilidad (NO confirmadas)", "",
                   "| Afinidad | Empresa y puesto | Ubicación | Razón |",
