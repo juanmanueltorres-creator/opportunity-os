@@ -23,9 +23,15 @@ def test_latam_source_catalog_expansion_has_valid_entries() -> None:
         "geoinquietos_ar",
         "frontendcafe",
         "devschile",
+        "reddit_devsarg_jobs",
+        "reddit_empleos_ar",
+        "reddit_cordoba_jobs",
         "cuti_uruguay",
         "uruguay_xxi",
         "ycombinator_jobs",
+        "reddit_devsarg_jobs",
+        "reddit_empleos_ar",
+        "reddit_cordoba_jobs",
     }
     actual = {entry.key for entry in catalog.sources}
     assert expected <= actual
