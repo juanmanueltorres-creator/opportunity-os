@@ -105,6 +105,7 @@ SPANISH_REQUIRED = re.compile(
     r"idioma de trabajo: espa[nñ]ol|working language:\s*spanish)\b", re.I)
 REMOTE_WORDS = re.compile(r"\b(?:remote|remoto|remota|teletrabajo)\b", re.I)
 ONSITE_WORDS = re.compile(r"\b(?:on.?site|presencial)\b", re.I)
+HYBRID_WORDS = re.compile(r"\b(?:hybrid|h[ií]brido|h[ií]brida)\b", re.I)
 SENIOR_WORDS = re.compile(r"\b(?:senior|sr\.?|principal|staff|director|head of)\b", re.I)
 JUNIOR_WORDS = re.compile(r"\b(?:junior|jr\.?|trainee|analista|associate|semi.?senior|ssr)\b", re.I)
 STRIP_HTML = re.compile(r"<[^>]+>")
@@ -262,17 +263,22 @@ def classify(job: Opportunity) -> JobMatch | None:
         return None
     score, track, found = max(scores, key=lambda x: (x[0], x[1] == "gis_geoscience"))
     location = _normalize(job.location or "")
-    remote = bool(REMOTE_WORDS.search(job.remote_policy or "") or REMOTE_WORDS.search(location)
-                  or re.search(r"\\b(?:100%|fully|totalmente)\\s+(?:remote|remoto|remota)\\b", body, re.I))
+    policy = _normalize(job.remote_policy or "")
+    # An explicit hybrid/onsite policy has precedence over general references
+    # to remote work in the job description.
+    if HYBRID_WORDS.search(policy) or HYBRID_WORDS.search(location):
+        mode = "HYBRID"
+    elif ONSITE_WORDS.search(policy):
+        mode = "ONSITE"
+    elif (REMOTE_WORDS.search(policy) or REMOTE_WORDS.search(location)
+          or re.search(r"\\b(?:100%|fully|totalmente)\\s+(?:remote|remoto|remota)\\b", body, re.I)):
+        mode = "REMOTE"
+    else:
+        mode = "UNKNOWN"
+    remote = mode == "REMOTE"
     if not remote and not any(k in location for k in ARGENTINA_MARKERS):
         # A non-remote job outside Argentina is not a viable short-term target.
         return None
-    if remote:
-        mode = "REMOTE"
-    elif ONSITE_WORDS.search(job.remote_policy or ""):
-        mode = "ONSITE"
-    else:
-        mode = "UNKNOWN"
 
     eligible = "UNKNOWN"
     evidence = None
