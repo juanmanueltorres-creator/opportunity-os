@@ -1,6 +1,4 @@
 """Offline API tests for the additive Opportunity OS dashboard."""
-from unittest.mock import AsyncMock
-
 from fastapi.testclient import TestClient
 import pytest
 
@@ -14,6 +12,7 @@ HEADERS = {"Authorization": "Bearer " + TOKEN}
 def client(monkeypatch):
     monkeypatch.setenv("OPPORTUNITY_API_TOKEN", TOKEN)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_FREE_TIER_CONFIRMED", raising=False)
     return TestClient(dashboard.app)
 
 
@@ -30,6 +29,11 @@ def test_dashboard_is_static_and_keeps_token_out_of_html(client):
 def test_status_requires_auth_and_never_returns_api_key(client, monkeypatch):
     assert client.get("/api/v1/dashboard/status").status_code == 401
     monkeypatch.setenv("GEMINI_API_KEY", "secret-must-never-leak")
+    pending = client.get("/api/v1/dashboard/status", headers=HEADERS)
+    assert pending.status_code == 200
+    assert pending.json()["ai_configured"] is False
+    assert pending.json()["model"] == "gemini-2.5-flash-lite"
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
     response = client.get("/api/v1/dashboard/status", headers=HEADERS)
     assert response.status_code == 200
     assert response.json()["ai_configured"] is True
@@ -46,6 +50,7 @@ def test_analysis_requires_auth_and_server_key(client):
 
 def test_missing_opportunity_never_calls_gemini(client, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
     monkeypatch.setattr(dashboard.storage, "_select", lambda sql, params: [])
     response = client.post("/api/v1/dashboard/ai-review",
                            json={"opportunity_id": "missing"}, headers=HEADERS)
@@ -54,6 +59,7 @@ def test_missing_opportunity_never_calls_gemini(client, monkeypatch):
 
 def test_analysis_uses_stored_job_and_structured_response(client, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "local-fake-gemini-key")
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
     seen = {}
 
     def fake_select(sql, params):
@@ -94,7 +100,7 @@ def test_analysis_uses_stored_job_and_structured_response(client, monkeypatch):
     assert response.json()["fit"] == "medio"
     assert seen["params"] == ("job-1",)
     assert "WHERE id = %s" in seen["sql"]
-    assert seen["url"].startswith("https://generativelanguage.googleapis.com/")
+    assert seen["url"].endswith("/models/gemini-2.5-flash-lite:generateContent")
     assert seen["headers"]["x-goog-api-key"] == "local-fake-gemini-key"
     assert "Conocimiento de GIS" in seen["payload"]["contents"][0]["parts"][0]["text"]
 
@@ -104,3 +110,17 @@ def test_review_input_is_bounded_and_rejects_extra_fields(client):
     assert client.post("/api/v1/dashboard/ai-review", json=too_long, headers=HEADERS).status_code == 422
     extra = {"opportunity_id": "test", "new_field": "unexpected"}
     assert client.post("/api/v1/dashboard/ai-review", json=extra, headers=HEADERS).status_code == 422
+
+
+def test_free_tier_gate_blocks_api_request_when_unconfirmed(client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "a-key-without-confirmed-free-project")
+    response = client.post("/api/v1/dashboard/ai-review",
+                           json={"opportunity_id": "job-1"}, headers=HEADERS)
+    assert response.status_code == 503
+    assert "Free Tier" in response.json()["detail"]
+
+
+def test_paid_model_env_override_does_not_change_free_model(client, monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-4-argon")
+    response = client.get("/api/v1/dashboard/status", headers=HEADERS)
+    assert response.json()["model"] == "gemini-2.5-flash-lite"
