@@ -161,7 +161,7 @@ h1{font-size:clamp(31px,4vw,53px);letter-spacing:-.065em;line-height:1.05;margin
         request('/api/v1/summary')
       ]);
       aiEnabled = !!state.ai_configured;
-      $('statAi').textContent = aiEnabled ? 'Gemini activo' : 'Sin configurar';
+      $('statAi').textContent = aiEnabled ? 'Gemini gratis' : 'Desactivado';
       $('statJobs').textContent = summary.opportunities ?? '—';
       $('statApps').textContent = summary.applications ?? '—';
       $('connectMessage').textContent = '';
@@ -275,14 +275,14 @@ h1{font-size:clamp(31px,4vw,53px);letter-spacing:-.065em;line-height:1.05;margin
     const url=safeUrl(job.canonical_url)||safeUrl(job.source_url);
     if(url){const a=node('a','Abrir aviso original ↗','link');a.href=url;a.rel='noopener noreferrer';a.target='_blank';a.style.display='inline-block';a.style.marginTop='16px';root.append(a);}
     const section=node('div',null,'summary');
-    add(section,node('h4','Análisis asistido','label'),node('p','Gemini usa los datos del aviso guardado. No confirma si sigue abierto.','muted'));
+    add(section,node('h4','Análisis asistido','label'),node('p','Gemini 2.5 Flash-Lite (Free Tier) usa los datos del aviso guardado. No confirma si sigue abierto.','muted'));
     const contextLabel=node('label',null,'field');
     add(contextLabel,node('span','Tu perfil / contexto (opcional)'));
     const textarea=node('textarea');
     textarea.placeholder='Ej.: Geociencias, Python, GIS, QGIS, PostGIS, gestión de equipos. Busco remoto o Córdoba. Evitar roles senior exclusivos…';
     textarea.maxLength=2400;textarea.id='candidateContext';textarea.value=window.sessionCandidateContext||'';
     contextLabel.append(textarea);section.append(contextLabel);
-    const action=node('button',aiEnabled ? 'Analizar con Gemini →':'Gemini sin configurar','accent full');
+    const action=node('button',aiEnabled ? 'Analizar con Gemini gratis →':'Gemini Free Tier no habilitado','accent full');
     action.type='button';action.disabled=!aiEnabled;
     const result=node('div',null,'reviewbox');
     action.addEventListener('click',async()=>{
@@ -301,7 +301,7 @@ h1{font-size:clamp(31px,4vw,53px);letter-spacing:-.065em;line-height:1.05;margin
       } catch(err) {result.replaceChildren(node('p','No se pudo analizar: '+err.message,'caveat'));}
       finally {action.disabled=false;action.textContent='Volver a analizar';}
     });
-    section.append(action,result,node('p','Al analizar, el texto de la vacante y el contexto que escribas se envían a la API de Google Gemini. No se guarda en esta interfaz.','footnote'));
+    section.append(action,result,node('p','Al analizar, el aviso y el contexto escrito se envían a Google Gemini. No incluyas datos sensibles: en el Free Tier Google puede usar ese contenido para mejorar sus productos. La interfaz no lo almacena.','footnote'));
     root.append(section);
   }
   async function refresh() {
