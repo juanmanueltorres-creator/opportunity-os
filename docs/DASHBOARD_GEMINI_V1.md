@@ -24,7 +24,7 @@ export OPPORTUNITY_POSTGRES_DSN='postgresql://...'
 export OPPORTUNITY_API_TOKEN='un-token-aleatorio-con-mas-de-32-caracteres'
 # Opcional para IA:
 export GEMINI_API_KEY='clave-configurada-solo-en-servidor'
-export GEMINI_MODEL='gemini-3.5-flash-lite'
+export GEMINI_FREE_TIER_CONFIRMED='true' # Solo luego de verificar Free Tier sin facturación
 # Opcional para permitir importación de Remotive:
 export OPPORTUNITY_POSTGRES_WRITE_DSN='postgresql://...'
 uvicorn app.dashboard_api:app --host 127.0.0.1 --port 8100
@@ -36,11 +36,15 @@ El backend necesita que el schema `opportunity_os` y sus tablas estén creadas. 
 
 ## Configuración opcional de Gemini
 
-Crear la clave en [Google AI Studio](https://aistudio.google.com/apikey). Guardar `GEMINI_API_KEY` solo como variable secreta del servicio backend. Se usa por defecto `gemini-3.5-flash-lite`, configurable por `GEMINI_MODEL` (solo se aceptan identificadores con formato `gemini-*`).
+Crear la clave en [Google AI Studio](https://aistudio.google.com/apikey) dentro de un proyecto que figure como **Free Tier** y **NO tenga una cuenta de facturación vinculada**. No activar "Set up billing". Guardar `GEMINI_API_KEY` solo como variable secreta del servicio backend.
+
+**Modo exclusivamente gratuito:** la app utiliza solo `gemini-2.5-flash-lite`, modelo oficialmente compatible con la capa gratuita ([precios](https://ai.google.dev/gemini-api/docs/pricing)). La variable `GEMINI_MODEL` se ignora intencionalmente, para impedir un cambio accidental a un modelo de pago. Las llamadas están bloqueadas hasta establecer `GEMINI_FREE_TIER_CONFIRMED=true`, tras verificar manualmente en AI Studio que la clave corresponde a un proyecto Free Tier sin facturación. **El software no puede averiguar el nivel de facturación solamente a partir de una clave**: esa confirmación es una obligación del operador. Si se habilita un proyecto con facturación de todos modos, Google podría cobrar solicitudes incluso a modelos con capa gratis. No hay llamadas automáticas, reintentos ni cambio a modelos pagos.
+
+Si se agota la cuota gratuita, la API devuelve HTTP 429 y la UI muestra un error. Se espera el reinicio de la cuota; nunca se amplía a un plan pago. Los límites reales dependen del proyecto y se consultan en [AI Studio](https://aistudio.google.com/).
 
 Se puede definir `OPPORTUNITY_CANDIDATE_CONTEXT` del lado del servidor como descripción breve y no sensible del perfil. Si el usuario ingresa contexto en el panel, ese texto tiene prioridad para esa llamada; no se persiste en base de datos. Al hacer clic en "Analizar", se comparte con Google **la descripción del aviso y el contexto elegido**. La IA no verifica que la vacante exista hoy, no envía CV, no dispara postulaciones ni cambia registros.
 
-El frontend informa si Gemini está configurado sin revelar la clave. Si la API no responde o devuelve JSON no válido, el servicio falla explícitamente sin recomendar una postulación ficticia.
+El frontend informa si la clave está configurada **y el operador confirmó Free Tier**, sin revelar secretos. Si la API no responde o devuelve JSON no válido, el servicio falla explícitamente sin recomendar una postulación ficticia.
 
 ## Limitaciones y seguridad
 
@@ -49,7 +53,7 @@ El frontend informa si Gemini está configurado sin revelar la clave. Si la API 
 3. Solo Remotive tiene botón de sincronización en esta versión. Las demás fuentes requieren sus conectores y despliegue independiente; Gemini no rastrea Internet en este flujo.
 4. **En producción**, servir exclusivamente bajo HTTPS y autenticación perimetral (además del Bearer). Mantener claves y DSN del lado del servidor. No usar tokens de Supabase en el navegador.
 5. Si se instala como paquete/wheel independiente del checkout, incluir el recurso `app/dashboard.html` en la distribución, o iniciar el servicio desde el directorio del repositorio.
-6. La API de Gemini puede tener límites, facturación y restricciones de procesamiento de datos según el plan.
+6. El proyecto de Google AI Studio debe mantenerse en el nivel gratuito sin facturación; el código no puede garantizar por sí solo la ausencia de cargos si una clave corresponde a una cuenta pagada. Google puede utilizar los datos enviados en el nivel gratuito para mejorar sus productos; evitá introducir CV completos, correos personales u otros datos sensibles.
 
 ## Pruebas
 
