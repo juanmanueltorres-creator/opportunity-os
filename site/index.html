@@ -292,12 +292,12 @@ async function launchGemini(selected){
  const prompt=preparePrompt(selected);
  // The new window must be opened synchronously from the user's click.
  // Google Gemini web does not natively support authenticated prompt-prefill URLs.
- const opened=window.open('https://gemini.google.com/app','_blank','noopener,noreferrer');
+ const copyAction=navigator.clipboard?.writeText?
+  navigator.clipboard.writeText(prompt):Promise.reject(new Error('clipboard unavailable'));
+ window.open('https://gemini.google.com/app','_blank','noopener,noreferrer');
  try{
-  if(!navigator.clipboard || !navigator.clipboard.writeText)throw Error('clipboard unavailable');
-  await navigator.clipboard.writeText(prompt);
+  await copyAction;
   $('briefStatus').textContent='Consulta copiada al portapapeles. Pegala en Gemini con Ctrl+V.';
-  if(!opened)prepareBrief(selected);
  }catch{
   prepareBrief(selected);
   $('copyBriefStatus').textContent='No se pudo copiar automáticamente. Copiá el texto con Ctrl+C y pegalo en Gemini.';
