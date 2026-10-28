@@ -62,8 +62,15 @@ def test_targeted_ats_is_bounded_and_fault_isolated(monkeypatch):
         async def fetch(self):
             return [job("GIS Surveyor")]
 
+    class FakeLever:
+        def __init__(self, client, *, site, company_name, timeout_seconds):
+            self.name = site
+        async def fetch(self):
+            return [job("Geospatial Python Engineer", location="Argentina")]
+
     monkeypatch.setattr(targeted_companies, "AshbyConnector", FakeAshby)
     monkeypatch.setattr(targeted_companies, "GreenhouseConnector", FakeGreenhouse)
+    monkeypatch.setattr(targeted_companies, "LeverConnector", FakeLever)
     found, diagnostics = asyncio.run(targeted_companies.collect_targeted_companies(
         object(), now=NOW,
     ))
@@ -75,3 +82,11 @@ def test_targeted_ats_is_bounded_and_fault_isolated(monkeypatch):
 def test_french_project_manager_does_not_become_restaurant_chef():
     result = classify(job("Freelance Chef de projet fonctionnel"), include_worldwide_onsite=True)
     assert result is None or result.track != "income_operations"
+
+
+def test_verified_latam_ats_targets_are_in_daily_source_allowlist():
+    assert ("lever", "RyzLabs", "RYZ Labs") in targeted_companies.TARGET_BOARDS
+    assert ("ashby", "squad", "Squad") in targeted_companies.TARGET_BOARDS
+    assert ("ashby", "g2i", "G2i") in targeted_companies.TARGET_BOARDS
+    # Avoid unbounded scraping of employer sites and repeated requests.
+    assert len(targeted_companies.TARGET_BOARDS) <= 16
