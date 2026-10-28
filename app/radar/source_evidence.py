@@ -29,7 +29,7 @@ def observed_on_public_ats(*, source: str, source_url: str, source_id: str) -> b
     if url.username is not None or url.password is not None:
         return False
     parts = [part for part in url.path.split("/") if part]
-    if len(parts) < 3:
+    if len(parts) < (3 if source == "greenhouse" else 2):
         return False
     # Greenhouse URLs end /jobs/<id>, Ashby/Lever /<board>/<id>.
     if source == "greenhouse":
