@@ -8,13 +8,14 @@ on:
       - "app/radar/**"
       - "scripts/daily_job_radar.py"
       - "scripts/render_global_radar.py"
+      - "scripts/publish_public_snapshot.py"
       - ".github/workflows/daily-opportunity-radar.yml"
   schedule:
     # 09:23 in Cordoba/Argentina (UTC-3), avoiding peak of the hour.
     - cron: "23 12 * * *"
 
 permissions:
-  contents: read
+  contents: write  # Upload public-only vacancy snapshot to isolated radar-public branch.
 
 concurrency:
   group: opportunity-os-daily-radar
@@ -40,6 +41,23 @@ jobs:
         run: python -m pip install -e . 'psycopg[binary]>=3.2,<4'
       - name: Fetch and rank public vacancies
         run: python scripts/daily_job_radar.py
+      - name: Export safe public feed
+        run: python scripts/publish_public_snapshot.py artifacts/daily-radar/jobs.json artifacts/daily-radar/public.json
+      - name: Publish public feed for Vercel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp artifacts/daily-radar/public.json "${RUNNER_TEMP}/radar-public.json"
+          git fetch origin radar-public
+          git checkout -B radar-public origin/radar-public
+          cp "${RUNNER_TEMP}/radar-public.json" jobs.json
+          git add jobs.json
+          if ! git diff --cached --quiet; then
+            git -c user.name="opportunity-os-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "data: daily public vacancy snapshot"
+            git push origin HEAD:radar-public
+          fi
+          git checkout --detach "${GITHUB_SHA}"
       - name: Save search report for ChatGPT/GitHub review
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,5 +68,6 @@ jobs:
             artifacts/daily-radar/jobs.md
             artifacts/daily-radar/jobs.html
             artifacts/daily-radar/radar.html
+            artifacts/daily-radar/public.json
           if-no-files-found: warn
           retention-days: 14
