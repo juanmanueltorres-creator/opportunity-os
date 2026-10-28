@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from app.models.domain import Opportunity
 from app.radar.daily_search import classify, rank
+from app.radar.cordoba_filters import candidate_lane
 from app.radar.territorial_discovery import (
     discovery_lane, geographic_context, thematic_tags,
 )
@@ -54,7 +55,7 @@ def test_relocation_remains_visible_without_claiming_remote_eligibility():
     assert item.argentina_eligible == "UNKNOWN" or item.argentina_eligible == "YES"
     # In the CURRENT apply-now policy, relocation does not silently become a
     # remotely eligible job or a privately persisted application.
-    assert rank([vacancy()], now=NOW) == []
+    assert candidate_lane(item) == 'EXCLUDED'
     assert len(rank([vacancy()], now=NOW, include_worldwide_onsite=True)) == 1
 
 
