@@ -245,7 +245,15 @@ function relevance(j){
  const topic=Array.isArray(j.topics)&&j.topics.some(t=>[
   'gis','geology_mining','mining_tech','software_data','environment','agro'
  ].includes(t))?9:0;
- return score+source+region+fresh+topic;
+ const title=norm(j.title||'');
+ const specialty=/gis|geospatial|geoespacial|geolog|miner|postgis|python|data engineer|analista de datos|backend|hidrogeolog/.test(title)?35:0;
+ const junior=/junior|jr\b|trainee|entry.?level|pasante|associate|soporte|support|technician|analista|intern|practicante/.test(title)?23:0;
+ const advanced=/senior|sr\b|lead|principal|staff|architect|manager|head of|director|semi.?senior|ssr\b/.test(title)?-52:0;
+ const location=norm(j.location||'');
+ const foreignPlace=j.argentina_eligible==='UNKNOWN'&&
+  /washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa\b/.test(location)?-34:0;
+ const specializedStack=/liferay/.test(title)?-18:0;
+ return score+source+region+fresh+topic+specialty+junior+advanced+foreignPlace+specializedStack;
 }
 function preparePrompt(selected){
  const lines=[
@@ -305,11 +313,18 @@ async function launchGemini(selected){
 }
 $('briefFive').addEventListener('click',()=>launchGemini(todaySelected));
 function renderToday(){
- const candidates=jobs
+ const ranked=jobs
   .map(j=>({j,rank:relevance(j)}))
   .filter(x=>Number.isFinite(x.rank))
-  .sort((a,b)=>b.rank-a.rank||String(a.j.id).localeCompare(String(b.j.id)))
-  .slice(0,5);
+  .sort((a,b)=>b.rank-a.rank||String(a.j.id).localeCompare(String(b.j.id)));
+ const candidates=[],byCompany=new Map();
+ for(const item of ranked){
+  const company=norm(item.j.company||'');
+  if((byCompany.get(company)||0)>=2)continue;
+  candidates.push(item);
+  byCompany.set(company,(byCompany.get(company)||0)+1);
+  if(candidates.length===5)break;
+ }
  todaySelected=candidates.map(x=>x.j);
  const root=$('todayJobs');root.replaceChildren();
  $('briefFive').disabled=!todaySelected.length;
