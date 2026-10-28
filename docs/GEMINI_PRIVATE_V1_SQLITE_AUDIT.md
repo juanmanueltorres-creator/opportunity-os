@@ -1,3 +1,14 @@
+> **ARCHIVADO — 28/10/2026.** El prototipo con contraseña de este
+> documento fue retirado de la interfaz. El sitio ya NO llama a la API
+> de Gemini: prepara una selección de cinco vacantes, genera una consulta
+> con enlaces públicos y deja copiarla para usarla en
+> https://gemini.google.com/app bajo la propia sesión del usuario.
+> **No requiere OPPORTUNITY_REVIEW_TOKEN ni GEMINI_API_KEY** para esta función.
+> Las variables existentes en Vercel no se usan en el sitio actualizado.
+> Para integración directa futura, implementar autenticación de usuario,
+> límites reales de cuota y evaluación de privacidad antes de volver a
+> habilitar llamadas al API.
+
 # Gemini privado y auditoría SQLite — Opportunity OS
 
 ## SQLite: decisión informada
