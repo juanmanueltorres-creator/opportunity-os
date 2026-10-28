@@ -39,6 +39,14 @@ TRACKS: dict[str, dict[str, object]] = {
                   "hidrogeología", "teledetección", "remote sensing", "mining",
                   "minería", "cartografía", "cartography", "geodata", "geomatics"),
     },
+    "environment_agro": {
+        "label": "Ambiente, agro y sostenibilidad",
+        "cv": "gis_geociencias",
+        "terms": ("environmental", "ambiental", "medio ambiente", "sustainability",
+                  "sostenibilidad", "sustentabilidad", "esg analyst", "agtech",
+                  "agriculture", "agricultura", "agronomy", "agronomist",
+                  "agronomía", "agro", "forestry", "forestal"),
+    },
     "management_operations": {
         "label": "Gestión, producto y operaciones",
         "cv": "management_ia",
