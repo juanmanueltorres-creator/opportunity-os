@@ -100,7 +100,7 @@ if(!Number.isFinite(rank(job('Data Developer',{company:'Muttdata'}))))throw Erro
 if(!Number.isFinite(rank(job('GIS Analyst',{company:'Local GIS'}))))throw Error('GIS excluded');
 if(!Number.isFinite(rank(job('Junior GIS Analyst',{argentina_eligible:'UNKNOWN',location:'Remote'}))))throw Error('junior GIS review wrongly excluded');
 if(rank(job('GIS Analyst',{argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('unverified non-junior GIS leads should stay in atlas');
-if(rank(job('Data Engineer',{company:'DSAC Chile',argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('Unverified generic role should not enter today's five');
+if(rank(job('Data Engineer',{company:'DSAC Chile',argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('Unverified generic role should stay out of shortlist');
 if(!Number.isFinite(rank(job('Junior Software Engineer',{company:'Canals',argentina_eligible:'YES'}))))throw Error('Canals excluded');
 console.log('shortlist semantic gates OK');
 '''
