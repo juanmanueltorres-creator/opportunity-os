@@ -258,6 +258,12 @@ function relevance(j){
  // shortlist. Keep them searchable in the full discovery atlas.
  if(!geospatial&&!engineering&&!(adjacent&&(junior||j.argentina_eligible==='YES')))
    return -Infinity;
+ // Strong relevance alone doesn't grant territorial eligibility. For UNKNOWN,
+ // only very clearly junior + remote + specialized roles enter daily review;
+ // everything else remains searchable in the wider radar.
+ if(j.argentina_eligible!=='YES' &&
+   !(j.remote_mode==='REMOTE'&&junior&&(geospatial||engineering)))
+   return -Infinity;
  // UNKNOWN country + explicit US location is not an Argentina-ready lead.
  if(j.argentina_eligible==='UNKNOWN' &&
    /\b(washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa|united kingdom|germany|berlin|stuttgart)\b/.test(location))return -Infinity;
