@@ -56,7 +56,7 @@ TRACKS: dict[str, dict[str, object]] = {
         "cv": "gis_geociencias",
         "terms": ("environmental", "ambiental", "medio ambiente", "sustainability",
                   "sostenibilidad", "sustentabilidad", "esg analyst", "agtech",
-                  "agriculture", "agricultura", "agronomy", "agronomist",
+                  "agriculture", "agricultural", "agricultura", "agronomy", "agronomist",
                   "agronomía", "agro", "forestry", "forestal", "agribusiness",
                   "agropecuario", "agroindustria", "agronomo", "agrónomo",
                   "climate", "clima", "recursos naturales", "natural resources",
