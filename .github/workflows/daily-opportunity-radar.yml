@@ -8,6 +8,7 @@ on:
       - "app/radar/**"
       - "scripts/daily_job_radar.py"
       - "scripts/render_global_radar.py"
+      - "scripts/publish_public_snapshot.py"
       - ".github/workflows/daily-opportunity-radar.yml"
   schedule:
     # 09:23 in Cordoba/Argentina (UTC-3), avoiding peak of the hour.
