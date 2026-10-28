@@ -90,8 +90,8 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </div>
 <section class="today" aria-label="Vacantes para revisar hoy">
 <div class="today-head">
-<div><div class="micro">TRIAGE / 5 OFERTAS</div><h2>Para revisar hoy</h2><p class="note">Selección automática por compatibilidad temática, ubicación y señales públicas. No significa que la oferta esté abierta ni que acepten candidatos de Argentina.</p></div>
-<button class="gemini-brief" id="briefFive" type="button">Preparar estas 5 para Gemini</button>
+<div><div class="micro">TRIAGE / HASTA 5 VACANTES</div><h2>Para revisar hoy</h2><p class="note">Selección conservadora: prioriza Junior, GIS, Python, soporte y datos, y excluye pools de talento, títulos Senior y stacks claramente ajenos. Muestra menos de cinco si no hay coincidencias; exige revisar requisitos y elegibilidad.</p></div>
+<button class="gemini-brief" id="briefFive" type="button">Preparar selección para Gemini</button>
 </div>
 <div class="today-list" id="todayJobs"><span class="note">Cargando ofertas…</span></div>
 <p id="briefStatus" role="status" aria-live="polite" class="gemini-note"></p>
@@ -231,34 +231,51 @@ function card(j){
  if(link){const a=el('a','Aviso original ↗');a.href=link;a.target='_blank';a.rel='noopener noreferrer';foot.append(a);}
  art.append(foot);return art;
 }
+// A shortlist is NOT a popularity contest. Reject obvious role mismatches
+// before ranking and never pad the list to five.
 function relevance(j){
  if(!j || status(j)==='applied' || status(j)==='ignored' ||
     j.argentina_eligible==='NO' || !safeUrl(j.source_url))return -Infinity;
  const g=group(j);
  if(!['APPLICABLE','ARGENTINA_RELOCATION','REVIEW'].includes(g))return -Infinity;
- const score=Number(j.score)||0;
- const source=j.source_check==='LISTED_ON_PUBLIC_ATS'?8:0;
- const region=g==='APPLICABLE'?35:g==='ARGENTINA_RELOCATION'?14:0;
- const hasDate=j.published_at && !isNaN(new Date(j.published_at).getTime());
- const days=hasDate?(Date.now()-new Date(j.published_at).getTime())/86400000:null;
- const fresh=days!==null && days>=0 && days<=14?12:days!==null&&days>60?-20:0;
- const topic=Array.isArray(j.topics)&&j.topics.some(t=>[
-  'gis','geology_mining','mining_tech','software_data','environment','agro'
- ].includes(t))?9:0;
- const title=norm(j.title||'');
- const specialty=/gis|geospatial|geoespacial|geolog|miner|postgis|python|data engineer|analista de datos|backend|hidrogeolog/.test(title)?35:0;
- const junior=/junior|jr\b|trainee|entry.?level|pasante|associate|soporte|support|technician|analista|intern|practicante/.test(title)?23:0;
- const advanced=/senior|sr\b|lead|principal|staff|architect|manager|head of|director|semi.?senior|ssr\b/.test(title)?-52:0;
+ const title=norm(j.title||'').replace(/\s+/g,' ').trim();
  const location=norm(j.location||'');
- const foreignPlace=j.argentina_eligible==='UNKNOWN'&&
-  /washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa\b/.test(location)?-34:0;
- const specializedStack=/liferay/.test(title)?-18:0;
- return score+source+region+fresh+topic+specialty+junior+advanced+foreignPlace+specializedStack;
+ if(!title)return -Infinity;
+ // Open talent databases are not concrete job requisitions.
+ if(/\b(talent pool|talent community|talent network|future opportunities|general application|open application|evergreen)\b/.test(title))return -Infinity;
+ // This daily set targets immediate junior/mid-entry opportunities,
+ // not roles whose title explicitly states advanced responsibility.
+ if(/\b(senior|senior-level|sr\.?|principal|staff|lead|leader|head of|director|architect|manager|jefe|gerente|semi.?senior|ssr\.?)\b/.test(title))return -Infinity;
+ // These are heavily specialized stacks not evidenced in the stated profile.
+ if(/\b(liferay|snowflake|salesforce|sap abap|magento|servicenow|netsuite|cobol|mainframe)\b/.test(title))return -Infinity;
+ // The public export carries title and tags, not full requirements. Therefore
+ // a strong match must be visible in the title; sector alone is insufficient.
+ const geospatial=/\b(gis|sig|geospatial|geoespacial|geologi[ac]|geology|mining|mineria|mineral|hydrogeol|hidrogeol|postgis|qgis|arcgis|geomatic|geomatica|geodata|cartograf|teledeteccion|remote sensing|environmental|ambiental)\b/.test(title);
+ const engineering=/\b(python|backend|back.end|api developer|data developer|technical support|tech support|soporte tecnico|support engineer|application support|software support)\b/.test(title);
+ const adjacent=/\b(data engineer|data analyst|analista de datos|software engineer|software developer|full.stack|fullstack|frontend|front.end|desarrollador|desarrolladora|developer|programador|programadora)\b/.test(title);
+ if(!geospatial&&!engineering&&!adjacent)return -Infinity;
+ // UNKNOWN country + explicit US location is not an Argentina-ready lead.
+ if(j.argentina_eligible==='UNKNOWN' &&
+   /\b(washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa|united kingdom|germany|berlin|stuttgart)\b/.test(location))return -Infinity;
+ const junior=/\b(junior|jr\.?|trainee|entry.level|intern|practicante|pasante)\b/.test(title);
+ const area=geospatial?80:engineering?55:25;
+ const hiring=junior?60:0;
+ const territory=j.argentina_eligible==='YES'?48:
+    g==='ARGENTINA_RELOCATION'?8:0;
+ const observed=j.source_check==='LISTED_ON_PUBLIC_ATS'?10:0;
+ const published=j.published_at?new Date(j.published_at):null;
+ const days=published&&!isNaN(published.getTime())?
+   (Date.now()-published.getTime())/86400000:null;
+ const fresh=days!==null&&days>=0&&days<=14?12:
+    days!==null&&days>90?-25:0;
+ // Reduce influence of the old broad score, which favored generic roles.
+ const legacy=Math.max(0,Math.min(100,Number(j.score)||0))*0.2;
+ return area+hiring+territory+observed+fresh+legacy;
 }
 function preparePrompt(selected){
  const lines=[
   'Sos un orientador laboral crítico. Compará estas vacantes públicas para una persona en Argentina interesada en GIS/SIG, geociencias/minería, Python/FastAPI/PostGIS y tecnología aplicada. Este perfil es una referencia temática, NO un CV validado.',
-  'Objetivo: elegir un máximo de 3 postulaciones prioritarias y la siguiente acción concreta para cada una, sin inventar datos.',
+  'Objetivo: elegir un máximo de 3 postulaciones prioritarias, si hay evidencia suficiente. Si ninguna resulta convincente, decirlo sin completar un cupo. Proponer una siguiente acción concreta para cada una.',
   'Antes de recomendar, marcá la ubicación admitida, seniority, idioma laboral, frescura y requisitos NO COMPROBADOS. No confundas "visto en ATS" con "abierto".',
   'Ordená según lo que se sabe de los avisos; señalá explícitamente si el detalle de requisitos falta y pedí comprobarlo en el link original. No asumas que Argentina está admitida si figura UNKNOWN.',
   'No redactes postulaciones ni CV con experiencia inventada. Respuesta breve en español argentino.',
@@ -329,7 +346,7 @@ function renderToday(){
  const root=$('todayJobs');root.replaceChildren();
  $('briefFive').disabled=!todaySelected.length;
  if(!todaySelected.length){
-  root.append(el('p','Sin ofertas con ubicación y requisitos suficientes para esta selección; ampliá la búsqueda en el radar.','note'));
+  root.append(el('p','No hay avisos del radar que superen los filtros de ajuste, territorio y seniority. Mejor cero que completar con empleos irrelevantes.','note'));
   return;
  }
  for(const {j} of candidates){
