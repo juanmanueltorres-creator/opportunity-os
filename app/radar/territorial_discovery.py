@@ -133,6 +133,8 @@ def discovery_lane(match: JobMatch) -> str:
         return base
     scope, province = geographic_context(match.job.location)
     if match.remote_mode in {"ONSITE", "HYBRID"} and scope == "ARGENTINA":
+        if province is None:
+            return "ARGENTINA_REVIEW"  # Country known, city/province not stated.
         if province == "Córdoba" and is_cordoba_location(match.job.location):
             return "REVIEW"
         return "ARGENTINA_RELOCATION"
