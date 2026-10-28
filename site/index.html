@@ -90,7 +90,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </div>
 <section class="today" aria-label="Vacantes para revisar hoy">
 <div class="today-head">
-<div><div class="micro">TRIAGE / HASTA 5 VACANTES</div><h2>Para revisar hoy</h2><p class="note">Selección conservadora: prioriza Junior, GIS, Python, soporte y datos, y excluye pools de talento, títulos Senior y stacks claramente ajenos. Muestra menos de cinco si no hay coincidencias; exige revisar requisitos y elegibilidad.</p></div>
+<div><div class="micro">TRIAGE / ESPAÑOL AHORA</div><h2>Para revisar hoy</h2><p class="note">Prioridad actual: búsquedas para trabajar en español. Se considera candidato con idioma pendiente de confirmar un aviso redactado en español sin exigencia explícita de inglés. Solo se recomienda investigar puestos Junior y afines; el modo global queda disponible para más adelante.</p></div>
 <button class="gemini-brief" id="briefFive" type="button">Preparar selección para Gemini</button>
 </div>
 <div class="today-list" id="todayJobs"><span class="note">Cargando ofertas…</span></div>
@@ -108,6 +108,8 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <label class="field"><span>Especialidad / sector</span><select id="track"><option value="">Todas</option><option value="software_ai">Software · Datos · IA</option><option value="gis_geoscience">GIS · Geociencias · Minería</option><option value="environment_agro">Agro · Ambiente · AgTech</option><option value="management_operations">Gestión · Operaciones</option><option value="design_web">Diseño · Web</option><option value="income_operations">Gastronomía · Ingresos</option></select></label>
 <label class="field"><span>Modalidad</span><select id="mode"><option value="">Todas</option><option>REMOTE</option><option>HYBRID</option><option>ONSITE</option><option>UNKNOWN</option></select></label>
 <label class="field"><span>Desde Argentina</span><select id="eligible"><option value="">Todas</option><option value="YES">Fuente indica elegibilidad</option><option value="UNKNOWN">No confirmado</option><option value="NO">Restricción declarada</option></select></label>
+<label class="field"><span>Prioridad laboral actual</span><select id="focusLanguage"><option value="ES_NOW" selected>Español ahora · filtrar avisos</option><option value="GLOBAL">Explorar todas · futuro</option></select></label>
+<p class="note">Español ahora = trabajo en español confirmado o aviso en español sin idioma laboral confirmado. No garantiza español: verificá la exigencia oral antes de postular.</p>
 <label class="field"><span>Idioma del aviso (estimado)</span><select id="listingLanguage"><option value="">Todos</option><option value="ES">Aviso en español</option><option value="EN">Aviso en inglés</option><option value="MIXED">Aviso mixto</option><option value="UNKNOWN">Indeterminado</option></select></label>
 <label class="field"><span>Idioma laboral exigido (explícito)</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés avanzado</option><option value="UNKNOWN">No informado</option></select></label>
 <label class="field"><span>Ubicación (opcional, nunca prefiltrada)</span><input id="location" type="search" placeholder="Salta, Jujuy, Neuquén, Europa..."></label>
@@ -183,6 +185,12 @@ const storageKey='opportunity-os-local-v1';
 let states={};
 try{const stored=JSON.parse(localStorage.getItem(storageKey)||'{}');if(stored&&typeof stored==='object'&&!Array.isArray(stored))states=stored;}catch{}
 const status=j=>states[String(j.id)]||'new';
+const spanishEvidence=j=>j&&(
+  j.work_language==='ES'||
+  (j.work_language==='UNKNOWN'&&j.listing_language==='ES'));
+const spanishLabel=j=>j.work_language==='ES'
+  ?'Idioma laboral: español explícito'
+  :'Aviso en español · idioma laboral por confirmar';
 const safeUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=String(text);if(cls)n.className=cls;return n;};
 const norm=t=>String(t??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -234,6 +242,7 @@ function card(j){
 // A shortlist is NOT a popularity contest. Reject obvious role mismatches
 // before ranking and never pad the list to five.
 function relevance(j){
+ if($('focusLanguage').value==='ES_NOW'&&!spanishEvidence(j))return -Infinity;
  if(!j || status(j)==='applied' || status(j)==='ignored' ||
     j.argentina_eligible==='NO' || !safeUrl(j.source_url))return -Infinity;
  const g=group(j);
@@ -279,12 +288,17 @@ function relevance(j){
     days!==null&&days>90?-25:0;
  // Reduce influence of the old broad score, which favored generic roles.
  const legacy=Math.max(0,Math.min(100,Number(j.score)||0))*0.2;
- return area+hiring+territory+observed+fresh+legacy;
+ // Work-language evidence outranks listing-language estimation.
+ const language=j.work_language==='ES'?50:
+   j.listing_language==='ES'&&j.work_language==='UNKNOWN'?10:0;
+ return area+hiring+territory+observed+fresh+legacy+language;
 }
 function preparePrompt(selected){
  const lines=[
   'Sos un orientador laboral crítico. Compará estas vacantes públicas para una persona en Argentina interesada en GIS/SIG, geociencias/minería, Python/FastAPI/PostGIS y tecnología aplicada. Este perfil es una referencia temática, NO un CV validado.',
-  'Objetivo: elegir un máximo de 3 postulaciones prioritarias, si hay evidencia suficiente. Si ninguna resulta convincente, decirlo sin completar un cupo. Proponer una siguiente acción concreta para cada una.',
+  'Objetivo INMEDIATO: conseguir trabajo donde pueda comunicarme y trabajar en ESPAÑOL (inglés conversacional en desarrollo, NO postular a vacantes que exijan C1/B2 oral). Roles GIS, geociencias/minería, Python/FastAPI/PostGIS, datos, soporte y tecnología. No recomendar una vacante solo por ser remota.', 
+  'Elegí hasta 3 postulaciones con evidencia; si no hay ninguna apropiada, respondé NINGUNA en lugar de inventar coincidencias. El inglés avanzado obligatorio es excluyente ahora.',
+  'Un aviso en español NO confirma el idioma real de trabajo. Separá idioma del aviso e idioma laboral exigido, verificando la fuente original. Si es UNKNOWN, indicar POR CONFIRMAR.',
   'Antes de recomendar, marcá la ubicación admitida, seniority, idioma laboral, frescura y requisitos NO COMPROBADOS. No confundas "visto en ATS" con "abierto".',
   'Ordená según lo que se sabe de los avisos; señalá explícitamente si el detalle de requisitos falta y pedí comprobarlo en el link original. No asumas que Argentina está admitida si figura UNKNOWN.',
   'No redactes postulaciones ni CV con experiencia inventada. Respuesta breve en español argentino.',
@@ -295,6 +309,7 @@ function preparePrompt(selected){
   'URL: '+j.source_url,
   'Ubicación: '+(j.location||'NO INFORMADA')+'; Modalidad: '+(j.remote_mode||'UNKNOWN')+
   '; Argentina: '+(j.argentina_eligible||'UNKNOWN')+
+  '; Idioma del aviso: '+(j.listing_language||'UNKNOWN')+
   '; Idioma de trabajo: '+(j.work_language||'UNKNOWN'),
   'Publicada: '+(j.published_at||'SIN FECHA')+
   '; Listado ATS: '+(j.source_check||'NOT_CHECKED')+
@@ -355,7 +370,7 @@ function renderToday(){
  const root=$('todayJobs');root.replaceChildren();
  $('briefFive').disabled=!todaySelected.length;
  if(!todaySelected.length){
-  root.append(el('p','No hay avisos del radar que superen los filtros de ajuste, territorio y seniority. Mejor cero que completar con empleos irrelevantes.','note'));
+  root.append(el('p','Sin candidatas suficientes para español ahora con esta captura. El atlas global se conserva para el futuro. Consultá Computrabajo e Indeed nacionales por especialidad; verificá idioma, ubicación y requisitos antes de postular.','note'));
   return;
  }
  for(const {j} of candidates){
@@ -367,7 +382,8 @@ function renderToday(){
   card.append(el('p',(j.location||'Sin ubicación')+' · '+(j.source_check==='LISTED_ON_PUBLIC_ATS'?
    'Visto en tablero oficial':'Sin comprobación directa')+
    ' · '+(/\b(junior|jr\.?|trainee|entry.level)\b/.test(norm(j.title||''))?
-     'Junior declarado':'Seniority no comprobado'),'note'));
+     'Junior declarado':'Seniority no comprobado')+
+   ' · '+spanishLabel(j),'note'));
   const a=el('a','Ver aviso original');a.href=safeUrl(j.source_url);
   a.target='_blank';a.rel='noopener noreferrer';card.append(a);root.append(card);
  }
@@ -375,7 +391,8 @@ function renderToday(){
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value,sourceCheck=$('sourceCheck').value;
-return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
+const spanishNow=$('focusLanguage').value==='ES_NOW';
+return jobs.filter(j=>(!spanishNow||spanishEvidence(j))&&(lane==='ALL'||group(j)===lane)
   &&(!activeTopic||(Array.isArray(j.topics)&&j.topics.includes(activeTopic))
       ||(activeTopic==='agro'&&j.company_industry==='agtech'))
   &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q)
@@ -391,7 +408,9 @@ const found=chosen();
 const precedence={APPLICABLE:0,ARGENTINA_RELOCATION:1,REVIEW:2,EXPLORE:3};
 found.sort((a,b)=>(precedence[group(a)]??3)-(precedence[group(b)]??3)||(Number(b.score)||0)-(Number(a.score)||0));
 $('count').textContent=found.length+' RESULTADOS';$('cards').replaceChildren();
-if(!found.length){$('cards').append(el('div','No hay coincidencias con esos filtros. Probá «Todas» o ampliá la búsqueda.','empty'));}
+if(!found.length){$('cards').append(el('div',$('focusLanguage').value==='ES_NOW'?
+ 'No hay avisos que cumplan el filtro de español ahora. No confundimos un anuncio en inglés con un puesto en español. Podés explorar el atlas global para el futuro o consultar las fuentes argentinas por especialidad.':
+ 'No hay coincidencias con esos filtros. Probá «Todas» o ampliá la búsqueda.','empty'));}
 else found.slice(0,visibleLimit).forEach(j=>$('cards').append(card(j)));
 $('more').hidden=found.length<=visibleLimit;$('limitNote').textContent=found.length>visibleLimit?'Mostrando '+visibleLimit+' de '+found.length+'.':'';
 document.querySelectorAll('[data-lane]').forEach(b=>{const active=b.dataset.lane===lane;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
@@ -436,11 +455,11 @@ try{
  $('cards').replaceChildren(el('div','No pudimos leer el último snapshot. Consultá la ejecución de GitHub Actions; no mostramos ofertas ficticias.','error'));
  $('count').textContent='SIN DATOS';}
 }
-['q','location','track','mode','eligible','language','listingLanguage','progress','age','sourceCheck'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();}));
+['q','location','track','mode','eligible','language','listingLanguage','progress','age','sourceCheck','focusLanguage'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();if(id==='focusLanguage')renderToday();}));
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 document.querySelectorAll('[data-topic]').forEach(b=>b.addEventListener('click',()=>{activeTopic=b.dataset.topic;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
-$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';visibleLimit=30;render();});
+$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age','sourceCheck'].forEach(id=>$(id).value='');$('focusLanguage').value='ES_NOW';lane='ALL';activeTopic='';visibleLimit=30;render();renderToday();});
 $('export').addEventListener('click',()=>{
  const marked=jobs.filter(j=>status(j)!=='new');
  const rows=[['id','empresa','puesto','estado_local','url']];
