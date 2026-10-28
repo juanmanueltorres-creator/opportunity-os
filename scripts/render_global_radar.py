@@ -96,7 +96,7 @@ h3{margin:8px 0 13px;font-size:19px;letter-spacing:-.04em;line-height:1.3}
 <label>Buscar empresa o puesto<input id="q" type="search" placeholder="GIS, Python, minería..." autocomplete="off"></label>
 <label>Sector<select id="track">
 <option value="">Todos</option>
-<option value="software_ai">Software / Datos / IA</option><option value="gis_geoscience">GIS / Minería / Ambiente</option>
+<option value="software_ai">Software / Datos / IA</option><option value="gis_geoscience">GIS / Minería</option><option value="environment_agro">Agro / Ambiente / ESG</option>
 <option value="management_operations">Gestión / Operaciones</option><option value="design_web">Diseño interactivo</option>
 <option value="income_operations">Gastronomía / Abastecimiento</option></select></label>
 <label>Modalidad<select id="mode"><option value="">Todas</option><option value="REMOTE">Remoto</option><option value="ONSITE">Presencial</option><option value="HYBRID">Híbrido</option><option value="UNKNOWN">No informada</option></select></label>
