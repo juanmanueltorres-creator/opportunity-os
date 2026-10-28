@@ -23,6 +23,8 @@ def test_public_gemini_briefing_has_no_private_password_or_api_call():
     assert ".slice(0,5)" in html
     assert "https://gemini.google.com/app" in html
     assert "navigator.clipboard.writeText" in html
+    assert "function launchGemini(selected)" in html
+    assert "window.open('https://gemini.google.com/app'" in html
     assert 'id="briefText" readonly' in html
     assert "geminiToken" not in html
     assert "geminiDialog" not in html
