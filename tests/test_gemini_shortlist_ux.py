@@ -11,7 +11,7 @@ HTML = ROOT / "site/index.html"
 def test_public_gemini_briefing_has_no_private_password_or_api_call():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="todayJobs"' in html
-    assert "Preparar estas 5 para Gemini" in html
+    assert "Preparar selección para Gemini" in html
     assert "function relevance(j)" in html
     assert "function renderToday()" in html
     assert "function preparePrompt(selected)" in html
