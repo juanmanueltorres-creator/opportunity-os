@@ -436,6 +436,12 @@ async def discover() -> tuple[list[Opportunity], dict[str, str]]:
         additional_jobs, additional_diagnostics = await collect_extended_sources(client, now=now)
         jobs.extend(additional_jobs)
         diagnostics.update(additional_diagnostics)
+        # Official company ATS feeds add geospatial, agritech and environmental
+        # roles that general remote-tech aggregators systematically miss.
+        from app.radar.targeted_companies import collect_targeted_companies
+        target_jobs, target_diagnostics = await collect_targeted_companies(client, now=now)
+        jobs.extend(target_jobs)
+        diagnostics.update(target_diagnostics)
         try:
             jobs.extend(await RemotiveConnector(client, timeout_seconds=20).fetch())
             diagnostics["remotive"] = "OK"
