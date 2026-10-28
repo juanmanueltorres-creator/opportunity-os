@@ -13,6 +13,7 @@ import httpx
 
 from app.connectors.ashby import AshbyConnector
 from app.connectors.greenhouse import GreenhouseConnector
+from app.connectors.lever import LeverConnector
 from app.models.domain import Opportunity
 
 # Verified employer-owned job boards (public job listing pages).
@@ -25,6 +26,11 @@ TARGET_BOARDS = (
     ("ashby", "agzen", "AgZen"),
     ("ashby", "klim", "Klim"),
     ("ashby", "finagra", "FinAgra"),
+    # Public company ATS boards observed in Argentina/LATAM for geospatial
+    # engineering, industrial/mining tech and the wider spatial-data ecosystem.
+    ("lever", "RyzLabs", "RYZ Labs"),
+    ("ashby", "squad", "Squad"),
+    ("ashby", "g2i", "G2i"),
 )
 
 
@@ -40,6 +46,10 @@ async def collect_targeted_companies(
             try:
                 if kind == "ashby":
                     connector = AshbyConnector(client, board_name=token,
+                                               company_name=company,
+                                               timeout_seconds=14)
+                elif kind == "lever":
+                    connector = LeverConnector(client, site=token,
                                                company_name=company,
                                                timeout_seconds=14)
                 else:
