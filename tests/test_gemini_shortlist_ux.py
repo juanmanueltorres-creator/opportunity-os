@@ -82,7 +82,7 @@ const job=(title,extra={})=>({
  id:'ashby:test',title,company:'Example',
  source_url:'https://jobs.ashbyhq.com/test/123',
  argentina_eligible:'YES',search_lane:'REMOTE_ARGENTINA',
- score:65,location:'Argentina',
+ score:65,location:'Argentina',remote_mode:'REMOTE',
  source_check:'LISTED_ON_PUBLIC_ATS',
  published_at:'2026-10-26T12:00:00Z',...extra
 });
@@ -98,6 +98,8 @@ for(const title of ['Backend Developer - G2i Talent Pool','Senior Geospatial Sof
 if(rank(job('Python Developer', {location:'Washington, DC',argentina_eligible:'UNKNOWN'}))!==-Infinity)throw Error('US unknown allowed');
 if(!Number.isFinite(rank(job('Data Developer',{company:'Muttdata'}))))throw Error('Muttdata excluded');
 if(!Number.isFinite(rank(job('GIS Analyst',{company:'Local GIS'}))))throw Error('GIS excluded');
+if(!Number.isFinite(rank(job('Junior GIS Analyst',{argentina_eligible:'UNKNOWN',location:'Remote'}))))throw Error('junior GIS review wrongly excluded');
+if(rank(job('GIS Analyst',{argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('unverified non-junior GIS leads should stay in atlas');
 if(rank(job('Data Engineer',{company:'DSAC Chile',argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('Unverified generic role should not enter today's five');
 if(!Number.isFinite(rank(job('Junior Software Engineer',{company:'Canals',argentina_eligible:'YES'}))))throw Error('Canals excluded');
 console.log('shortlist semantic gates OK');
