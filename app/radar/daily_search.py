@@ -18,7 +18,13 @@ from app.connectors.remotive import RemotiveConnector
 from app.models.domain import Opportunity
 
 GETONBRD_ENDPOINT = "https://www.getonbrd.com/api/v0/categories/{category}/jobs"
-CATEGORIES = ("programming", "operations-management", "machine-learning-ai")
+# Category slugs mirror the published Get on Board categories; a failed
+# endpoint is reported as ERROR/EMPTY rather than silently faking results.
+CATEGORIES = (
+    "programming", "operations-management", "machine-learning-ai",
+    "data-science-analytics", "design-ux", "customer-support",
+    "technical-support",
+)
 MAX_PAGES_PER_CATEGORY = 2
 
 TRACKS: dict[str, dict[str, object]] = {
@@ -37,7 +43,13 @@ TRACKS: dict[str, dict[str, object]] = {
         "terms": ("gis", "sig", "geospatial", "geoespacial", "postgis", "qgis",
                   "geology", "geólogo", "geologia", "geología", "hydrogeology",
                   "hidrogeología", "teledetección", "remote sensing", "mining",
-                  "minería", "cartografía", "cartography", "geodata", "geomatics"),
+                  "minería", "cartografía", "cartography", "geodata", "geomatics",
+                  "geomática", "geologist", "hydrogeologist", "geophysics",
+                  "geophysicist", "geotechnical", "geotécnico", "topografía",
+                  "topógrafo", "surveyor", "land surveyor", "surveying",
+                  "arcgis", "spatial data", "spatial analyst",
+                  "earth observation", "satellite imagery",
+                  "mineral exploration", "exploración minera"),
     },
     "environment_agro": {
         "label": "Ambiente, agro y sostenibilidad",
@@ -45,7 +57,11 @@ TRACKS: dict[str, dict[str, object]] = {
         "terms": ("environmental", "ambiental", "medio ambiente", "sustainability",
                   "sostenibilidad", "sustentabilidad", "esg analyst", "agtech",
                   "agriculture", "agricultura", "agronomy", "agronomist",
-                  "agronomía", "agro", "forestry", "forestal"),
+                  "agronomía", "agro", "forestry", "forestal", "agribusiness",
+                  "agropecuario", "agroindustria", "agronomo", "agrónomo",
+                  "climate", "clima", "recursos naturales", "natural resources",
+                  "water resources", "biodiversity", "biodiversidad",
+                  "ecology", "ecología", "environmental consultant"),
     },
     "management_operations": {
         "label": "Gestión, producto y operaciones",
@@ -62,14 +78,20 @@ TRACKS: dict[str, dict[str, object]] = {
         "cv": "desarrollo_software_ia",
         "terms": ("web designer", "creative developer", "three.js", "threejs",
                   "webgl", "3d developer", "interactive", "motion designer",
-                  "designer developer", "creative technologist"),
+                  "designer developer", "creative technologist",
+                  "product designer", "ux designer", "ui designer",
+                  "visual designer", "graphic designer", "diseñador",
+                  "diseñador gráfico", "diseño ux", "3d artist", "animator"),
     },
     "income_operations": {
         "label": "Ingresos inmediatos: gastronomía y abastecimiento",
         "cv": "management_ia",
-        "terms": ("chef", "cocinero", "pizzero", "gastronomía", "gastronomia",
+        "terms": ("chef", "cook", "cocinero", "pizzero", "gastronomía", "gastronomia",
                   "kitchen manager", "restaurant manager", "encargado de cocina",
-                  "compras", "abastecimiento", "stock", "inventarios"),
+                  "compras", "abastecimiento", "stock", "inventarios",
+                  "depósito", "deposito", "almacén", "logística",
+                  "hospitality", "restaurant", "kitchen supervisor",
+                  "food production", "producción alimentaria"),
     },
 }
 
@@ -214,6 +236,35 @@ def _normalize(value: str) -> str:
     return _SPACE.sub(" ", value.casefold()).strip()
 
 
+def detect_listing_language(text: str) -> str:
+    """Language of the LISTING, not a requirement of the role or team.
+
+    Conservative, explainable word-frequency heuristic for Spanish/English ads.
+    UNKNOWN is kept when the signal is weak; no AI inference or external calls.
+    """
+    cleaned = _normalize(text_only(text)[:6000])
+    words = re.findall(r"(?u)\b[^\W\d_]+\b", cleaned)
+    if len(words) < 18:
+        return "UNKNOWN"
+    sample = words[:500]
+    spanish = {"para", "con", "experiencia", "trabajo", "empresa", "equipo",
+               "buscamos", "requisitos", "conocimientos", "desarrollo", "ofrecemos",
+               "tareas", "responsabilidades", "habilidades", "puesto", "deseable",
+               "nuestro", "postular", "presencial", "remoto", "valoramos"}
+    english = {"with", "experience", "work", "team", "looking", "requirements",
+               "responsibilities", "skills", "company", "required", "preferred",
+               "we", "you", "our", "will", "candidate", "position", "role"}
+    es = sum(w in spanish for w in sample)
+    en = sum(w in english for w in sample)
+    if es >= 5 and es >= 2 * max(en, 1):
+        return "ES"
+    if en >= 5 and en >= 2 * max(es, 1):
+        return "EN"
+    if es >= 5 and en >= 5:
+        return "MIXED"
+    return "UNKNOWN"
+
+
 def _contains_term(text: str, term: str) -> bool:
     # Do not match 'GIS' within reGIStered or 'SIG' within deSIGn.
     return re.search(r"(?<!\w)" + re.escape(term.casefold()) + r"(?!\w)", text) is not None
@@ -231,6 +282,7 @@ class JobMatch:
     eligibility_evidence: str | None
     work_language: str
     language_evidence: str | None
+    listing_language: str = "UNKNOWN"
 
     def as_public_dict(self) -> dict[str, Any]:
         return {
@@ -245,6 +297,7 @@ class JobMatch:
             "argentina_eligible": self.argentina_eligible,
             "eligibility_evidence": self.eligibility_evidence,
             "work_language": self.work_language,
+            "listing_language": self.listing_language,
             "language_evidence": self.language_evidence,
             "historial_postulaciones_cruzado": False,
             "verification_status": "PENDING",
@@ -348,7 +401,8 @@ def classify(
     else:
         reasons.append("Idioma laboral sin evidencia; revisar publicación")
     return JobMatch(job, track, str(TRACKS[track]["cv"]), max(0, min(100, score)),
-                    tuple(reasons), mode, eligible, evidence, work_language, language_evidence)
+                    tuple(reasons), mode, eligible, evidence, work_language, language_evidence,
+                    detect_listing_language(job.description))
 
 
 def rank(jobs: list[Opportunity], *, now: datetime, max_age_days: int = 30,
