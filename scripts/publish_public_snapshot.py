@@ -13,6 +13,7 @@ PUBLIC_FIELDS = (
     "id", "source", "company", "title", "source_url", "location",
     "published_at", "discovered_at", "track", "score",
     "remote_mode", "argentina_eligible", "work_language", "listing_language", "search_lane",
+    "eligibility_evidence", "language_evidence",
     "geographic_scope", "argentina_province", "topics",
 )
 
@@ -43,6 +44,27 @@ def public_snapshot(report: dict) -> dict:
             continue
         seen.add(ident)
         item = {key: raw.get(key) for key in PUBLIC_FIELDS}
+        # Only classifier-produced provenance from a PUBLIC vacancy may cross
+        # this boundary. This is neither manual verification nor a private note.
+        evidence = item.get("eligibility_evidence")
+        if not (isinstance(evidence, str)
+                and evidence.startswith((
+                    "Ubicación declarada: ",
+                    "Cobertura geográfica declarada en el título: ",
+                    "Restricción geográfica explícita: ",
+                ))):
+            item["eligibility_evidence"] = None
+        else:
+            item["eligibility_evidence"] = evidence[:350]
+        if item.get("language_evidence") not in {
+            "Requisito explícito en la descripción",
+            "Inglés avanzado exigido explícitamente",
+        }:
+            item["language_evidence"] = None
+        if item.get("argentina_eligible") not in {"YES", "NO"}:
+            item["eligibility_evidence"] = None
+        if item.get("work_language") not in {"ES", "EN"}:
+            item["language_evidence"] = None
         # Verified company *industry*, not a claim that the vacancy is agronomy.
         # A designer at an AgTech startup can be discovered through Agro filter
         # while retaining the authentic design_web role track.
