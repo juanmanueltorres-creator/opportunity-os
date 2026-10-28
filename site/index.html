@@ -143,6 +143,18 @@ const status=j=>states[String(j.id)]||'new';
 const safeUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=String(text);if(cls)n.className=cls;return n;};
 const norm=t=>String(t??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const keywordThemes={
+ 'gis':'gis','sig':'gis','geoespacial':'gis','geospatial':'gis',
+ 'desarrollo geoespacial':'gis','geologia':'geology_mining',
+ 'geologo':'geology_mining','geologa':'geology_mining',
+ 'mineria':'geology_mining','mining':'geology_mining',
+ 'hidrogeologia':'geology_mining','mining tech':'mining_tech',
+ 'miningtech':'mining_tech','agro':'agro','agtech':'agro',
+ 'agronomia':'agro','ambiente':'environment','ambiental':'environment',
+ 'urban tech':'urban_tech','urbantech':'urban_tech',
+ 'python':'software_data','software':'software_data',
+ 'desarrollo comercial':'technical_business','ventas tecnicas':'technical_business'
+};
 const date=t=>{const d=t?new Date(t):null;return d&&!isNaN(d.getTime())?new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'short',year:'numeric'}).format(d):'Sin fecha'};
 const badge=(text,variant='')=>el('span',text,'tag '+variant);
 const group=j=>lanes[j.search_lane]||(j.argentina_eligible==='NO'?'EXPLORE':'REVIEW');
@@ -171,12 +183,14 @@ function card(j){
  art.append(foot);return art;
 }
 function chosen(){
-const q=norm($('q').value).trim(),loc=norm($('location').value).trim();
+const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value;
 return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
   &&(!activeTopic||(Array.isArray(j.topics)&&j.topics.includes(activeTopic))
       ||(activeTopic==='agro'&&j.company_industry==='agtech'))
-  &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q))
+  &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q)
+     ||(queryTheme&&Array.isArray(j.topics)&&j.topics.includes(queryTheme))
+     ||(queryTheme==='agro'&&j.company_industry==='agtech'))
   &&(!age||(age==='UNKNOWN'?!j.published_at:
       (j.published_at&&Date.now()-new Date(j.published_at).getTime()<=Number(age)*86400000
        &&Date.now()-new Date(j.published_at).getTime()>=0)))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track||(track==='environment_agro'&&j.company_industry==='agtech'))&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!listing||(j.listing_language||'UNKNOWN')===listing)&&(!progress||status(j)===progress));
