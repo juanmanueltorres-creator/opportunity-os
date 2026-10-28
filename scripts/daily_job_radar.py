@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 from app.radar.daily_search import discover, rank
+from app.radar.html_report import render_job_report
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
 try:
     from scripts.render_global_radar import render_global_radar
@@ -29,6 +30,14 @@ async def main() -> int:
     confirmed, review = partition_cordoba_matches(candidate_pool)
     matches = confirmed[:35]
     review = review[:20]
+    # Global discovery is independent from Argentina work eligibility.
+    # Global results do not enter the apply-now lane or automatic DB writes.
+    global_pool = rank(
+        jobs, now=now, limit=200,
+        include_worldwide_onsite=True, include_ineligible=True,
+    )
+    seen = {item.job.id for item in matches + review}
+    global_watchlist = [item for item in global_pool if item.job.id not in seen][:60]
     state = {"status": "NOT_CONFIGURED", "created": 0, "existing": 0,
              "history_checked": False}
     error = False
@@ -49,6 +58,10 @@ async def main() -> int:
         "raw_jobs_seen": len(jobs),
         "matches": [dict(item.as_public_dict(), search_lane=candidate_lane(item)) for item in visible_matches],
         "needs_review": [dict(item.as_public_dict(), search_lane="REVIEW") for item in review],
+        "global_watchlist": [
+            dict(item.as_public_dict(), search_lane="GLOBAL_RESEARCH_ONLY")
+            for item in global_watchlist
+        ],
         "geographic_filter": "CORDOBA_LOCAL_OR_CONFIRMED_REMOTE_ARGENTINA",
         "persistence": state,
         "caveats": [
@@ -56,12 +69,14 @@ async def main() -> int:
             "El idioma del aviso no prueba el idioma laboral del equipo.",
             "Remoto no prueba elegibilidad contractual desde Argentina.",
             "CV: se sugiere un perfil; no se genera PDF sin hechos/evidencia aprobados.",
-            "Sin secreto PostgreSQL no se consulta historial privado ni se sincroniza Supabase."
+            "Sin secreto PostgreSQL no se consulta historial privado ni se sincroniza Supabase.",
+            "Atlas global: investigación; no se confirma elegibilidad ni apertura."
         ],
     }
     if state["status"] == "OK":
         for row in public["matches"]:
             row["historial_postulaciones_cruzado"] = True
+    render_job_report(public, output / "jobs.html")
     (output / "jobs.json").write_text(
         json.dumps(public, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -85,6 +100,15 @@ async def main() -> int:
     for match in review[:15]:
         row = match.as_public_dict()
         lines.append(f"| {row['score']} | [{clean(row['company'])} — {clean(row['title'])}]({row['source_url']}) | {clean(row['location'])} | Remoto sin prueba de elegibilidad AR o modalidad Córdoba sin confirmar |")
+    lines.extend(["", "## Atlas global: investigación, no aplicables automáticamente", "",
+                  "| Afinidad | Empresa y puesto | Ubicación | Fuente |",
+                  "|---:|---|---|---|"])
+    for item in global_watchlist[:30]:
+        row = item.as_public_dict()
+        lines.append(
+            f"| {row['score']} | {clean(row['company'])} — {clean(row['title'])} "
+            f"| {clean(row['location'])} | [Abrir]({row['source_url']}) |"
+        )
     lines.extend(["", "## Observaciones", "",
                   "- Las vacantes son señales de búsqueda y deben revisarse en su página oficial.",
                   "- Confirmadas: remoto explícitamente elegible desde Argentina, o presencial/híbrido explícitamente en Córdoba.",
