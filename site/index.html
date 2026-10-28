@@ -250,7 +250,7 @@ function relevance(j){
  if(/\b(liferay|snowflake|salesforce|sap abap|magento|servicenow|netsuite|cobol|mainframe)\b/.test(title))return -Infinity;
  // The public export carries title and tags, not full requirements. Therefore
  // a strong match must be visible in the title; sector alone is insufficient.
- const geospatial=/\b(gis|sig|geospatial|geoespacial|geologi[ac]|geology|mining|mineria|mineral|hydrogeol|hidrogeol|postgis|qgis|arcgis|geomatic|geomatica|geodata|cartograf|teledeteccion|remote sensing|environmental|ambiental)\b/.test(title);
+ const geospatial=/\b(gis|sig|geospatial|geoespacial|geolog\w*|mining|mineri\w*|mineral|hydrogeol\w*|hidrogeol\w*|geotechnic\w*|geotecnic\w*|postgis|qgis|arcgis|geomatic\w*|geomatica|geodata|cartograf\w*|topograf\w*|surveyor|teledeteccion|remote sensing|environmental|ambiental)\b/.test(title);
  const engineering=/\b(python|backend|back.end|api developer|data developer|technical support|tech support|soporte tecnico|support engineer|application support|software support)\b/.test(title);
  const adjacent=/\b(data engineer|data analyst|analista de datos|software engineer|software developer|full.stack|fullstack|frontend|front.end|desarrollador|desarrolladora|developer|programador|programadora)\b/.test(title);
  const junior=/\b(junior|jr\.?|trainee|entry.level|intern|practicante|pasante)\b/.test(title);
