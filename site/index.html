@@ -34,7 +34,17 @@ h1{font-size:clamp(43px,6.4vw,91px);line-height:.96;letter-spacing:-.084em;margi
 .smallbtn[aria-pressed="true"]{background:#263623;border-color:#b0df7e;color:var(--lime)}
 .update{font-size:11px;color:var(--muted);margin-bottom:10px}.empty,.error{padding:36px;border:1px dashed #48524c;border-radius:10px;background:#121818;color:#b1c0b8;line-height:1.8}.error{border-color:#b56954}
 .bottombar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:18px;flex-wrap:wrap}
-footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:55px;font:11px/1.9 ui-monospace,Consolas,monospace;color:var(--muted)}
+.sources{border-top:1px solid var(--line);margin-top:55px;padding:27px 0 0}
+.sources h2{font-size:13px;letter-spacing:.13em;margin:0 0 10px;text-transform:uppercase}
+.source-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:20px}
+.source-item{display:flex;justify-content:space-between;gap:15px;padding:13px 14px;border:1px solid var(--line);background:var(--panel);border-radius:6px;font-size:12px;align-items:center}
+.source-item span{color:var(--muted);font:10px ui-monospace,Consolas,monospace;text-align:right}
+.source-item a{color:var(--lime);text-decoration:none}
+.source-item a:hover{text-decoration:underline}
+.manual-links{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0 0}
+.manual-links a{padding:9px 12px;background:#171e1e;border:1px solid var(--line);font-size:12px;color:var(--ink);text-decoration:none;border-radius:5px}
+.manual-links a:hover{border-color:var(--lime)}
+footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11px/1.9 ui-monospace,Consolas,monospace;color:var(--muted)}
 .hidden,[hidden]{display:none!important}.summary-bar{margin:14px 0 17px;color:#9eaca5;font-size:12px}
 @media(max-width:1100px){.list{grid-template-columns:1fr}.hero-right{display:none}}
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}}
@@ -59,11 +69,12 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:55px;font:11
 <label class="field"><span>Especialidad</span><select id="track"><option value="">Todas</option><option value="software_ai">Software · Datos · IA</option><option value="gis_geoscience">GIS · Geociencias · Minería</option><option value="environment_agro">Agro · Ambiente</option><option value="management_operations">Gestión · Operaciones</option><option value="design_web">Diseño · Web</option><option value="income_operations">Gastronomía · Ingresos</option></select></label>
 <label class="field"><span>Modalidad</span><select id="mode"><option value="">Todas</option><option>REMOTE</option><option>HYBRID</option><option>ONSITE</option><option>UNKNOWN</option></select></label>
 <label class="field"><span>Desde Argentina</span><select id="eligible"><option value="">Todas</option><option value="YES">Fuente indica elegibilidad</option><option value="UNKNOWN">No confirmado</option><option value="NO">Restricción declarada</option></select></label>
-<label class="field"><span>Idioma exigido</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés avanzado</option><option value="UNKNOWN">No informado</option></select></label>
+<label class="field"><span>Idioma del aviso (estimado)</span><select id="listingLanguage"><option value="">Todos</option><option value="ES">Aviso en español</option><option value="EN">Aviso en inglés</option><option value="MIXED">Aviso mixto</option><option value="UNKNOWN">Indeterminado</option></select></label>
+<label class="field"><span>Idioma laboral exigido (explícito)</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés avanzado</option><option value="UNKNOWN">No informado</option></select></label>
 <label class="field"><span>Ubicación de la oferta</span><input id="location" type="search" placeholder="LATAM, Córdoba, Europe..."></label>
 <label class="field"><span>Mi seguimiento local</span><select id="progress"><option value="">Todas</option><option value="new">Sin marcar</option><option value="saved">Guardadas</option><option value="applied">Postuladas</option><option value="ignored">Descartadas</option></select></label>
 <button class="control" id="clear" type="button">Limpiar filtros</button>
-<p class="note">Las marcas de seguimiento se guardan solamente en este navegador. No se sincronizan con Supabase ni reemplazan tu historial real de postulaciones.</p>
+<p class="note">El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
 </aside>
 <section aria-label="Oportunidades">
 <div class="headline"><h2 class="feed-title">Oportunidades / 02</h2><div class="actions"><span id="count" class="micro">CARGANDO</span><button class="control" id="export" type="button" title="Exportar seguimiento local como CSV">Exportar CSV</button></div></div>
@@ -72,6 +83,17 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:55px;font:11
 <div class="list" id="cards"><div class="empty">Consultando resultados publicados por Opportunity OS…</div></div>
 <div class="bottombar"><span id="limitNote" class="note"></span><button id="more" class="control" type="button" hidden>Mostrar más</button></div>
 </section></div>
+<section class="sources" aria-label="Fuentes de oportunidades">
+<h2>Fuentes consultadas / 03</h2>
+<p class="note">Estas son las fuentes realmente ejecutadas en la última búsqueda, con su resultado. Un aviso encontrado no implica que la vacante siga abierta ni que acepte postulantes desde Argentina.</p>
+<div id="sourceGrid" class="source-grid"><p class="note">Cargando estado de fuentes…</p></div>
+<h2 style="margin-top:28px">Búsquedas complementarias / manuales</h2>
+<p class="note">LinkedIn, Indeed y Computrabajo todavía NO están conectadas al recolector automático. Estos enlaces abren búsquedas externas para cubrir GIS, geología, agro, ambiente y empleos locales sin presentar datos inventados.</p>
+<div class="manual-links"><a href="https://ar.linkedin.com/jobs/gis-empleos" target="_blank" rel="noopener noreferrer">LinkedIn · GIS Argentina ↗</a>
+<a href="https://ar.indeed.com/" target="_blank" rel="noopener noreferrer">Indeed · Argentina ↗</a>
+<a href="https://ar.computrabajo.com/trabajo-de-geologo-en-cordoba" target="_blank" rel="noopener noreferrer">Computrabajo · Geología Córdoba ↗</a>
+<a href="https://www.getonbrd.com/jobs" target="_blank" rel="noopener noreferrer">Get on Board · LATAM ↗</a></div>
+</section>
 <footer>OPPORTUNITY OS · OFERTAS PÚBLICAS, NO VERIFICACIÓN DE VIGENCIA · LA SEDE DE LA EMPRESA NO DEFINE LOS PAÍSES DESDE LOS QUE CONTRATA · <a href="https://github.com/juanmanueltorres-creator/opportunity-os/actions/workflows/daily-opportunity-radar.yml" target="_blank" rel="noopener noreferrer">VER ACTUALIZACIONES EN GITHUB</a></footer>
 </main>
 <script>
@@ -102,6 +124,7 @@ function card(j){
    badge(j.location||'Ubicación sin confirmar'),
    badge(j.remote_mode==='REMOTE'?'Remoto':j.remote_mode==='HYBRID'?'Híbrido':j.remote_mode==='ONSITE'?'Presencial':'Modalidad no informada'),
    badge((j.track||'').replaceAll('_',' ')),
+   badge(j.listing_language==='ES'?'Aviso en español (estimado)':j.listing_language==='EN'?'Aviso en inglés (estimado)':j.listing_language==='MIXED'?'Aviso bilingüe/mixto (estimado)':'Idioma del aviso no determinado'),
    badge(date(j.published_at||j.discovered_at),'cyan')
  );
  art.append(tags);
@@ -115,8 +138,8 @@ function card(j){
 }
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim();
-const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,progress=$('progress').value;
-return jobs.filter(j=>(lane==='ALL'||group(j)===lane)&&(!q||norm((j.company||'')+' '+(j.title||'')).includes(q))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track)&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!progress||status(j)===progress));
+const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value;
+return jobs.filter(j=>(lane==='ALL'||group(j)===lane)&&(!q||norm((j.company||'')+' '+(j.title||'')).includes(q))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track)&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!listing||(j.listing_language||'UNKNOWN')===listing)&&(!progress||status(j)===progress));
 }
 function render(){
 const found=chosen();
@@ -139,6 +162,18 @@ try{
  $('statApply').textContent=jobs.filter(j=>group(j)==='APPLICABLE').length;
  $('statReview').textContent=jobs.filter(j=>group(j)==='REVIEW').length;
  $('statSources').textContent=Object.keys(data.sources||{}).length;
+ const srcRoot=$('sourceGrid');srcRoot.replaceChildren();
+ const homes={jobicy:'https://jobicy.com/',himalayas:'https://himalayas.app/',
+ remoteok:'https://remoteok.com/',arbeitnow:'https://www.arbeitnow.com/',
+ remotive:'https://remotive.com/',getonbrd:'https://www.getonbrd.com/jobs'};
+ for(const [name,rawStatus] of Object.entries(data.sources||{})){
+  const key=name.split(':')[0];const row=el('div',null,'source-item');
+  const link=safeUrl(homes[key]);const title=link?el('a',name):el('strong',name);
+  if(link){title.href=link;title.target='_blank';title.rel='noopener noreferrer';}
+  row.append(title,el('span',String(rawStatus||'Estado no informado')));
+  srcRoot.append(row);
+ }
+ if(!srcRoot.childElementCount)srcRoot.append(el('div','No hay fuentes reportadas por la última ejecución.','note'));
  const age=Math.floor((Date.now()-new Date(data.generated_at).getTime())/86400000);
  $('update').textContent='Última captura: '+date(data.generated_at)+' · '+(Number(data.raw_jobs_seen)||0)+' avisos consultados · '+(age>2?'DATOS ANTIGUOS, revisar fuentes.':'vigencia individual no confirmada.');
  render();
@@ -147,10 +182,10 @@ try{
  $('cards').replaceChildren(el('div','No pudimos leer el último snapshot. Consultá la ejecución de GitHub Actions; no mostramos ofertas ficticias.','error'));
  $('count').textContent='SIN DATOS';}
 }
-['q','location','track','mode','eligible','language','progress'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();}));
+['q','location','track','mode','eligible','language','listingLanguage','progress'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();}));
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
-$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','progress'].forEach(id=>$(id).value='');lane='ALL';visibleLimit=30;render();});
+$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress'].forEach(id=>$(id).value='');lane='ALL';visibleLimit=30;render();});
 $('export').addEventListener('click',()=>{
  const marked=jobs.filter(j=>status(j)!=='new');
  const rows=[['id','empresa','puesto','estado_local','url']];
