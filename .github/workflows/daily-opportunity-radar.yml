@@ -41,5 +41,6 @@ jobs:
           path: |
             artifacts/daily-radar/jobs.json
             artifacts/daily-radar/jobs.md
+            artifacts/daily-radar/radar.html
           if-no-files-found: warn
           retention-days: 14
