@@ -64,10 +64,13 @@ begin
       nullif(j->>'location','') as location,
       case when j->>'remote_mode' in ('REMOTE','HYBRID','ONSITE','UNKNOWN')
            then j->>'remote_mode' else 'UNKNOWN' end as remote_mode,
-      case when j->>'argentina_eligible' in ('YES','NO','UNKNOWN')
-           then j->>'argentina_eligible' else 'UNKNOWN' end as argentina_eligible,
-      case when j->>'work_language' in ('ES','EN','BILINGUAL','UNKNOWN')
+      case when j->>'argentina_eligible' = 'NO'
+           then 'NO' else 'UNKNOWN' end as argentina_eligible,
+      -- The public feed deliberately omits raw eligibility evidence.
+      -- Never assert YES in a private database that requires a citation.
+      case when j->>'work_language' in ('EN','BILINGUAL')
            then j->>'work_language' else 'UNKNOWN' end as work_language,
+      -- Spanish-language text is not evidence of team work language.
       case when j->>'listing_language' in ('ES','EN')
            then j->>'listing_language'
            when j->>'listing_language' = 'MIXED' then 'OTHER'
