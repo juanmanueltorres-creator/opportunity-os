@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 
-from app.radar.daily_search import discover, rank
+from app.radar.daily_search import discover, rank, TRACKS
 from app.radar.html_report import render_job_report
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
 try:
@@ -24,20 +24,36 @@ async def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
     jobs, diagnostics = await discover()
-    candidate_pool = rank(jobs, now=now, limit=200)
-    global_pool = rank(jobs, now=now, limit=250, include_worldwide_onsite=True,
-                       include_ineligible=True)
-    confirmed, review = partition_cordoba_matches(candidate_pool)
-    matches = confirmed[:35]
-    review = review[:20]
-    # Global discovery is independent from Argentina work eligibility.
-    # Global results do not enter the apply-now lane or automatic DB writes.
-    global_pool = rank(
-        jobs, now=now, limit=200,
+    candidate_pool = rank(jobs, now=now, limit=600)
+    all_global = rank(
+        jobs, now=now, limit=1800,
         include_worldwide_onsite=True, include_ineligible=True,
     )
-    seen = {item.job.id for item in matches + review}
-    global_watchlist = [item for item in global_pool if item.job.id not in seen][:60]
+    confirmed, review = partition_cordoba_matches(candidate_pool)
+    matches = confirmed[:35]
+    review = review[:40]
+
+    # Guarantee space for scarce tracks, rather than having 200 developer jobs
+    # hide 3 real GIS/agro/design openings with a slightly lower heuristic score.
+    # This never invents jobs or changes eligibility.
+    selected: list = []
+    seen_ids: set[str] = set()
+    for track in TRACKS:
+        for item in (m for m in all_global if m.track == track):
+            if item.job.id not in seen_ids:
+                selected.append(item)
+                seen_ids.add(item.job.id)
+            if sum(m.track == track for m in selected) >= 40:
+                break
+    for item in all_global:
+        if len(selected) >= 300:
+            break
+        if item.job.id not in seen_ids:
+            selected.append(item)
+            seen_ids.add(item.job.id)
+    global_pool = selected[:300]
+    shortlist_ids = {item.job.id for item in matches + review}
+    global_watchlist = [item for item in global_pool if item.job.id not in shortlist_ids][:80]
     state = {"status": "NOT_CONFIGURED", "created": 0, "existing": 0,
              "history_checked": False}
     error = False

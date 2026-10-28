@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 PUBLIC_FIELDS = (
     "id", "source", "company", "title", "source_url", "location",
     "published_at", "discovered_at", "track", "score",
-    "remote_mode", "argentina_eligible", "work_language", "search_lane",
+    "remote_mode", "argentina_eligible", "work_language", "listing_language", "search_lane",
 )
 
 
