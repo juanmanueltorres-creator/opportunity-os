@@ -302,6 +302,12 @@ def classify(
         eligible = "NO"
         evidence = "Restricción geográfica explícita: " + (job.location or "")
         score -= 60
+    elif remote and any(marker in title for marker in LATAM_MARKERS + ("argentina",)):
+        # The employer explicitly advertises a LATAM/Argentina position in the TITLE.
+        # Do not infer this from the language, HQ, or vague 'worldwide' copy.
+        eligible = "YES"
+        evidence = "Cobertura geográfica declarada en el título: " + job.title[:240]
+        score += 12
     elif remote:
         # "Worldwide"/global remote is NOT proof of employment eligibility from Argentina.
         score += 4
