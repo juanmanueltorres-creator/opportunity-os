@@ -314,6 +314,9 @@ def classify(
     scores: list[tuple[int, str, list[str]]] = []
     for track, opts in TRACKS.items():
         found_title = [kw for kw in opts["terms"] if _contains_term(title, kw)]
+        # In French a "chef de projet" is a project manager, not a cook.
+        if track == "income_operations" and "chef de projet" in title:
+            found_title = [kw for kw in found_title if kw != "chef"]
         found_body = [kw for kw in opts["terms"] if _contains_term(body, kw)]
         if not found_title:
             # Pure body matches too often produce tangential job recommendations.
