@@ -84,3 +84,23 @@ def test_partition_keeps_review_separate_and_score_order():
     assert {item.job.source_id for item in confirmed} == {"1", "4"}
     assert {item.job.source_id for item in review} == {"2"}
     assert all(candidate_lane(item) != "EXCLUDED" for item in confirmed + review)
+
+
+def test_explicit_latam_title_can_confirm_remote_but_not_restricted_country():
+    accepted = classify(offer(
+        title="Desarrollador Full-Stack para LATAM",
+        location="Remote",
+        policy="remote",
+    ))
+    assert accepted is not None
+    assert accepted.argentina_eligible == "YES"
+    assert candidate_lane(accepted) == "REMOTE_ARGENTINA"
+    assert "título" in (accepted.eligibility_evidence or "")
+    restricted = classify(offer(
+        title="Python Developer LATAM",
+        location="US only",
+        policy="remote",
+    ))
+    assert restricted is not None
+    assert restricted.argentina_eligible == "NO"
+    assert candidate_lane(restricted) == "EXCLUDED"
