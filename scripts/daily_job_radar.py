@@ -71,11 +71,23 @@ async def main() -> int:
     def atlas_record(item):
         scope, province = geographic_context(item.job.location)
         row = item.as_public_dict()
+        topics = thematic_tags(item.job.title)
+        # Strict employer-board + listing-text evidence: software/data roles
+        # in mining operations should appear under Mining Tech as well.
+        # An employer label alone does NOT make every posting a mining role.
+        if (item.job.source == "ashby"
+                and item.job.company in {"Squad", "G2i"}
+                and any(term in item.job.description.casefold() for term in (
+                    "mining operators", "mining operations",
+                    "mining & industrial data", "mining intelligence",
+                ))
+                and "mining_tech" not in topics):
+            topics.append("mining_tech")
         row.update({
             "search_lane": discovery_lane(item),
             "geographic_scope": scope,
             "argentina_province": province,
-            "topics": thematic_tags(item.job.title),
+            "topics": topics,
         })
         return row
 
