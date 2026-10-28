@@ -70,3 +70,8 @@ def test_targeted_ats_is_bounded_and_fault_isolated(monkeypatch):
     assert diagnostics["ashby:klim"] == "ERROR:RuntimeError"
     assert diagnostics["greenhouse:ardentmc"].startswith("OK (")
     assert len(found) == len(targeted_companies.TARGET_BOARDS) - 1
+
+
+def test_french_project_manager_does_not_become_restaurant_chef():
+    result = classify(job("Freelance Chef de projet fonctionnel"), include_worldwide_onsite=True)
+    assert result is None or result.track != "income_operations"

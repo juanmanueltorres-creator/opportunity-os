@@ -66,7 +66,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <div class="layout">
 <aside class="filters" aria-label="Filtros laborales"><h2>Filtros / 01</h2>
 <label class="field"><span>Empresa / puesto</span><input id="q" type="search" placeholder="GIS, Python, startup..." autocomplete="off"></label>
-<label class="field"><span>Especialidad</span><select id="track"><option value="">Todas</option><option value="software_ai">Software · Datos · IA</option><option value="gis_geoscience">GIS · Geociencias · Minería</option><option value="environment_agro">Agro · Ambiente</option><option value="management_operations">Gestión · Operaciones</option><option value="design_web">Diseño · Web</option><option value="income_operations">Gastronomía · Ingresos</option></select></label>
+<label class="field"><span>Especialidad / sector</span><select id="track"><option value="">Todas</option><option value="software_ai">Software · Datos · IA</option><option value="gis_geoscience">GIS · Geociencias · Minería</option><option value="environment_agro">Agro · Ambiente · AgTech</option><option value="management_operations">Gestión · Operaciones</option><option value="design_web">Diseño · Web</option><option value="income_operations">Gastronomía · Ingresos</option></select></label>
 <label class="field"><span>Modalidad</span><select id="mode"><option value="">Todas</option><option>REMOTE</option><option>HYBRID</option><option>ONSITE</option><option>UNKNOWN</option></select></label>
 <label class="field"><span>Desde Argentina</span><select id="eligible"><option value="">Todas</option><option value="YES">Fuente indica elegibilidad</option><option value="UNKNOWN">No confirmado</option><option value="NO">Restricción declarada</option></select></label>
 <label class="field"><span>Idioma del aviso (estimado)</span><select id="listingLanguage"><option value="">Todos</option><option value="ES">Aviso en español</option><option value="EN">Aviso en inglés</option><option value="MIXED">Aviso mixto</option><option value="UNKNOWN">Indeterminado</option></select></label>
@@ -74,7 +74,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <label class="field"><span>Ubicación de la oferta</span><input id="location" type="search" placeholder="LATAM, Córdoba, Europe..."></label>
 <label class="field"><span>Mi seguimiento local</span><select id="progress"><option value="">Todas</option><option value="new">Sin marcar</option><option value="saved">Guardadas</option><option value="applied">Postuladas</option><option value="ignored">Descartadas</option></select></label>
 <button class="control" id="clear" type="button">Limpiar filtros</button>
-<p class="note">El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
+<p class="note">Agro incluye vacantes en empresas AgTech verificadas, aunque el puesto sea de diseño o software. El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
 </aside>
 <section aria-label="Oportunidades">
 <div class="headline"><h2 class="feed-title">Oportunidades / 02</h2><div class="actions"><span id="count" class="micro">CARGANDO</span><button class="control" id="export" type="button" title="Exportar seguimiento local como CSV">Exportar CSV</button></div></div>
@@ -124,6 +124,7 @@ function card(j){
    badge(j.location||'Ubicación sin confirmar'),
    badge(j.remote_mode==='REMOTE'?'Remoto':j.remote_mode==='HYBRID'?'Híbrido':j.remote_mode==='ONSITE'?'Presencial':'Modalidad no informada'),
    badge((j.track||'').replaceAll('_',' ')),
+   ...(j.company_industry==='agtech'?[badge('Empresa AgTech · sector','cyan')]:[]),
    badge(j.listing_language==='ES'?'Aviso en español (estimado)':j.listing_language==='EN'?'Aviso en inglés (estimado)':j.listing_language==='MIXED'?'Aviso bilingüe/mixto (estimado)':'Idioma del aviso no determinado'),
    badge(date(j.published_at||j.discovered_at),'cyan')
  );
@@ -139,7 +140,7 @@ function card(j){
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim();
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value;
-return jobs.filter(j=>(lane==='ALL'||group(j)===lane)&&(!q||norm((j.company||'')+' '+(j.title||'')).includes(q))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track)&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!listing||(j.listing_language||'UNKNOWN')===listing)&&(!progress||status(j)===progress));
+return jobs.filter(j=>(lane==='ALL'||group(j)===lane)&&(!q||norm((j.company||'')+' '+(j.title||'')).includes(q))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track||(track==='environment_agro'&&j.company_industry==='agtech'))&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!listing||(j.listing_language||'UNKNOWN')===listing)&&(!progress||status(j)===progress));
 }
 function render(){
 const found=chosen();

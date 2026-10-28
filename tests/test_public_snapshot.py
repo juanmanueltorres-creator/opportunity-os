@@ -50,3 +50,16 @@ def test_bad_schema_and_duplicate_rows_are_safe():
     ], "sources": []})
     assert len(output["atlas"]) == 1
     assert output["sources"] == {}
+
+
+def test_agtech_industry_is_separate_from_job_specialty():
+    jobs = [{"id": "agzen:job1", "company": "AgZen", "source": "ashby",
+             "title": "Software Engineering Co-op", "track": "software_ai",
+             "source_url": "https://jobs.ashbyhq.com/agzen/job1"},
+            {"id": "fake:job2", "company": "AgZen", "source": "unknown",
+             "title": "Software Engineering Co-op", "track": "software_ai",
+             "source_url": "https://example.com/jobs/2"}]
+    records = public_snapshot({"atlas": jobs})["atlas"]
+    assert records[0]["company_industry"] == "agtech"
+    assert records[0]["track"] == "software_ai"
+    assert "company_industry" not in records[1]
