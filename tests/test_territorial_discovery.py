@@ -59,6 +59,12 @@ def test_relocation_remains_visible_without_claiming_remote_eligibility():
     assert len(rank([vacancy()], now=NOW, include_worldwide_onsite=True)) == 1
 
 
+
+def test_country_without_province_is_review_not_assumed_relocation():
+    item = classify(vacancy(place="Argentina"), include_worldwide_onsite=True)
+    assert item is not None
+    assert discovery_lane(item) == "ARGENTINA_REVIEW"
+
 def test_foreign_relocation_not_claimed_eligible():
     item = classify(vacancy(place="Berlin, Germany"), include_worldwide_onsite=True)
     assert item is not None
