@@ -67,7 +67,7 @@ def test_html_render_has_no_private_data_or_external_scripts():
     assert "OPPORTUNITY_POSTGRES_WRITE_DSN" not in html
     assert "<script src=" not in html
     assert 'id="radar-data"' in html
-    assert "Ver aviso y postular" in html
+    assert "Ver aviso original" in html
 
 
 def test_html_does_not_embed_private_keys_or_contact_lists_from_extra_payload():
