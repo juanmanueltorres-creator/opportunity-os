@@ -20,6 +20,7 @@ except ModuleNotFoundError:
     # `python scripts/daily_job_radar.py` sets sys.path[0] to scripts/.
     from render_global_radar import render_global_radar
 from app.radar.daily_persistence import persist
+from app.radar.source_evidence import source_evidence
 
 
 async def main() -> int:
@@ -88,6 +89,7 @@ async def main() -> int:
             "geographic_scope": scope,
             "argentina_province": province,
             "topics": topics,
+            **source_evidence(item.job),
         })
         return row
 
