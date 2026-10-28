@@ -83,6 +83,7 @@ const job=(title,extra={})=>({
  source_url:'https://jobs.ashbyhq.com/test/123',
  argentina_eligible:'YES',search_lane:'REMOTE_ARGENTINA',
  score:65,location:'Argentina',remote_mode:'REMOTE',
+ work_language:'ES',listing_language:'ES',
  source_check:'LISTED_ON_PUBLIC_ATS',
  published_at:'2026-10-26T12:00:00Z',...extra
 });
@@ -96,6 +97,10 @@ for(const title of ['Backend Developer - G2i Talent Pool','Senior Geospatial Sof
  if(rank(job(title))!==-Infinity)throw Error('Bad role leaked: '+title);
 }
 if(rank(job('Python Developer', {location:'Washington, DC',argentina_eligible:'UNKNOWN'}))!==-Infinity)throw Error('US unknown allowed');
+if(rank(job('Data Developer',{company:'Muttdata',work_language:'UNKNOWN',listing_language:'EN'}))!==-Infinity)throw Error('English unknown listing should not be daily priority');
+if(rank(job('Junior GIS Analyst',{work_language:'EN',listing_language:'ES'}))!==-Infinity)throw Error('English-required role leaked');
+if(rank(job('Python Engineer',{work_language:'BILINGUAL',listing_language:'ES'}))!==-Infinity)throw Error('Bilingual role leaked');
+if(!Number.isFinite(rank(job('Junior GIS Analyst',{work_language:'UNKNOWN',listing_language:'ES'}))))throw Error('Spanish provisional job excluded');
 if(!Number.isFinite(rank(job('Data Developer',{company:'Muttdata'}))))throw Error('Muttdata excluded');
 if(!Number.isFinite(rank(job('GIS Analyst',{company:'Local GIS'}))))throw Error('GIS excluded');
 if(!Number.isFinite(rank(job('Junior Geologist',{company:'Local Geo'}))))throw Error('Geologist excluded');
