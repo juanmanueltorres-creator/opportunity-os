@@ -53,6 +53,15 @@ h1{font-size:clamp(43px,6.4vw,91px);line-height:.96;letter-spacing:-.084em;margi
 .manual-links a{padding:9px 12px;background:#171e1e;border:1px solid var(--line);font-size:12px;color:var(--ink);text-decoration:none;border-radius:5px}
 .manual-links a:hover{border-color:var(--lime)}
 footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11px/1.9 ui-monospace,Consolas,monospace;color:var(--muted)}
+.gemini-dialog{color:var(--ink);background:#121918;border:1px solid #526957;border-radius:12px;max-width:min(92vw,660px);width:100%;max-height:90vh;overflow:auto;padding:26px}
+.gemini-dialog::backdrop{background:#030807de}
+.gemini-dialog h2{font-size:23px;letter-spacing:-.04em;margin:0 0 11px}
+.gemini-dialog label{display:block;margin:14px 0;font-size:12px}
+.gemini-dialog label span{display:block;margin-bottom:7px;color:#b1c8b8}
+.gemini-dialog textarea,.gemini-dialog input{display:block;width:100%;background:#0b1211;border:1px solid #45584c;border-radius:6px;padding:11px;color:var(--ink);font:13px/1.5 system-ui}
+.gemini-dialog textarea{resize:vertical}
+.gemini-results{border:1px solid #426044;padding:15px;border-radius:7px;margin-top:17px;font-size:13px;line-height:1.5}
+.gemini-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:17px}
 .hidden,[hidden]{display:none!important}.summary-bar{margin:14px 0 17px;color:#9eaca5;font-size:12px}
 @media(max-width:1100px){.list{grid-template-columns:1fr}.hero-right{display:none}}
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}}
@@ -135,12 +144,27 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </section>
 <footer>OPPORTUNITY OS · OFERTAS PÚBLICAS, NO VERIFICACIÓN DE VIGENCIA · LA SEDE DE LA EMPRESA NO DEFINE LOS PAÍSES DESDE LOS QUE CONTRATA · <a href="https://github.com/juanmanueltorres-creator/opportunity-os/actions/workflows/daily-opportunity-radar.yml" target="_blank" rel="noopener noreferrer">VER ACTUALIZACIONES EN GITHUB</a></footer>
 </main>
+<dialog id="geminiDialog" class="gemini-dialog" aria-labelledby="geminiHeading">
+<form id="geminiForm">
+<div class="micro">ANÁLISIS PRIVADO / GEMINI</div>
+<h2 id="geminiHeading">Revisar una oportunidad</h2>
+<p id="geminiJob" class="note"></p>
+<p class="note">Segunda opinión, no verificación de vigencia. Necesita configuración privada del administrador en Vercel; no se guarda tu contraseña en el navegador.</p>
+<label><span>Contraseña privada de acceso (NO la API key de Gemini)</span><input id="geminiToken" type="password" autocomplete="off" minlength="32" maxlength="256" required></label>
+<label><span>Experiencia verificable (opcional, 1.500 caracteres)</span><textarea id="geminiProfile" maxlength="1500" rows="3" placeholder="Solo tecnologías y experiencias comprobables"></textarea></label>
+<label><span>Requisitos del aviso copiados de la fuente original (opcional, 6.000 caracteres)</span><textarea id="geminiPosting" maxlength="6000" rows="4" placeholder="Pegá aquí las responsabilidades y requisitos relevantes"></textarea></label>
+<p class="note">En el nivel gratuito, Google puede usar el contenido para mejorar sus productos. No pegues CV completo, DNI, correos, números de teléfono, contactos ni información privada.</p>
+<div class="gemini-actions"><button class="control primary" type="submit" id="geminiSubmit">Analizar esta vacante</button><button class="control" type="button" id="geminiClose">Cerrar</button></div>
+<div id="geminiState" role="status" aria-live="polite" class="note"></div>
+<div id="geminiOutput" class="gemini-results" hidden></div>
+</form>
+</dialog>
 <script>
 (()=>{
 'use strict';
 const PUBLIC_FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
 const $=id=>document.getElementById(id);
-let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30;
+let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30,geminiJobId=null;
 const lanes={REMOTE_ARGENTINA:'APPLICABLE',CORDOBA_LOCAL:'APPLICABLE',
  ARGENTINA_RELOCATION:'ARGENTINA_RELOCATION',ARGENTINA_REVIEW:'REVIEW',
  REVIEW:'REVIEW',REVIEW_RESTRICTED:'EXPLORE',
@@ -190,10 +214,50 @@ function card(j){
   const b=el('button',label,'smallbtn');b.type='button';b.setAttribute('aria-pressed',status(j)===value?'true':'false');
   b.addEventListener('click',()=>setStatus(j,status(j)===value?'new':value));tools.append(b);
  }
+ const btnGemini=el('button','Analizar con Gemini','smallbtn');btnGemini.type='button';btnGemini.addEventListener('click',()=>openGemini(j));tools.append(btnGemini);
  foot.append(tools);const link=safeUrl(j.source_url);
  if(link){const a=el('a','Aviso original ↗');a.href=link;a.target='_blank';a.rel='noopener noreferrer';foot.append(a);}
  art.append(foot);return art;
 }
+function openGemini(j){
+ geminiJobId=j.id;$('geminiJob').textContent=(j.company||'')+' · '+(j.title||'');
+ $('geminiOutput').hidden=true;$('geminiOutput').replaceChildren();
+ $('geminiState').textContent='';$('geminiDialog').showModal();
+}
+function resetGemini(){
+ geminiJobId=null;$('geminiToken').value='';$('geminiProfile').value='';
+ $('geminiPosting').value='';$('geminiOutput').replaceChildren();
+}
+$('geminiClose').addEventListener('click',()=>{$('geminiDialog').close();resetGemini();});
+$('geminiDialog').addEventListener('close',resetGemini);
+$('geminiForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!geminiJobId)return;
+ const submit=$('geminiSubmit');submit.disabled=true;
+ $('geminiOutput').hidden=true;$('geminiOutput').replaceChildren();
+ $('geminiState').textContent='Consultando Gemini solo para esta vacante…';
+ try{
+  const response=await fetch('/api/review',{
+   method:'POST',cache:'no-store',credentials:'omit',
+   headers:{'Authorization':'Bearer '+$('geminiToken').value.trim(),'Content-Type':'application/json'},
+   body:JSON.stringify({opportunity_id:geminiJobId,
+     posting_text:$('geminiPosting').value,candidate_context:$('geminiProfile').value})
+  });
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'No se pudo analizar');
+  const out=$('geminiOutput');
+  out.append(el('h3','Ajuste: '+(data.fit||'indeterminado')+' · Siguiente paso: '+(data.recommendation||'revisar')));
+  out.append(el('p',data.summary||''));
+  for(const [title,values] of [['Fortalezas',data.strengths],['Brechas o comprobaciones',data.gaps]]){
+   if(!Array.isArray(values)||!values.length)continue;
+   out.append(el('h3',title));const ul=el('ul');
+   values.forEach(v=>ul.append(el('li',v)));out.append(ul);
+  }
+  out.append(el('p','Advertencia: '+(data.caveat||'')));
+  out.append(el('p','Solo orientativo: comprobá el aviso original antes de postularte.','note'));
+  out.hidden=false;$('geminiState').textContent='Listo. No se guardó el análisis ni se envió una postulación.';
+ }catch(err){$('geminiState').textContent='No disponible: '+err.message;}
+ finally{submit.disabled=false;}
+});
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value,sourceCheck=$('sourceCheck').value;
