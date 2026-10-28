@@ -5,7 +5,6 @@ The output is an offline snapshot of *job listings*, not private candidate data.
 from __future__ import annotations
 
 import json
-from html import escape
 
 
 def render_global_radar(payload: dict) -> str:
@@ -127,7 +126,7 @@ const data=JSON.parse(document.getElementById('radar-data').textContent);
 const $=id=>document.getElementById(id);
 const jobs=Array.isArray(data.atlas)?data.atlas:[];
 const lanes={REMOTE_ARGENTINA:'APPLICABLE',CORDOBA_LOCAL:'APPLICABLE',REVIEW:'REVIEW',EXCLUDED:'EXPLORE'};
-let currentLane='APPLICABLE';
+let currentLane='ALL';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text??'');if(cls)n.className=cls;return n;};
 const label=(text,cls)=>el('span',text,'tag '+(cls||''));
 const date=s=>{const d=s?new Date(s):null;return d&&!isNaN(d.getTime())?new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'short',year:'numeric'}).format(d):'Fecha no informada';};
@@ -143,7 +142,7 @@ const row=j=>{
  const note=el('span',(j.source||'Fuente pública')+' · Vigencia pendiente de verificación','mono');
  bottom.append(note);
  const target=url(j.source_url);
- if(target){const link=el('a','Ver aviso y postular ↗');link.href=target;link.target='_blank';link.rel='noopener noreferrer';bottom.append(link);}
+ if(target){const link=el('a','Ver aviso original ↗');link.href=target;link.target='_blank';link.rel='noopener noreferrer';bottom.append(link);}
  card.append(top,head,tags,bottom);return card;
 };
 function render(){
@@ -162,6 +161,7 @@ function render(){
  $('count').textContent=found.length+' resultados';
  const parent=$('cards');parent.replaceChildren();
  if(!found.length)parent.append(el('div','Sin coincidencias. Probá cambiar los filtros o elegí «Todas».','empty'));
+ found.sort((a,b)=>({APPLICABLE:0,REVIEW:1,EXPLORE:2}[lanes[a.search_lane]||'EXPLORE']-({APPLICABLE:0,REVIEW:1,EXPLORE:2}[lanes[b.search_lane]||'EXPLORE'])) || b.score-a.score);
  found.slice(0,100).forEach(j=>parent.append(row(j)));
  $('limited').textContent=found.length>100?'Mostrando los primeros 100 resultados de esta selección. Afiná los filtros para explorar el resto.':'';
  document.querySelectorAll('[data-lane]').forEach(b=>{b.classList.toggle('active',b.dataset.lane===currentLane);b.setAttribute('aria-pressed',b.dataset.lane===currentLane?'true':'false');});
