@@ -100,3 +100,13 @@ def test_static_site_has_non_exclusionary_controls_and_valid_js(tmp_path):
     jsfile.write_text(script, encoding="utf-8")
     result = subprocess.run([node, "--check", str(jsfile)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_same_company_role_in_different_provinces_stays_distinct():
+    salta = vacancy(place="Salta, Argentina")
+    san_juan = vacancy(place="San Juan, Argentina").model_copy(
+        update={"id": "test:sanjuan", "source_id": "sanjuan"}
+    )
+    results = rank([salta, san_juan], now=NOW, include_worldwide_onsite=True)
+    assert len(results) == 2
+    assert {geographic_context(x.job.location)[1] for x in results} == {"Salta", "San Juan"}
