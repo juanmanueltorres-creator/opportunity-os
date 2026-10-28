@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from datetime import datetime, timezone
+from app.radar.source_evidence import observed_on_public_ats
 from urllib.parse import urlsplit
 
 PUBLIC_FIELDS = (
@@ -15,6 +17,7 @@ PUBLIC_FIELDS = (
     "remote_mode", "argentina_eligible", "work_language", "listing_language", "search_lane",
     "eligibility_evidence", "language_evidence",
     "geographic_scope", "argentina_province", "topics",
+    "source_check", "source_checked_at",
 )
 
 
@@ -44,6 +47,27 @@ def public_snapshot(report: dict) -> dict:
             continue
         seen.add(ident)
         item = {key: raw.get(key) for key in PUBLIC_FIELDS}
+        # Do not accept arbitrary source-check claims from a raw report:
+        # require a matching official ATS URL, provider-owned source id and
+        # a capture timestamp near the report timestamp.
+        valid_ats = observed_on_public_ats(
+            source=str(item.get("source") or ""),
+            source_url=str(item.get("source_url") or ""),
+            source_id=str(item.get("id") or "").partition(":")[2],
+        )
+        try:
+            checked_at = datetime.fromisoformat(str(item["source_checked_at"]).replace("Z", "+00:00"))
+            generated_at = datetime.fromisoformat(str(report["generated_at"]).replace("Z", "+00:00"))
+            fresh_capture = (checked_at.tzinfo is not None and generated_at.tzinfo is not None
+                             and 0 <= (checked_at - generated_at).total_seconds() <= 900)
+        except (TypeError, ValueError, KeyError):
+            fresh_capture = False
+        if not (item.get("source_check") == "LISTED_ON_PUBLIC_ATS"
+                and valid_ats and fresh_capture):
+            item["source_check"] = "NOT_CHECKED"
+            item["source_checked_at"] = None
+        else:
+            item["source_checked_at"] = checked_at.astimezone(timezone.utc).isoformat()
         # Only classifier-produced provenance from a PUBLIC vacancy may cross
         # this boundary. This is neither manual verification nor a private note.
         evidence = item.get("eligibility_evidence")
