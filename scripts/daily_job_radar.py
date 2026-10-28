@@ -10,7 +10,7 @@ from pathlib import Path
 
 from app.radar.daily_search import discover, rank
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
-from scripts.render_global_radar import render_global_radar
+from render_global_radar import render_global_radar  # direct script execution sets sys.path[0] to scripts/
 from app.radar.daily_persistence import persist
 
 
