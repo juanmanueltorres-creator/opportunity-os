@@ -98,6 +98,8 @@ for(const title of ['Backend Developer - G2i Talent Pool','Senior Geospatial Sof
 if(rank(job('Python Developer', {location:'Washington, DC',argentina_eligible:'UNKNOWN'}))!==-Infinity)throw Error('US unknown allowed');
 if(!Number.isFinite(rank(job('Data Developer',{company:'Muttdata'}))))throw Error('Muttdata excluded');
 if(!Number.isFinite(rank(job('GIS Analyst',{company:'Local GIS'}))))throw Error('GIS excluded');
+if(rank(job('Data Engineer',{company:'DSAC Chile',argentina_eligible:'UNKNOWN',location:'Remote'}))!==-Infinity)throw Error('Unverified generic role should not enter today's five');
+if(!Number.isFinite(rank(job('Junior Software Engineer',{company:'Canals',argentina_eligible:'YES'}))))throw Error('Canals excluded');
 console.log('shortlist semantic gates OK');
 '''
     result = subprocess.run([node, "-e", program, str(HTML)], text=True,
