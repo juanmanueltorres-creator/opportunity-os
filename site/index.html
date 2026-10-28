@@ -225,7 +225,7 @@ function card(j){
   b.addEventListener('click',()=>setStatus(j,status(j)===value?'new':value));tools.append(b);
  }
  const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
- btnGemini.type='button';btnGemini.addEventListener('click',()=>prepareBrief([j]));
+ btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
  tools.append(btnGemini);
  foot.append(tools);const link=safeUrl(j.source_url);
  if(link){const a=el('a','Aviso original ↗');a.href=link;a.target='_blank';a.rel='noopener noreferrer';foot.append(a);}
@@ -287,7 +287,23 @@ async function copyBriefing(){
 }
 $('copyBrief').addEventListener('click',copyBriefing);
 $('closeBrief').addEventListener('click',()=>$('briefDialog').close());
-$('briefFive').addEventListener('click',()=>prepareBrief(todaySelected));
+async function launchGemini(selected){
+ if(!selected.length)return;
+ const prompt=preparePrompt(selected);
+ // The new window must be opened synchronously from the user's click.
+ // Google Gemini web does not natively support authenticated prompt-prefill URLs.
+ const opened=window.open('https://gemini.google.com/app','_blank','noopener,noreferrer');
+ try{
+  if(!navigator.clipboard || !navigator.clipboard.writeText)throw Error('clipboard unavailable');
+  await navigator.clipboard.writeText(prompt);
+  $('briefStatus').textContent='Consulta copiada al portapapeles. Pegala en Gemini con Ctrl+V.';
+  if(!opened)prepareBrief(selected);
+ }catch{
+  prepareBrief(selected);
+  $('copyBriefStatus').textContent='No se pudo copiar automáticamente. Copiá el texto con Ctrl+C y pegalo en Gemini.';
+ }
+}
+$('briefFive').addEventListener('click',()=>launchGemini(todaySelected));
 function renderToday(){
  const candidates=jobs
   .map(j=>({j,rank:relevance(j)}))
