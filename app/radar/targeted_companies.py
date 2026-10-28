@@ -31,6 +31,12 @@ TARGET_BOARDS = (
     ("lever", "RyzLabs", "RYZ Labs"),
     ("ashby", "squad", "Squad"),
     ("ashby", "g2i", "G2i"),
+    # Argentina/LATAM boards confirmed on their official public ATS pages.
+    # Including companies does NOT validate an individual job's seniority,
+    # contractual eligibility or availability for applications.
+    ("ashby", "canals", "Canals"),
+    ("lever", "muttdata", "Muttdata"),
+    ("ashby", "siena", "Siena AI"),
 )
 
 
