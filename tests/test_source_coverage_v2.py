@@ -88,5 +88,7 @@ def test_verified_latam_ats_targets_are_in_daily_source_allowlist():
     assert ("lever", "RyzLabs", "RYZ Labs") in targeted_companies.TARGET_BOARDS
     assert ("ashby", "squad", "Squad") in targeted_companies.TARGET_BOARDS
     assert ("ashby", "g2i", "G2i") in targeted_companies.TARGET_BOARDS
+    assert ("ashby", "canals", "Canals") in targeted_companies.TARGET_BOARDS
+    assert ("lever", "muttdata", "Muttdata") in targeted_companies.TARGET_BOARDS
     # Avoid unbounded scraping of employer sites and repeated requests.
     assert len(targeted_companies.TARGET_BOARDS) <= 16
