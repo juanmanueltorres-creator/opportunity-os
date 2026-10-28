@@ -90,7 +90,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </div>
 <section class="today" aria-label="Vacantes para revisar hoy">
 <div class="today-head">
-<div><div class="micro">TRIAGE / HASTA 5 VACANTES</div><h2>Para revisar hoy</h2><p class="note">Selección conservadora: prioriza Junior, GIS, Python, soporte y datos, y excluye pools de talento, títulos Senior y stacks claramente ajenos. Muestra menos de cinco si no hay coincidencias; exige revisar requisitos y elegibilidad.</p></div>
+<div><div class="micro">TRIAGE / ESPAÑOL PRIMERO</div><h2>Para revisar hoy</h2><p class="note">Búsqueda laboral actual en español: exige idioma laboral español explícito o, de forma provisoria, aviso en español sin idioma laboral confirmado. Excluye inglés avanzado y bilingüe. El idioma del aviso NO garantiza el idioma de trabajo. Si no hay coincidencias, muestra menos de cinco.</p></div>
 <button class="gemini-brief" id="briefFive" type="button">Preparar selección para Gemini</button>
 </div>
 <div class="today-list" id="todayJobs"><span class="note">Cargando ofertas…</span></div>
@@ -241,6 +241,13 @@ function relevance(j){
  const title=norm(j.title||'').replace(/\s+/g,' ').trim();
  const location=norm(j.location||'');
  if(!title)return -Infinity;
+ // CURRENT APPLICATION MODE: Spanish-language opportunities only.
+ // Explicit Spanish work requirement is strongest; an ES listing is a
+ // provisional lead only when work language has NOT been established.
+ // An English requirement is never promoted to today's shortlist.
+ if(j.work_language==='EN'||j.work_language==='BILINGUAL')return -Infinity;
+ if(j.work_language!=='ES' && !(j.listing_language==='ES'&&j.work_language==='UNKNOWN'))
+   return -Infinity;
  // Open talent databases are not concrete job requisitions.
  if(/\b(talent pool|talent community|talent network|future opportunities|general application|open application|evergreen)\b/.test(title))return -Infinity;
  // This daily set targets immediate junior/mid-entry opportunities,
@@ -268,6 +275,7 @@ function relevance(j){
  if(j.argentina_eligible==='UNKNOWN' &&
    /\b(washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa|united kingdom|germany|berlin|stuttgart)\b/.test(location))return -Infinity;
  const area=geospatial?80:engineering?55:25;
+ const spanishEvidence=j.work_language==='ES'?90:20;
  const hiring=junior?60:0;
  const territory=j.argentina_eligible==='YES'?48:
     g==='ARGENTINA_RELOCATION'?8:0;
@@ -279,12 +287,13 @@ function relevance(j){
     days!==null&&days>90?-25:0;
  // Reduce influence of the old broad score, which favored generic roles.
  const legacy=Math.max(0,Math.min(100,Number(j.score)||0))*0.2;
- return area+hiring+territory+observed+fresh+legacy;
+ return area+hiring+territory+observed+fresh+legacy+spanishEvidence;
 }
 function preparePrompt(selected){
  const lines=[
   'Sos un orientador laboral crítico. Compará estas vacantes públicas para una persona en Argentina interesada en GIS/SIG, geociencias/minería, Python/FastAPI/PostGIS y tecnología aplicada. Este perfil es una referencia temática, NO un CV validado.',
   'Objetivo: elegir un máximo de 3 postulaciones prioritarias, si hay evidencia suficiente. Si ninguna resulta convincente, decirlo sin completar un cupo. Proponer una siguiente acción concreta para cada una.',
+  'Filtro actual excluyente: empleos para trabajar en español. Si idioma laboral UNKNOWN pero aviso en español, pedir confirmación antes de postular. No sugerir oportunidades que requieran inglés avanzado ni bilingüe.',
   'Antes de recomendar, marcá la ubicación admitida, seniority, idioma laboral, frescura y requisitos NO COMPROBADOS. No confundas "visto en ATS" con "abierto".',
   'Ordená según lo que se sabe de los avisos; señalá explícitamente si el detalle de requisitos falta y pedí comprobarlo en el link original. No asumas que Argentina está admitida si figura UNKNOWN.',
   'No redactes postulaciones ni CV con experiencia inventada. Respuesta breve en español argentino.',
@@ -364,7 +373,7 @@ function renderToday(){
      group(j)==='ARGENTINA_RELOCATION'?'Revisar reubicación':'Ubicación/elegibilidad por confirmar';
   card.append(el('div',note,'micro'));
   card.append(el('strong',(j.company||'Empresa')+' · '+(j.title||'Puesto')));
-  card.append(el('p',(j.location||'Sin ubicación')+' · '+(j.source_check==='LISTED_ON_PUBLIC_ATS'?
+  card.append(el('p',(j.location||'Sin ubicación')+' · '+(j.work_language==='ES'?'Español laboral explícito':'Aviso en español; idioma laboral SIN CONFIRMAR')+' · '+(j.source_check==='LISTED_ON_PUBLIC_ATS'?
    'Visto en tablero oficial':'Sin comprobación directa')+
    ' · '+(/\b(junior|jr\.?|trainee|entry.level)\b/.test(norm(j.title||''))?
      'Junior declarado':'Seniority no comprobado'),'note'));
