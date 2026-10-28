@@ -86,10 +86,11 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <label class="field"><span>Idioma del aviso (estimado)</span><select id="listingLanguage"><option value="">Todos</option><option value="ES">Aviso en español</option><option value="EN">Aviso en inglés</option><option value="MIXED">Aviso mixto</option><option value="UNKNOWN">Indeterminado</option></select></label>
 <label class="field"><span>Idioma laboral exigido (explícito)</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés avanzado</option><option value="UNKNOWN">No informado</option></select></label>
 <label class="field"><span>Ubicación (opcional, nunca prefiltrada)</span><input id="location" type="search" placeholder="Salta, Jujuy, Neuquén, Europa..."></label>
+<label class="field"><span>Comprobación en fuente oficial</span><select id="sourceCheck"><option value="">Todas</option><option value="LISTED_ON_PUBLIC_ATS">Vistas en ATS oficial</option><option value="NOT_CHECKED">Sin comprobación directa</option></select></label>
 <label class="field"><span>Fecha de publicación</span><select id="age"><option value="">Todas las fechas</option><option value="7">Últimos 7 días (con fecha)</option><option value="30">Últimos 30 días (con fecha)</option><option value="UNKNOWN">Sin fecha comprobable</option></select></label>
 <label class="field"><span>Mi seguimiento local</span><select id="progress"><option value="">Todas</option><option value="new">Sin marcar</option><option value="saved">Guardadas</option><option value="applied">Postuladas</option><option value="ignored">Descartadas</option></select></label>
 <button class="control" id="clear" type="button">Limpiar filtros</button>
-<p class="note">Agro incluye vacantes en empresas AgTech verificadas, aunque el puesto sea de diseño o software. El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
+<p class="note">«Visto en ATS oficial» significa que el aviso figuraba en la lista pública del empleador en la fecha indicada; no garantiza que todavía reciba postulaciones. Agro incluye vacantes en empresas AgTech verificadas, aunque el puesto sea de diseño o software. El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
 </aside>
 <section aria-label="Oportunidades">
 <div class="headline"><h2 class="feed-title">Oportunidades / 02</h2><div class="actions"><span id="count" class="micro">CARGANDO</span><button class="control" id="export" type="button" title="Exportar seguimiento local como CSV">Exportar CSV</button></div></div>
@@ -179,7 +180,10 @@ function card(j){
    badge((j.track||'').replaceAll('_',' ')),
    ...(j.company_industry==='agtech'?[badge('Empresa AgTech · sector','cyan')]:[]),
    badge(j.listing_language==='ES'?'Aviso en español (estimado)':j.listing_language==='EN'?'Aviso en inglés (estimado)':j.listing_language==='MIXED'?'Aviso bilingüe/mixto (estimado)':'Idioma del aviso no determinado'),
-   badge(j.published_at?'Publicado: '+date(j.published_at):'Publicación sin fecha','cyan')
+   badge(j.published_at?'Publicado: '+date(j.published_at):'Publicación sin fecha','cyan'),
+   ...(j.source_check==='LISTED_ON_PUBLIC_ATS'&&j.source_checked_at
+      ?[badge('Visto en ATS oficial: '+date(j.source_checked_at),'yes')]
+      :[badge('Sin comprobación directa en fuente')])
  );
  art.append(tags);
  for(const [value,label] of [['saved','Guardar ☆'],['applied','Postulé ✓'],['ignored','Descartar ×']]){
@@ -192,13 +196,14 @@ function card(j){
 }
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
-const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value;
+const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value,sourceCheck=$('sourceCheck').value;
 return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
   &&(!activeTopic||(Array.isArray(j.topics)&&j.topics.includes(activeTopic))
       ||(activeTopic==='agro'&&j.company_industry==='agtech'))
   &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q)
      ||(queryTheme&&Array.isArray(j.topics)&&j.topics.includes(queryTheme))
      ||(queryTheme==='agro'&&j.company_industry==='agtech'))
+  &&(!sourceCheck||(j.source_check||'NOT_CHECKED')===sourceCheck)
   &&(!age||(age==='UNKNOWN'?!j.published_at:
       (j.published_at&&Date.now()-new Date(j.published_at).getTime()<=Number(age)*86400000
        &&Date.now()-new Date(j.published_at).getTime()>=0)))&&(!loc||norm(j.location).includes(loc))&&(!track||j.track===track||(track==='environment_agro'&&j.company_industry==='agtech'))&&(!mode||j.remote_mode===mode)&&(!eligible||j.argentina_eligible===eligible)&&(!language||j.work_language===language)&&(!listing||(j.listing_language||'UNKNOWN')===listing)&&(!progress||status(j)===progress));
@@ -252,7 +257,7 @@ try{
  $('cards').replaceChildren(el('div','No pudimos leer el último snapshot. Consultá la ejecución de GitHub Actions; no mostramos ofertas ficticias.','error'));
  $('count').textContent='SIN DATOS';}
 }
-['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();}));
+['q','location','track','mode','eligible','language','listingLanguage','progress','age','sourceCheck'].forEach(id=>$(id).addEventListener('input',()=>{visibleLimit=30;render();}));
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 document.querySelectorAll('[data-topic]').forEach(b=>b.addEventListener('click',()=>{activeTopic=b.dataset.topic;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
