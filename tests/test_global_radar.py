@@ -87,3 +87,12 @@ def test_rank_still_deduplicates_global_jobs():
     results = rank([first, same], now=NOW, include_ineligible=True,
                    include_worldwide_onsite=True)
     assert len(results) == 1
+
+
+def test_agro_and_environment_jobs_are_discoverable():
+    agro = job("agro", location="LATAM", remote_policy="remote")
+    agro = agro.model_copy(update={"title": "Agtech Analyst"})
+    environment = job("environment", location="Europe", remote_policy="remote")
+    environment = environment.model_copy(update={"title": "Environmental Analyst"})
+    results = rank([agro, environment], now=NOW, include_ineligible=True)
+    assert {m.track for m in results} == {"environment_agro"}
