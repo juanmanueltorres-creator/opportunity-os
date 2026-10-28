@@ -243,7 +243,9 @@ class JobMatch:
         }
 
 
-def classify(job: Opportunity) -> JobMatch | None:
+def classify(
+    job: Opportunity, *, include_worldwide_onsite: bool = False,
+) -> JobMatch | None:
     title = _normalize(job.title)
     if re.search(r"\b(?:contrato\s+sena|sena\s+apprentice)\b", title):
         return None
@@ -277,8 +279,10 @@ def classify(job: Opportunity) -> JobMatch | None:
         mode = "UNKNOWN"
     remote = mode == "REMOTE"
     if not remote and not any(k in location for k in ARGENTINA_MARKERS):
-        # A non-remote job outside Argentina is not a viable short-term target.
-        return None
+        # Keep global companies discoverable in Atlas, but never promote
+        # their foreign on-site roles to the Argentina-eligible shortlist.
+        if not include_worldwide_onsite:
+            return None
 
     eligible = "UNKNOWN"
     evidence = None
@@ -334,13 +338,14 @@ def classify(job: Opportunity) -> JobMatch | None:
 
 
 def rank(jobs: list[Opportunity], *, now: datetime, max_age_days: int = 30,
-         limit: int = 30) -> list[JobMatch]:
+         limit: int = 30, include_worldwide_onsite: bool = False,
+         include_ineligible: bool = False) -> list[JobMatch]:
     matched: dict[tuple[str, str], JobMatch] = {}
     for job in jobs:
         if job.published_at and job.published_at < now - timedelta(days=max_age_days):
             continue
-        match = classify(job)
-        if not match or match.argentina_eligible == "NO" or match.score < 45:
+        match = classify(job, include_worldwide_onsite=include_worldwide_onsite)
+        if not match or (match.argentina_eligible == "NO" and not include_ineligible) or match.score < (1 if include_ineligible else 45):
             continue
         # Cross-source duplicates often appear on more than one public job board.
         # Preserve the most useful source link, never duplicate the same employer+role.
