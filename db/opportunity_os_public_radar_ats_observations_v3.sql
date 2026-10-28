@@ -199,11 +199,11 @@ begin
                                                      and snapshot_time + interval '15 minutes'
     and (
       (j->>'source' = 'ashby'
-        and j->>'source_url' ~ '^https://jobs\\.ashbyhq\\.com/[^/]+/[^/?#]+')
+        and j->>'source_url' ~ '^https://jobs[.]ashbyhq[.]com/[^/]+/[^/?#]+')
       or (j->>'source' = 'lever'
-        and j->>'source_url' ~ '^https://jobs\\.lever\\.co/[^/]+/[^/?#]+')
+        and j->>'source_url' ~ '^https://jobs[.]lever[.]co/[^/]+/[^/?#]+')
       or (j->>'source' = 'greenhouse'
-        and j->>'source_url' ~ '^https://(boards|job-boards)\\.greenhouse\\.io/[^/]+/jobs/[^/?#]+')
+        and j->>'source_url' ~ '^https://(boards|job-boards)[.]greenhouse[.]io/[^/]+/jobs/[^/?#]+')
     )
     and exists (
       select 1 from opportunity_os.opportunities o
