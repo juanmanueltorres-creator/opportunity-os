@@ -63,3 +63,36 @@ def test_agtech_industry_is_separate_from_job_specialty():
     assert records[0]["company_industry"] == "agtech"
     assert records[0]["track"] == "software_ai"
     assert "company_industry" not in records[1]
+
+
+def test_public_source_evidence_survives_but_private_notes_do_not():
+    row = {
+        "id": "getonboard:regional", "source": "getonboard",
+        "company": "Empresa GIS", "title": "GIS Analyst LATAM",
+        "source_url": "https://www.getonbrd.com/jobs/123",
+        "argentina_eligible": "YES",
+        "eligibility_evidence": "Cobertura geográfica declarada en el título: GIS Analyst LATAM",
+        "work_language": "ES",
+        "language_evidence": "Requisito explícito en la descripción",
+        "private_notes": "Nunca exportar",
+    }
+    safe = public_snapshot({"atlas": [row]})["atlas"][0]
+    assert safe["eligibility_evidence"].startswith("Cobertura geográfica declarada")
+    assert safe["language_evidence"] == "Requisito explícito en la descripción"
+    assert "private_notes" not in safe
+    assert "Nunca exportar" not in json.dumps(safe, ensure_ascii=False)
+
+
+def test_untrusted_evidence_is_not_forwarded():
+    row = {
+        "id": "ashby:unsafe", "source": "ashby",
+        "company": "Empresa", "title": "Python", "source_url": "https://jobs.ashbyhq.com/x/y",
+        "argentina_eligible": "YES",
+        "eligibility_evidence": "Secret user profile: private@example.test",
+        "work_language": "ES",
+        "language_evidence": "private@example.test",
+    }
+    safe = public_snapshot({"atlas": [row]})["atlas"][0]
+    assert safe["eligibility_evidence"] is None
+    assert safe["language_evidence"] is None
+    assert "private@example.test" not in json.dumps(safe)
