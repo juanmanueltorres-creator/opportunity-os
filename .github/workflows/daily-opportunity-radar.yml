@@ -2,6 +2,13 @@ name: Daily Opportunity Radar
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/radar/**"
+      - "scripts/daily_job_radar.py"
+      - "scripts/render_global_radar.py"
+      - ".github/workflows/daily-opportunity-radar.yml"
   schedule:
     # 09:23 in Cordoba/Argentina (UTC-3), avoiding peak of the hour.
     - cron: "23 12 * * *"
@@ -41,5 +48,6 @@ jobs:
           path: |
             artifacts/daily-radar/jobs.json
             artifacts/daily-radar/jobs.md
+            artifacts/daily-radar/radar.html
           if-no-files-found: warn
           retention-days: 14
