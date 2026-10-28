@@ -253,11 +253,14 @@ function relevance(j){
  const geospatial=/\b(gis|sig|geospatial|geoespacial|geologi[ac]|geology|mining|mineria|mineral|hydrogeol|hidrogeol|postgis|qgis|arcgis|geomatic|geomatica|geodata|cartograf|teledeteccion|remote sensing|environmental|ambiental)\b/.test(title);
  const engineering=/\b(python|backend|back.end|api developer|data developer|technical support|tech support|soporte tecnico|support engineer|application support|software support)\b/.test(title);
  const adjacent=/\b(data engineer|data analyst|analista de datos|software engineer|software developer|full.stack|fullstack|frontend|front.end|desarrollador|desarrolladora|developer|programador|programadora)\b/.test(title);
- if(!geospatial&&!engineering&&!adjacent)return -Infinity;
+ const junior=/\b(junior|jr\.?|trainee|entry.level|intern|practicante|pasante)\b/.test(title);
+ // Generic roles with unknown Argentina eligibility do not make the daily
+ // shortlist. Keep them searchable in the full discovery atlas.
+ if(!geospatial&&!engineering&&!(adjacent&&(junior||j.argentina_eligible==='YES')))
+   return -Infinity;
  // UNKNOWN country + explicit US location is not an Argentina-ready lead.
  if(j.argentina_eligible==='UNKNOWN' &&
    /\b(washington|united states|virginia|california|maryland|texas|colorado|new york|district of columbia|usa|united kingdom|germany|berlin|stuttgart)\b/.test(location))return -Infinity;
- const junior=/\b(junior|jr\.?|trainee|entry.level|intern|practicante|pasante)\b/.test(title);
  const area=geospatial?80:engineering?55:25;
  const hiring=junior?60:0;
  const territory=j.argentina_eligible==='YES'?48:
@@ -356,7 +359,9 @@ function renderToday(){
   card.append(el('div',note,'micro'));
   card.append(el('strong',(j.company||'Empresa')+' · '+(j.title||'Puesto')));
   card.append(el('p',(j.location||'Sin ubicación')+' · '+(j.source_check==='LISTED_ON_PUBLIC_ATS'?
-   'Visto en tablero oficial':'Sin comprobación directa'),'note'));
+   'Visto en tablero oficial':'Sin comprobación directa')+
+   ' · '+(/\b(junior|jr\.?|trainee|entry.level)\b/.test(norm(j.title||''))?
+     'Junior declarado':'Seniority no comprobado'),'note'));
   const a=el('a','Ver aviso original');a.href=safeUrl(j.source_url);
   a.target='_blank';a.rel='noopener noreferrer';card.append(a);root.append(card);
  }
