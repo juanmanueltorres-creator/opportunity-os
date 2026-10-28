@@ -420,7 +420,10 @@ def rank(jobs: list[Opportunity], *, now: datetime, max_age_days: int = 30,
             continue
         # Cross-source duplicates often appear on more than one public job board.
         # Preserve the most useful source link, never duplicate the same employer+role.
-        key = ("company-role", _normalize(job.company), _normalize(job.title))
+        # Multiple listings for one role at different locations must survive:
+        # they represent different territorial possibilities, not a duplicate.
+        key = ("company-role-location", _normalize(job.company),
+               _normalize(job.title), _normalize(job.location or ""))
         prior = matched.get(key)
         if prior is None or match.score > prior.score:
             matched[key] = match

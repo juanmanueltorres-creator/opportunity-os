@@ -11,6 +11,9 @@ from pathlib import Path
 from app.radar.daily_search import discover, rank, TRACKS
 from app.radar.html_report import render_job_report
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
+from app.radar.territorial_discovery import (
+    discovery_lane, geographic_context, thematic_tags,
+)
 try:
     from scripts.render_global_radar import render_global_radar
 except ModuleNotFoundError:
@@ -65,10 +68,20 @@ async def main() -> int:
         error = True
     excluded = set(state.pop("_excluded_ids", []))
     visible_matches = [item for item in matches if item.job.id not in excluded]
+    def atlas_record(item):
+        scope, province = geographic_context(item.job.location)
+        row = item.as_public_dict()
+        row.update({
+            "search_lane": discovery_lane(item),
+            "geographic_scope": scope,
+            "argentina_province": province,
+            "topics": thematic_tags(item.job.title),
+        })
+        return row
+
     public = {
         "generated_at": now.isoformat(),
-        "atlas": [dict(item.as_public_dict(), search_lane=candidate_lane(item))
-                  for item in global_pool],
+        "atlas": [atlas_record(item) for item in global_pool],
         "atlas_scope": "GLOBAL_DISCOVERY_NOT_VERIFIED",
         "sources": diagnostics,
         "raw_jobs_seen": len(jobs),
@@ -78,7 +91,8 @@ async def main() -> int:
             dict(item.as_public_dict(), search_lane="GLOBAL_RESEARCH_ONLY")
             for item in global_watchlist
         ],
-        "geographic_filter": "CORDOBA_LOCAL_OR_CONFIRMED_REMOTE_ARGENTINA",
+        "geographic_filter": "DISCOVERY_GLOBAL_LOCATION_USED_FOR_EVALUATION",
+        "shortlist_policy": "CORDOBA_LOCAL_OR_CONFIRMED_REMOTE_ARGENTINA",
         "persistence": state,
         "caveats": [
             "Vacantes pendientes de verificación manual (no aplicar automáticamente).",
@@ -86,7 +100,7 @@ async def main() -> int:
             "Remoto no prueba elegibilidad contractual desde Argentina.",
             "CV: se sugiere un perfil; no se genera PDF sin hechos/evidencia aprobados.",
             "Sin secreto PostgreSQL no se consulta historial privado ni se sincroniza Supabase.",
-            "Atlas global: investigación; no se confirma elegibilidad ni apertura."
+            "Atlas global y reubicación nacional: investigar; no se confirma elegibilidad ni apertura."
         ],
     }
     if state["status"] == "OK":
@@ -129,7 +143,8 @@ async def main() -> int:
                   "- Las vacantes son señales de búsqueda y deben revisarse en su página oficial.",
                   "- Confirmadas: remoto explícitamente elegible desde Argentina, o presencial/híbrido explícitamente en Córdoba.",
                   "- Por revisar: remoto con país elegible desconocido o modalidad no declarada en Córdoba.",
-                  "- Presencial/híbrido fuera de Córdoba e inglés laboral avanzado obligatorio quedan fuera del shortlist.",
+                  "- Presencial/híbrido fuera de Córdoba aparece en Atlas como posible reubicación, no como elegible automáticamente.",
+                  "- El shortlist de aplicación automática sigue siendo conservador; el descubrimiento NO se filtra por provincia.",
                   "- El historial de Gmail/Drive permanece privado en Supabase; no se publica en este archivo.",
                   "- Los PDF del CV no se generan ni se publican desde GitHub Actions.",
                   ""])
