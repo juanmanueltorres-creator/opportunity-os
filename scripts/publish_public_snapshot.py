@@ -41,7 +41,13 @@ def public_snapshot(report: dict) -> dict:
         if not _https_url(raw.get("source_url")):
             continue
         seen.add(ident)
-        jobs.append({key: raw.get(key) for key in PUBLIC_FIELDS})
+        item = {key: raw.get(key) for key in PUBLIC_FIELDS}
+        # Verified company *industry*, not a claim that the vacancy is agronomy.
+        # A designer at an AgTech startup can be discovered through Agro filter
+        # while retaining the authentic design_web role track.
+        if item["source"] == "ashby" and item["company"] in {"AgZen", "Klim", "FinAgra"}:
+            item["company_industry"] = "agtech"
+        jobs.append(item)
         if len(jobs) >= 300:
             break
     statuses = report.get("sources", {})
