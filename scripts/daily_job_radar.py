@@ -10,6 +10,7 @@ from pathlib import Path
 
 from app.radar.daily_search import discover, rank
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
+from scripts.render_global_radar import render_global_radar
 from app.radar.daily_persistence import persist
 
 
@@ -19,6 +20,8 @@ async def main() -> int:
     now = datetime.now(timezone.utc)
     jobs, diagnostics = await discover()
     candidate_pool = rank(jobs, now=now, limit=200)
+    global_pool = rank(jobs, now=now, limit=250, include_worldwide_onsite=True,
+                       include_ineligible=True)
     confirmed, review = partition_cordoba_matches(candidate_pool)
     matches = confirmed[:35]
     review = review[:20]
@@ -35,6 +38,9 @@ async def main() -> int:
     visible_matches = [item for item in matches if item.job.id not in excluded]
     public = {
         "generated_at": now.isoformat(),
+        "atlas": [dict(item.as_public_dict(), search_lane=candidate_lane(item))
+                  for item in global_pool],
+        "atlas_scope": "GLOBAL_DISCOVERY_NOT_VERIFIED",
         "sources": diagnostics,
         "raw_jobs_seen": len(jobs),
         "matches": [dict(item.as_public_dict(), search_lane=candidate_lane(item)) for item in visible_matches],
@@ -55,6 +61,7 @@ async def main() -> int:
     (output / "jobs.json").write_text(
         json.dumps(public, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    (output / "radar.html").write_text(render_global_radar(public), encoding="utf-8")
     lines = ["# Opportunity OS — radar diario", "",
              f"Fecha UTC: {now.strftime('%Y-%m-%d %H:%M')}",
              f"Fuente(s): {', '.join(f'{k}={v}' for k,v in diagnostics.items())}",
@@ -87,7 +94,7 @@ async def main() -> int:
     if os.getenv("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
             fh.write(report)
-    print(f"Sources={len(diagnostics)} jobs={len(jobs)} shortlist={len(visible_matches)} db={state['status']}")
+    print(f"Sources={len(diagnostics)} jobs={len(jobs)} atlas={len(global_pool)} shortlist={len(visible_matches)} db={state['status']}")
     if error:
         return 1
     if not jobs and not any(str(v).startswith("OK") for v in diagnostics.values()):
