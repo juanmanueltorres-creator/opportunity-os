@@ -20,7 +20,9 @@ def test_public_gemini_briefing_has_no_private_password_or_api_call():
     assert "j.argentina_eligible==='NO'" in html
     assert "source_check==='LISTED_ON_PUBLIC_ATS'" in html
     assert "sort((a,b)=>b.rank-a.rank" in html
-    assert ".slice(0,5)" in html
+    assert "if(candidates.length===5)break" in html
+    assert "if((byCompany.get(company)||0)>=2)continue" in html
+    assert "const advanced=" in html
     assert "https://gemini.google.com/app" in html
     assert "navigator.clipboard.writeText" in html
     assert "function launchGemini(selected)" in html
