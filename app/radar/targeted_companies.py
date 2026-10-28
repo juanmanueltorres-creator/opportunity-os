@@ -36,7 +36,6 @@ TARGET_BOARDS = (
     # contractual eligibility or availability for applications.
     ("ashby", "canals", "Canals"),
     ("lever", "muttdata", "Muttdata"),
-    ("ashby", "siena", "Siena AI"),
 )
 
 
