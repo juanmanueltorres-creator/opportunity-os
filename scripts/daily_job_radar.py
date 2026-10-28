@@ -10,7 +10,11 @@ from pathlib import Path
 
 from app.radar.daily_search import discover, rank
 from app.radar.cordoba_filters import candidate_lane, partition_cordoba_matches
-from render_global_radar import render_global_radar  # direct script execution sets sys.path[0] to scripts/
+try:
+    from scripts.render_global_radar import render_global_radar
+except ModuleNotFoundError:
+    # `python scripts/daily_job_radar.py` sets sys.path[0] to scripts/.
+    from render_global_radar import render_global_radar
 from app.radar.daily_persistence import persist
 
 
