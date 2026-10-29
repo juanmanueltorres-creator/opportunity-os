@@ -234,7 +234,7 @@ function card(j){
  art.append(head,el('h3',j.title||'Puesto sin título'));
  const g=group(j);
  tags.append(
-   badge(g==='APPLICABLE'?'CANDIDATA PARA POSTULAR':g==='ARGENTINA_RELOCATION'?'EVALUAR REUBICACIÓN':g==='REVIEW'?'VERIFICAR CONDICIONES':'EXPLORACIÓN GLOBAL',g==='APPLICABLE'?'yes':g==='REVIEW'||g==='ARGENTINA_RELOCATION'?'warn':''),
+   badge(j.category==='POSTULAR AHORA'?'POSTULAR AHORA · CON EVIDENCIA':j.category==='EXPLORAR'?'EXPLORAR · NO PRIORITARIA':'REVISAR CONDICIONES',j.category==='POSTULAR AHORA'?'yes':'warn'),
    badge(j.location||'Ubicación sin confirmar'),
    badge(j.remote_mode==='REMOTE'?'Remoto':j.remote_mode==='HYBRID'?'Híbrido':j.remote_mode==='ONSITE'?'Presencial':'Modalidad no informada'),
    badge((j.track||'').replaceAll('_',' ')),
@@ -246,6 +246,29 @@ function card(j){
       :[badge('Sin comprobación directa en fuente')])
  );
  art.append(tags);
+ // All content is added through textContent (el), never HTML injection.
+ const detail=el('details',null,'job-requirements');
+ detail.append(el('summary','Requisitos y comprobaciones pendientes'));
+ detail.append(el('p',j.description
+   ?j.description+(j.description_truncated?' [Extracto abreviado; revisar fuente original]':'')
+   :'No hay requisitos del aviso en la última captura. Consultá el original.','note'));
+ const safeReasons={
+  seniority_compatible_verified:'Seniority por confirmar',
+  language_compatible_verified:'Idioma laboral por confirmar',
+  location_compatible_verified:'Elegibilidad para Argentina por confirmar',
+  requirements_verified:'Requisitos sin comprobar',
+  official_link_verified:'Enlace de postulación sin comprobar',
+  'Original publication date not verified as recent':'Fecha original reciente sin confirmar',
+  'Original requirements unavailable':'Requisitos originales ausentes',
+  'Advanced English mentioned':'Inglés avanzado mencionado',
+  'Senior experience requires review outside the priority lane':'Seniority senior indicado',
+  'Argentina not eligible':'Argentina no admitida'
+ };
+ const reasons=Array.isArray(j.readiness_reasons)?j.readiness_reasons:[];
+ if(reasons.length)detail.append(el('p','Pendiente: '+reasons.map(x=>safeReasons[x]||x).join(' · '),'note'));
+ detail.append(el('p','Idioma laboral: '+(j.work_language==='ES'?'Español exigido':j.work_language==='EN'?'Inglés exigido':'No confirmado')+
+   ' · Argentina: '+(j.argentina_eligible==='YES'?'Señal de elegibilidad':j.argentina_eligible==='NO'?'No admitida':'No confirmada'),'note'));
+ art.append(detail);
  const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
  btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
  tools.append(btnGemini);

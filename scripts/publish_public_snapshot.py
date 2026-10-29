@@ -10,6 +10,48 @@ from pathlib import Path
 from datetime import datetime, timezone
 from app.radar.source_evidence import observed_on_public_ats
 from urllib.parse import urlsplit
+import re
+import html
+
+# Export only provider-origin PUBLIC descriptions. Not a profile or a CV.
+PUBLIC_JOB_HOSTS = {
+    "ashby": ("jobs.ashbyhq.com",),
+    "lever": ("jobs.lever.co",),
+    "greenhouse": ("boards.greenhouse.io", "job-boards.greenhouse.io"),
+    "getonboard": ("getonbrd.com", "getonbrd.cl"),
+    "remotive": ("remotive.com",),
+    "jobicy": ("jobicy.com",),
+    "remoteok": ("remoteok.com",),
+    "arbeitnow": ("arbeitnow.com",),
+    "himalayas": ("himalayas.app",),
+}
+MAX_PUBLIC_DESCRIPTION = 2200
+SAFE_READINESS_REASONS = {
+    "Senior experience requires review outside the priority lane",
+    "Advanced English mentioned", "Argentina not eligible",
+    "Original publication date not verified as recent",
+    "seniority_compatible_verified", "language_compatible_verified",
+    "location_compatible_verified", "requirements_verified",
+    "official_link_verified", "Safe official HTTPS application URL required",
+    "Original requirements unavailable",
+}
+
+
+def _public_description(raw: dict) -> tuple[str | None, bool]:
+    hosts = PUBLIC_JOB_HOSTS.get(raw.get("source"), ())
+    try:
+        hostname = urlsplit(str(raw.get("source_url") or "")).hostname
+    except ValueError:
+        hostname = None
+    if not hostname or not any(hostname == h or hostname.endswith("." + h) for h in hosts):
+        return None, False
+    content = raw.get("description")
+    if not isinstance(content, str) or content.strip() in {"", "No verificado"}:
+        return None, False
+    # The collector has already removed HTML. Sanitize at the export boundary too.
+    cleaned = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", content)).split())
+    return (cleaned[:MAX_PUBLIC_DESCRIPTION], len(cleaned) > MAX_PUBLIC_DESCRIPTION) if cleaned else (None, False)
+
 
 PUBLIC_FIELDS = (
     "id", "source", "company", "title", "source_url", "location",
@@ -47,6 +89,16 @@ def public_snapshot(report: dict) -> dict:
             continue
         seen.add(ident)
         item = {key: raw.get(key) for key in PUBLIC_FIELDS}
+        description, truncated = _public_description(raw)
+        item["description"] = description
+        item["description_truncated"] = truncated
+        category = raw.get("category")
+        item["category"] = category if category in {"POSTULAR AHORA", "REVISAR", "EXPLORAR"} else "REVISAR"
+        reasons = raw.get("readiness_reasons")
+        item["readiness_reasons"] = [
+            reason for reason in reasons[:12]
+            if isinstance(reason, str) and reason in SAFE_READINESS_REASONS
+        ] if isinstance(reasons, list) else []
         # Do not accept arbitrary source-check claims from a raw report:
         # require a matching official ATS URL, provider-owned source id and
         # a capture timestamp near the report timestamp.
