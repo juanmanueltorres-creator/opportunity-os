@@ -35,6 +35,7 @@ SAFE_READINESS_REASONS = {
     "location_compatible_verified", "requirements_verified",
     "official_link_verified", "Safe official HTTPS application URL required",
     "Original requirements unavailable",
+    "Three or more years of professional experience required",
 }
 
 

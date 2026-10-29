@@ -59,7 +59,10 @@ const WORK_NOW_MODE = 'Trabajo ahora · Español';
 const EXPLORE_ALL_MODE = 'Explorar todo';
 
 function isSpanishFirstVacancy(vacancy) {
-  if (!vacancy || vacancy.work_language === 'EN' || vacancy.work_language === 'BILINGUAL') {
+  if (!vacancy || vacancy.category === 'EXPLORAR'
+      || vacancy.work_language === 'EN' || vacancy.work_language === 'BILINGUAL'
+      || vacancy.argentina_eligible === 'NO'
+      || /\b(senior|sr\.?|staff|principal|director|head of)\b/i.test(String(vacancy.title || ''))) {
     return false;
   }
 

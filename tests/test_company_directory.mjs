@@ -158,3 +158,18 @@ test('Vercel CSP permits the same-origin directory script without changing other
     "default-src 'none'; connect-src https://raw.githubusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
   );
 });
+
+
+test('Trabajo ahora excludes senior or explicitly incompatible vacancies regardless of listing Spanish', () => {
+  const base = { ...vacancies[0], work_language: 'UNKNOWN', listing_language: 'ES' };
+  const sample = [
+    { ...base, id: 'junior', title: 'Analista GIS Junior', category: 'REVISAR' },
+    { ...base, id: 'senior', title: 'Senior GIS Analyst', category: 'REVISAR' },
+    { ...base, id: 'advanced', title: 'Python Developer', category: 'EXPLORAR' },
+    { ...base, id: 'outside', title: 'Python Jr', argentina_eligible: 'NO' },
+  ];
+  assert.deepEqual(implementation().buildWorkspace(sample).vacancies.map(x => x.id), ['junior']);
+  assert.equal(implementation().buildWorkspace(sample, {
+    mode: 'Explorar todo'
+  }).vacancies.length, 4);
+});

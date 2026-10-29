@@ -42,6 +42,9 @@ def priority(job: dict, *, now: datetime) -> int | None:
     if (job.get("category") == "EXPLORAR"
             or SENIOR.search(title) or "senior" in ident or UNRELATED.search(title)):
         return None
+    from app.radar.application_readiness import application_readiness
+    if application_readiness(job, now=now)["category"] == "EXPLORAR":
+        return None
     if job.get("work_language") in {"EN", "BILINGUAL"} or job.get("argentina_eligible") == "NO":
         return None
     if job.get("work_language") != "ES" and job.get("listing_language") != "ES":

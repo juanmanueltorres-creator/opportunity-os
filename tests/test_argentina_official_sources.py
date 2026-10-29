@@ -61,3 +61,11 @@ async def test_live_collector_fail_closed_and_keeps_diagnostics_per_page():
     assert diagnostics["publicpage:aeroterra-geoai"] == "OK (1 source page)"
     assert diagnostics["publicpage:aeroterra-funcional-gis"].startswith("NOT_CONFIRMED")
     assert diagnostics["publicpage:utn-ammazy-bi"].startswith("ERROR")
+
+
+
+def test_closed_but_still_online_official_page_is_not_a_current_vacancy():
+    html = page("Analista GeoAI") + "<p>Esta búsqueda ya finalizó. POSTULATE</p>"
+    assert parse_official_page(html, "aeroterra-geoai", now=NOW) is None
+    html_en = page("Analista GeoAI") + "<div>Applications are closed</div>"
+    assert parse_official_page(html_en, "aeroterra-geoai", now=NOW) is None

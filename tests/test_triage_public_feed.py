@@ -98,3 +98,17 @@ def test_foreign_unverified_onsite_jobs_do_not_displace_argentina_review():
         remote_mode="REMOTE"
     )
     assert priority(domestic, now=NOW) > priority(foreign_remote, now=NOW)
+
+
+
+def test_old_snapshot_does_not_let_native_english_or_five_year_role_pass():
+    for description in (
+        "Native or near-native English to lead calls with U.S. customers",
+        "At least five years of hands-on experience in engineering",
+    ):
+        assert priority(job(
+            id="legacy:technical",
+            title="Technical Support Engineer",
+            description=description,
+            category="REVISAR",
+        ), now=NOW) is None

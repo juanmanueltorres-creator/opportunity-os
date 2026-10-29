@@ -67,6 +67,19 @@ def parse_official_page(html: str, source_id: str, *, now: datetime) -> Opportun
     lower = _normalized(text)
     if _normalized(title) not in lower:
         return None
+    closed_markers = (
+        "esta busqueda ya finalizo",
+        "busqueda finalizada",
+        "convocatoria cerrada",
+        "ya no se aceptan solicitudes",
+        "no estamos recibiendo nuevas postulaciones",
+        "applications are closed",
+        "this position is closed",
+        "position has been filled",
+        "job is no longer available",
+    )
+    if any(marker in lower for marker in closed_markers):
+        return None
     # Direct application affordance present on official sources, but opening
     # is *still unverified* until the visitor checks the actual application.
     if not any(term in lower for term in ("postulate", "postularte", "aplicar")):
