@@ -455,7 +455,10 @@ const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryThem
 function render(){
 const found=chosen();
 const precedence={APPLICABLE:0,ARGENTINA_RELOCATION:1,REVIEW:2,EXPLORE:3};
-found.sort((a,b)=>(precedence[group(a)]??3)-(precedence[group(b)]??3)||(Number(b.score)||0)-(Number(a.score)||0));
+found.sort((a,b)=>(workspaceMode==='NOW'
+  ?CompanyDirectory.immediatePriority(b)-CompanyDirectory.immediatePriority(a):0)
+  ||(precedence[group(a)]??3)-(precedence[group(b)]??3)
+  ||(Number(b.score)||0)-(Number(a.score)||0));
 $('count').textContent=found.length+' RESULTADOS';$('cards').replaceChildren();
 if(!found.length){$('cards').append(el('div','No hay coincidencias con esos filtros. Probá «Todas» o ampliá la búsqueda.','empty'));}
 else found.slice(0,visibleLimit).forEach(j=>$('cards').append(card(j)));

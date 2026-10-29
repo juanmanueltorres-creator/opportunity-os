@@ -173,3 +173,14 @@ test('Trabajo ahora excludes senior or explicitly incompatible vacancies regardl
     mode: 'Explorar todo'
   }).vacancies.length, 4);
 });
+
+
+test('Spanish-first priority gives GIS junior a higher rank than generic cloud seniority-unknown roles', () => {
+  const base = { work_language: 'UNKNOWN', listing_language: 'ES', argentina_eligible: 'UNKNOWN' };
+  const gisJunior = { ...base, company: 'Geo Córdoba', title: 'Analista GIS Junior', track: 'gis_geoscience' };
+  const generic = { ...base, company: 'AWS Tech', title: 'Data Engineer GCP', track: 'software_ai', score: 100 };
+  assert.ok(implementation().immediatePriority(gisJunior) > implementation().immediatePriority(generic));
+  const workspace = implementation().buildWorkspace([generic, gisJunior]);
+  assert.equal(workspace.companyIndex[0].name, 'Geo Córdoba');
+  assert.equal(workspace.vacancies.length, 2);
+});

@@ -70,6 +70,23 @@ function isSpanishFirstVacancy(vacancy) {
     || (vacancy.work_language === 'UNKNOWN' && vacancy.listing_language === 'ES');
 }
 
+// Profile-first priority is deterministic and uses only public vacancy evidence.
+// It is NOT a hiring/eligibility score or confirmation of a current opening.
+function immediatePriority(vacancy) {
+  const title = normalize(vacancy?.title ?? '');
+  const track = normalize(vacancy?.track ?? '');
+  let points = 0;
+  if (/(?:\bgis\b|\bsig\b|geoespac|geospatial|geologia|geologo|mineri|cartograf|geomatic|teledeteccion|remote sensing|geoai)/.test(title + ' ' + track)) points += 45;
+  if (/\b(junior|jr\.?|trainee|entry level|pasantia|joven profesional)\b/.test(title)) points += 26;
+  if (/\b(python|fastapi|postgis|qgis|postgresql)\b/.test(title)) points += 24;
+  if (/(?:soporte|support|backend|back.end|analista de datos|data analyst|data engineer|automatizacion|integrations)/.test(title)) points += 15;
+  if (vacancy?.argentina_eligible === 'YES') points += 10;
+  if (normalize(vacancy?.argentina_province) === 'cordoba') points += 10;
+  if (vacancy?.work_language === 'ES') points += 10;
+  else if (vacancy?.listing_language === 'ES') points += 2;
+  return points;
+}
+
 function buildWorkspace(vacancies, options = {}) {
   const allVacancies = Array.isArray(vacancies) ? vacancies : [];
   const mode = options.mode === EXPLORE_ALL_MODE ? EXPLORE_ALL_MODE : WORK_NOW_MODE;
@@ -77,6 +94,10 @@ function buildWorkspace(vacancies, options = {}) {
     ? allVacancies
     : allVacancies.filter(isSpanishFirstVacancy);
   const companyIndex = deriveCompanies(visibleVacancies);
+  if (mode === WORK_NOW_MODE) companyIndex.sort((a, b) => (
+    Math.max(...b.vacancies.map(immediatePriority))
+    - Math.max(...a.vacancies.map(immediatePriority))
+  ) || a.name.localeCompare(b.name, 'es'));
   const selectedCompanyKey = options.selectedCompanyKey || null;
   const selectedCompany = companyIndex.find(({ key }) => key === selectedCompanyKey) || null;
   const linkedVacancies = selectedCompany ? selectedCompany.vacancies : [];
@@ -120,6 +141,7 @@ const companyDirectory = {
   searchCompanies,
   filterVacancies,
   isSpanishFirstVacancy,
+  immediatePriority,
   buildWorkspace,
   WORK_NOW_MODE,
   EXPLORE_ALL_MODE,
