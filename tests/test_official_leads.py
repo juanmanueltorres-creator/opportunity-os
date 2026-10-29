@@ -25,9 +25,12 @@ def _lead_model(date):
 
 def test_verified_sources_have_direct_urls_and_explicit_review_boundaries():
     jobs = _lead_model("2026-10-29T12:00:00-03:00")
-    assert len(jobs) == 4
-    assert jobs[0]["company"] == "ERM"
-    assert jobs[0]["deadline"] == "2026-10-31"
+    assert len(jobs) == 5
+    assert jobs[0]["company"].startswith("IDECOR")
+    assert jobs[0]["apply_email"] == "idecor@cba.gov.ar"
+    assert jobs[0]["apply_subject"] == "Gestor de Calidad de Datos Geoespaciales"
+    assert jobs[1]["company"] == "ERM"
+    assert jobs[1]["deadline"] == "2026-10-31"
     assert all(j["source_url"].startswith("https://") for j in jobs)
     assert all(j["reviewed_at"] == "2026-10-29" for j in jobs)
     assert all(j["check"] and j["requirements"] for j in jobs)
@@ -46,4 +49,6 @@ def test_frontend_exposes_official_postings_and_copy_for_cv():
     assert 'id="officialLeads"' in html
     assert "renderOfficialLeads();" in html
     assert "Copiar requisitos para preparar CV" in html
+    assert "Abrir correo para enviar CV" in html
+    assert "mailto:" in html
     assert "No están confirmados como abiertos" in html

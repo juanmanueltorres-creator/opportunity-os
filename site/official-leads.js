@@ -5,6 +5,21 @@
 // Neither the company nor the location may be inferred from a job aggregator.
 const OFFICIAL_LEADS = Object.freeze([
   {
+    id: "idecor-data-quality-cordoba",
+    company: "IDECOR / proyecto de datos geoespaciales",
+    title: "Gestor/a de Calidad de Datos Geoespaciales",
+    source_url: "https://fcefyn.unc.edu.ar/facultad/secretarias/secretaria-de-graduados/portal-de-empleo/ingenieria-civil/",
+    location: "Córdoba Capital",
+    modality: "Híbrido; asistencia semanal a la oficina",
+    reviewed_at: "2026-10-29",
+    deadline: null,
+    requirements: "Estudiante avanzado o graduado de Geología, Agrimensura, Geografía, Cartografía, Ingeniería Civil u otra afín. SIG y control de calidad de datos geoespaciales comprobables.",
+    check: "Aviso publicado en portal FCEFyN-UNC sin fecha de publicación ni cierre. Confirmar que la búsqueda sigue vigente y que reciben CV por el contacto publicado.",
+    apply_email: "idecor@cba.gov.ar",
+    apply_subject: "Gestor de Calidad de Datos Geoespaciales",
+    priority: 1
+  },
+  {
     id: "erm-r00032104",
     company: "ERM",
     title: "Geólogo/a Junior — consultoría ambiental (SI&R)",
@@ -15,7 +30,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: "2026-10-31",
     requirements: "Geología o carrera afín (estudiantes avanzados admitidos). Hidrogeología básica, inglés intermedio o en desarrollo, licencia de conducir vigente, campo y viajes. GIS valorado.",
     check: "Requiere disponibilidad para Buenos Aires, viajes y licencia de conducir. Confirmar aceptación de formación afín y vigencia antes de aplicar.",
-    priority: 1
+    priority: 2
   },
   {
     id: "aeroterra-geoai",
@@ -28,7 +43,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: null,
     requirements: "Estudiante avanzado o graduado de Sistemas, Ciencia de Datos, IA o afín. Python, bases de datos y analítica; GIS, ArcGIS y desarrollo valorados.",
     check: "Confirmar elegibilidad de formación afín y posibilidad de trabajar presencialmente en CABA.",
-    priority: 2
+    priority: 3
   },
   {
     id: "aeroterra-analista-funcional-gis",
@@ -41,7 +56,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: null,
     requirements: "Graduado o próximo a recibirse en Sistemas. Relevamiento funcional, ArcGIS, SQL; Python, JavaScript, Node.js y metodologías ágiles.",
     check: "Se exige formación en Sistemas. Comprobar si aceptan formación en geociencias y experiencia de software antes de postular.",
-    priority: 3
+    priority: 4
   },
   {
     id: "ammazy-analista-bi",
@@ -55,7 +70,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: null,
     requirements: "Formación universitaria avanzada afín, Excel/Sheets, análisis económico y BI. Se valoran Python, SQL, ERP y automatización.",
     check: "Publicación del 5/10; verificar que siga abierta, ciudad, formación exigida y condiciones. La UTN Córdoba publica avisos de terceros, no implica empleo en Córdoba.",
-    priority: 4
+    priority: 5
   }
 ]);
 

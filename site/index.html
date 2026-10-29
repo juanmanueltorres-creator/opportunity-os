@@ -543,6 +543,11 @@ function renderOfficialLeads(){
    try{await navigator.clipboard.writeText(plain);statusText.textContent='Ficha copiada.';}
    catch{statusText.textContent='No se pudo copiar; consultá el aviso original.';}
   });
+  if(j.apply_email&&j.apply_subject&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(j.apply_email)){
+   const email=el('a','Abrir correo para enviar CV ↗');
+   email.href='mailto:'+j.apply_email+'?subject='+encodeURIComponent(j.apply_subject);
+   actions.append(email);
+  }
   actions.append(copy,statusText);article.append(actions);root.append(article);
  }
 }
