@@ -44,6 +44,24 @@ h1{font-size:clamp(43px,6.4vw,91px);line-height:.96;letter-spacing:-.084em;margi
 .territory .note{margin:0 0 10px}
 .territory-bars{display:flex;flex-wrap:wrap;gap:7px}
 .territory-bars span{padding:7px 11px;border:1px solid #385049;color:#ccddce;border-radius:4px;font-size:11px}
+.company-directory{margin:0 0 28px;border:1px solid var(--line);background:#0e1313;border-radius:8px;overflow:hidden}
+.directory-head{display:flex;justify-content:space-between;align-items:end;gap:18px;padding:21px 23px;border-bottom:1px solid var(--line)}
+.directory-head h2{font-size:21px;letter-spacing:-.04em;margin:5px 0 5px}.directory-head p{margin:0;max-width:620px}
+.directory-search{width:min(370px,100%);background:#0b1010;border:1px solid #34423b;border-radius:5px;color:var(--ink);padding:11px 12px;min-height:43px}
+.directory-layout{display:grid;grid-template-columns:minmax(260px,.82fr) minmax(0,1.18fr);min-height:265px}
+.company-rows{border-right:1px solid var(--line);max-height:490px;overflow:auto}
+.company-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:14px 19px;background:transparent;color:var(--ink);border:0;border-bottom:1px solid #252e2c;text-align:left}
+.company-row:hover,.company-row[aria-pressed="true"]{background:#18201b}.company-row[aria-pressed="true"]{box-shadow:inset 3px 0 var(--lime)}
+.company-row strong{display:block;font-size:13px;font-weight:680}.company-row small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.company-count{font:11px ui-monospace,Consolas,monospace;color:var(--lime);white-space:nowrap}
+.company-detail{padding:21px 23px;min-width:0}.company-detail h3{font-size:22px;letter-spacing:-.045em;margin:6px 0 3px}.company-detail-head{display:flex;justify-content:space-between;align-items:start;gap:15px}
+.company-vacancies{display:grid;gap:0;margin:15px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.company-vacancies li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #252e2c}
+.company-vacancies strong{display:block;font-size:12px}.company-vacancies small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.company-vacancies a{color:var(--lime);font-size:11px;text-decoration:none;white-space:nowrap}.company-vacancies a:hover{text-decoration:underline}
+.company-map-state{margin-top:16px;padding:11px 13px;border:1px dashed #48524c;color:var(--muted);font-size:11px;line-height:1.55}
+.company-map-state[data-available="true"]{border-style:solid;border-color:#385049;color:#ccddce}
+.company-empty{padding:24px 19px;color:var(--muted);font-size:12px;line-height:1.6}
 .source-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:20px}
 .source-item{display:flex;justify-content:space-between;gap:15px;padding:13px 14px;border:1px solid var(--line);background:var(--panel);border-radius:6px;font-size:12px;align-items:center}
 .source-item span{color:var(--muted);font:10px ui-monospace,Consolas,monospace;text-align:right}
@@ -73,6 +91,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 .hidden,[hidden]{display:none!important}.summary-bar{margin:14px 0 17px;color:#9eaca5;font-size:12px}
 @media(max-width:1100px){.list{grid-template-columns:1fr}.hero-right{display:none}}
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}}
+@media(max-width:740px){.directory-head{align-items:stretch;flex-direction:column}.directory-layout{grid-template-columns:1fr}.company-rows{border-right:0;border-bottom:1px solid var(--line);max-height:300px}.company-detail{padding:18px}}
 @media(prefers-reduced-motion:no-preference){.card{transition:border-color .15s ease}.tab,.smallbtn{transition:background .12s ease}}
 </style></head>
 <body>
@@ -100,6 +119,16 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <h2>Lectura territorial / muestras disponibles</h2>
 <p class="note">Conteos del último conjunto de avisos, no estadísticas oficiales del empleo. Solo sumamos una provincia cuando el anuncio la identifica. Las vacantes remotas sin destino definido no se asignan a una provincia.</p>
 <div class="territory-bars" id="territoryBars"><span>Analizando ubicaciones declaradas…</span></div>
+</section>
+<section class="company-directory" aria-labelledby="companyDirectoryHeading">
+<div class="directory-head">
+<div><div class="micro eyebrow">DIRECTORIO / 01</div><h2 id="companyDirectoryHeading">Explorá por empresa</h2><p class="note">Empresas derivadas de vacantes públicas de esta captura. Los conteos y señales describen avisos, no una sede ni una plantilla empresarial.</p></div>
+<label><span class="micro" style="display:block;margin-bottom:7px">Empresa o señal en los avisos</span><input id="companySearch" class="directory-search" type="search" placeholder="GIS, minería, Salta, Python…" autocomplete="off"></label>
+</div>
+<div class="directory-layout">
+<div id="companyRows" class="company-rows" aria-label="Empresas con vacantes"></div>
+<div id="companyDetail" class="company-detail" aria-live="polite"><p class="company-empty">Seleccioná una empresa para ver sus vacantes públicas y los enlaces originales.</p></div>
+</div>
 </section>
 <div class="layout">
 <aside class="filters" aria-label="Filtros laborales"><h2>Filtros / 01</h2>
@@ -169,12 +198,13 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <button id="closeBrief" class="control" type="button">Cerrar</button></div>
 <p id="copyBriefStatus" role="status" class="note"></p>
 </dialog>
+<script src="./company-directory.js"></script>
 <script>
 (()=>{
 'use strict';
 const PUBLIC_FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
 const $=id=>document.getElementById(id);
-let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30,todaySelected=[];
+let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30,todaySelected=[],selectedCompanyKey=null;
 const lanes={REMOTE_ARGENTINA:'APPLICABLE',CORDOBA_LOCAL:'APPLICABLE',
  ARGENTINA_RELOCATION:'ARGENTINA_RELOCATION',ARGENTINA_REVIEW:'REVIEW',
  REVIEW:'REVIEW',REVIEW_RESTRICTED:'EXPLORE',
@@ -381,10 +411,43 @@ function renderToday(){
   a.target='_blank';a.rel='noopener noreferrer';card.append(a);root.append(card);
  }
 }
+function renderCompanyDirectory(){
+ const companies=CompanyDirectory.deriveCompanies(jobs);
+ const visible=CompanyDirectory.searchCompanies(companies,$('companySearch').value);
+ const rows=$('companyRows');rows.replaceChildren();
+ if(!companies.length){rows.append(el('p','No hay empresas informadas en las vacantes públicas de esta captura.','company-empty'));}
+ else if(!visible.length){rows.append(el('p','No hay empresas que coincidan con esa búsqueda.','company-empty'));}
+ for(const company of visible){
+  const button=el('button',null,'company-row');button.type='button';
+  button.setAttribute('aria-pressed',String(company.key===selectedCompanyKey));
+  button.append(el('span',company.name),el('span',company.vacancyCount+' avisos','company-count'));
+  const name=button.firstElementChild;name.replaceChildren(el('strong',company.name),el('small',company.vacancies.map(v=>v.track).filter(Boolean).map(v=>v.replaceAll('_',' ')).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')||'Señales no informadas'));
+  button.addEventListener('click',()=>{selectedCompanyKey=company.key;visibleLimit=30;render();});
+  rows.append(button);
+ }
+ const detail=$('companyDetail');detail.replaceChildren();
+ const selected=companies.find(company=>company.key===selectedCompanyKey);
+ if(!selected){detail.append(el('p',companies.length?'Seleccioná una empresa para ver sus vacantes públicas y los enlaces originales.':'El directorio aparecerá cuando el feed incluya avisos con empresa identificada.','company-empty'));return;}
+ const head=el('div',null,'company-detail-head'),intro=el('div');
+ intro.append(el('div','EMPRESA · '+selected.vacancyCount+' '+(selected.vacancyCount===1?'AVISO':'AVISOS'),'micro'),el('h3',selected.name));
+ head.append(intro);
+ const clear=el('button','Quitar filtro','control');clear.type='button';clear.addEventListener('click',()=>{selectedCompanyKey=null;visibleLimit=30;render();});head.append(clear);detail.append(head);
+ const vacancyList=el('ul',null,'company-vacancies');
+ for(const vacancy of selected.vacancies){
+  const row=el('li'),description=el('div');description.append(el('strong',vacancy.title||'Puesto sin título'),el('small','Ubicación del aviso: '+(vacancy.location||'Sin ubicación informada')));
+  row.append(description);
+  const url=CompanyDirectory.officialSourceUrl(vacancy);
+  if(url){const link=el('a','Fuente oficial ↗');link.href=url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);}
+  vacancyList.append(row);
+ }
+ detail.append(vacancyList);
+ const map=CompanyDirectory.mapAvailability(selected.vacancies),mapState=el('p',map.label,'company-map-state');
+ mapState.dataset.available=String(map.available);detail.append(mapState);
+}
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value,sourceCheck=$('sourceCheck').value;
-return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
+return CompanyDirectory.filterVacancies(jobs,selectedCompanyKey).filter(j=>(lane==='ALL'||group(j)===lane)
   &&(!activeTopic||(Array.isArray(j.topics)&&j.topics.includes(activeTopic))
       ||(activeTopic==='agro'&&j.company_industry==='agtech'))
   &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q)
@@ -405,6 +468,7 @@ else found.slice(0,visibleLimit).forEach(j=>$('cards').append(card(j)));
 $('more').hidden=found.length<=visibleLimit;$('limitNote').textContent=found.length>visibleLimit?'Mostrando '+visibleLimit+' de '+found.length+'.':'';
 document.querySelectorAll('[data-lane]').forEach(b=>{const active=b.dataset.lane===lane;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 document.querySelectorAll('[data-topic]').forEach(b=>{const active=b.dataset.topic===activeTopic;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+renderCompanyDirectory();
 }
 async function load(){
 try{
@@ -449,7 +513,8 @@ try{
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 document.querySelectorAll('[data-topic]').forEach(b=>b.addEventListener('click',()=>{activeTopic=b.dataset.topic;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
-$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';visibleLimit=30;render();});
+$('companySearch').addEventListener('input',renderCompanyDirectory);
+$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age','companySearch'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';selectedCompanyKey=null;visibleLimit=30;render();});
 $('export').addEventListener('click',()=>{
  const marked=jobs.filter(j=>status(j)!=='new');
  const rows=[['id','empresa','puesto','estado_local','url']];
