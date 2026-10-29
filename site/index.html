@@ -108,6 +108,14 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <div class="stat"><strong id="statReview">—</strong><span>PARA REVISAR</span></div>
 <div class="stat"><strong id="statSources">—</strong><span>FUENTES CONSULTADAS</span></div>
 </div>
+<section class="today" aria-labelledby="leadHeading">
+<div class="today-head"><div>
+<div class="micro eyebrow">FUENTES DIRECTAS / REVISADAS MANUALMENTE</div>
+<h2 id="leadHeading">Oportunidades concretas para evaluar</h2>
+<p class="note">Avisos identificados en páginas oficiales, fuera del feed global. No están confirmados como abiertos ni como compatibles: comprobá los requisitos antes de enviar el CV.</p>
+</div></div>
+<div id="officialLeads" class="today-list" aria-live="polite"><p class="note">Cargando vacantes revisadas...</p></div>
+</section>
 <section class="company-workspace" aria-labelledby="companyDirectoryHeading">
 <div class="workspace-head">
 <div><div class="micro eyebrow">EMPRESAS / VISTA PRINCIPAL</div><h2 id="companyDirectoryHeading">Encontrá primero la empresa</h2><p class="note">Índice compacto derivado de vacantes públicas. Elegí una empresa para leer su ficha y sus vacantes vinculadas sin inventar sede, contacto ni estado de postulación.</p></div>
@@ -202,6 +210,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <p id="copyBriefStatus" role="status" class="note"></p>
 </dialog>
 <script src="./company-directory.js"></script>
+<script src="./official-leads.js"></script>
 <script>
 (()=>{
 'use strict';
@@ -502,6 +511,42 @@ document.querySelectorAll('[data-workspace-mode]').forEach(b=>b.addEventListener
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
 $('companySearch').addEventListener('input',renderCompanyDirectory);
  $('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','age','sourceCheck','companySearch'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';selectedCompanyKey=null;visibleLimit=30;render();});
+function renderOfficialLeads(){
+ const root=$('officialLeads');if(!root||!window.OfficialLeads)return;
+ root.replaceChildren();
+ const leads=window.OfficialLeads.officialLeadsForDate();
+ if(!leads.length){root.append(el('p','No hay avisos con revisión reciente. Consultá las fuentes oficiales.','note'));return;}
+ for(const j of leads){
+  const article=el('article',null,'today-item');
+  article.append(el('span',j.company+' · REVISAR VIGENCIA','micro'),el('strong',j.title));
+  article.append(el('p',j.location+' · '+j.modality,'note'));
+  article.append(el('p','Requisitos: '+j.requirements,'note'));
+  article.append(el('p','Comprobar: '+j.check,'note'));
+  article.append(el('p','Fuente revisada: '+date(j.reviewed_at)+
+    (j.deadline?' · Fecha límite indicada: '+date(j.deadline):' · Sin fecha límite informada'),'note'));
+  const actions=el('div',null,'actions'),href=safeUrl(j.source_url);
+  if(href){
+   const link=el('a','Revisar y postular en la fuente ↗');
+   link.href=href;link.target='_blank';link.rel='noopener noreferrer';
+   actions.append(link);
+  }
+  const copy=el('button','Copiar requisitos para preparar CV','smallbtn'),statusText=el('span','', 'note');
+  statusText.setAttribute('role','status');copy.type='button';
+  copy.addEventListener('click',async()=>{
+   const plain=[
+     'OFERTA PÚBLICA PARA EVALUAR — NO CONFIRMADA',
+     'Empresa: '+j.company,'Puesto: '+j.title,'Ubicación: '+j.location,
+     'Modalidad: '+j.modality,'Requisitos según aviso: '+j.requirements,
+     'Datos pendientes: '+j.check,'Fuente oficial: '+j.source_url,
+     'Al preparar el CV, usar exclusivamente experiencia documentada; no inventar requisitos ni logros.'
+   ].join('\n');
+   try{await navigator.clipboard.writeText(plain);statusText.textContent='Ficha copiada.';}
+   catch{statusText.textContent='No se pudo copiar; consultá el aviso original.';}
+  });
+  actions.append(copy,statusText);article.append(actions);root.append(article);
+ }
+}
+renderOfficialLeads();
 load();
 })();
 </script></body></html>

@@ -9,13 +9,32 @@ import unicodedata
 from urllib.parse import urlsplit
 
 
+def _normalize(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(c for c in text if not unicodedata.combining(c)).lower()
+
+
+# Only hard requirements disqualify. A junior position working with senior
+# engineers, or an English course as a desirable skill, does not.
+ADVANCED_ENGLISH_REQUIRED = (
+    r"\b(?:c1|c2|b2|advanced|fluent|near.native)\s+(?:english|ingles)\b"
+    r".{0,45}\b(?:required|mandatory|must|essential|obligatorio|excluyente)\b",
+    r"\b(?:english|ingles)\b.{0,25}\b(?:c1|c2|b2|avanzado|fluido)\b"
+    r".{0,45}\b(?:required|mandatory|obligatorio|excluyente|indispensable)\b",
+    r"\b(?:requires?|exige|must have)\b.{0,45}"
+    r"\b(?:fluent|advanced|c1|c2)\s+(?:english|ingles)\b",
+)
+
+
 def application_readiness(row: dict, *, now: datetime) -> dict:
-    text = unicodedata.normalize("NFKD", str(row.get("title", "")) + " " + str(row.get("description", "")))
-    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
+    title = _normalize(row.get("title", ""))
+    description = _normalize(row.get("description", ""))
     blockers = []
-    if re.search(r"\b(senior|sr|staff|principal|director|head)\b", text):
+    if re.search(r"\b(?:senior|sr\.?|staff|principal|director|head(?:\s+of)?)\b", title):
         blockers.append("Senior experience requires review outside the priority lane")
-    if re.search(r"\b(c1|c2)\b|advanced english|fluent english|ingles avanzado|ingles fluido", text):
+    if (row.get("work_language") in {"EN", "BILINGUAL"}
+            or any(re.search(pattern, title + ". " + description, re.S)
+                   for pattern in ADVANCED_ENGLISH_REQUIRED)):
         blockers.append("Advanced English mentioned")
     if row.get("argentina_eligible") == "NO":
         blockers.append("Argentina not eligible")
