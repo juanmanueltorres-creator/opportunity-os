@@ -25,11 +25,14 @@ def _lead_model(date):
 
 def test_verified_sources_have_direct_urls_and_explicit_review_boundaries():
     jobs = _lead_model("2026-10-29T12:00:00-03:00")
-    assert len(jobs) == 2
-    assert jobs[0]["company"] == "ERM"
-    assert jobs[0]["deadline"] == "2026-10-31"
-    assert jobs[1]["company"] == "Aeroterra"
-    assert jobs[1]["title"] == "Analista Funcional GIS"
+    assert len(jobs) == 4
+    assert jobs[0]["company"] == "Julio Bellone y Asociados"
+    assert jobs[0]["location"] == "Córdoba Capital, Argentina"
+    assert jobs[1]["company"] == "ERM"
+    assert jobs[1]["deadline"] == "2026-10-31"
+    assert jobs[2]["company"].startswith("Campy")
+    assert jobs[2]["modality"].startswith("Presencial")
+    assert jobs[3]["company"] == "Aeroterra"
     assert all(j["source_url"].startswith("https://") for j in jobs)
     assert all(j["reviewed_at"] == "2026-10-29" for j in jobs)
     assert all(j["check"] and j["requirements"] for j in jobs)
@@ -59,3 +62,14 @@ def test_outdated_highlights_are_not_redisplayed():
     assert all(j["id"] != "idecor-data-quality-cordoba" for j in jobs)
     assert all(j["id"] != "aeroterra-geoai" for j in jobs)
     assert all(j["id"] != "ammazy-analista-bi" for j in jobs)
+
+
+
+def test_new_opportunities_are_manual_job_page_leads_not_claimed_employer_official():
+    jobs = _lead_model("2026-10-29T12:00:00-03:00")
+    bellone = next(j for j in jobs if j["id"] == "bellone-fullstack-jr-cordoba")
+    campy = next(j for j in jobs if j["id"] == "campy-fullstack-mining-jr")
+    assert "ar.computrabajo.com/ofertas-de-trabajo/" in bellone["source_url"]
+    assert "Node.js" in bellone["requirements"]
+    assert "presencialmente en Salta" in campy["check"]
+    assert all("idecor" not in j["id"] for j in jobs)

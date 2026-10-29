@@ -1,9 +1,35 @@
 "use strict";
 
-// Human-reviewed public employer / university postings, NOT proof of availability.
-// All entries include an official primary-source URL and date reviewed.
-// Neither the company nor the location may be inferred from a job aggregator.
+// Human-reviewed employer/job-board listings, NOT proof of open applications.
+// Source URLs are direct public vacancy pages; page age and eligibility require checks.
+// The featured list contains no applicant correspondence or personal status.
 const OFFICIAL_LEADS = Object.freeze([
+  {
+    id: "bellone-fullstack-jr-cordoba",
+    company: "Julio Bellone y Asociados",
+    title: "Desarrollador Full Stack Junior (presencial)",
+    source_url: "https://ar.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-desarrollador-full-stack-junior-presencial-en-cordoba-365abf4a3ceaf48861373e686dcf3405",
+    location: "Córdoba Capital, Argentina",
+    modality: "Presencial, jornada completa",
+    reviewed_at: "2026-10-29",
+    deadline: null,
+    requirements: "React, JavaScript, Node.js/Express, APIs REST, PostgreSQL/MySQL, Git. Computrabajo informa dos años de experiencia y educación terciaria.",
+    check: "Verificar que el botón Postularme siga habilitado. Node/Express es requisito del aviso: no confundir con experiencia práctica en FastAPI. Confirmar experiencia exigida y salario.",
+    priority: 1
+  },
+  {
+    id: "campy-fullstack-mining-jr",
+    company: "Campy / Upgrade Stack Company",
+    title: "Full Stack Developer Junior — software para campamentos mineros",
+    source_url: "https://ar.linkedin.com/jobs/view/programador-full-stack-at-campy-4478232678",
+    location: "Salta Capital, Argentina",
+    modality: "Presencial, jornada completa",
+    reviewed_at: "2026-10-29",
+    deadline: null,
+    requirements: "Desarrollo full stack junior de funcionalidades de plataforma para campamentos mineros, APIs, bases de datos y herramientas web. Ver aviso para tecnologías exigidas.",
+    check: "Exige trabajar presencialmente en Salta Capital. Confirmar reubicación y que la oferta continúe admitiendo postulaciones.",
+    priority: 3
+  },
   {
     id: "erm-r00032104",
     company: "ERM",
@@ -15,7 +41,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: "2026-10-31",
     requirements: "Geología o carrera afín (estudiantes avanzados admitidos). Hidrogeología básica, inglés intermedio o en desarrollo, licencia de conducir vigente, campo y viajes. GIS valorado.",
     check: "Requiere disponibilidad para Buenos Aires, viajes y licencia de conducir. Confirmar aceptación de formación afín y vigencia antes de aplicar.",
-    priority: 1
+    priority: 2
   },
   {
     id: "aeroterra-analista-funcional-gis",
