@@ -435,7 +435,7 @@ $('reviewRun').addEventListener('click',async()=>{
  $('reviewAccess').value=''; // no localStorage, sessionStorage, cookie or URL token
  const result=$('reviewResult');result.replaceChildren();
  if(ownerReviewToken.length<32){
-  result.textContent='Ingresá el token privado OPPORTUNITY_REVIEW_TOKEN de Vercel (NO pegues la GEMINI_API_KEY).';return;
+  result.textContent='Ingresá el token privado OPPORTUNITY_REVIEW_TOKEN de Vercel (NO pegues la clave API de Gemini).';return;
  }
  const manual=String(reviewJob.id).startsWith('manual:');
  const payload={

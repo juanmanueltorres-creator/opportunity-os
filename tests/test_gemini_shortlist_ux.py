@@ -36,7 +36,7 @@ def test_browser_script_and_csp_remain_valid():
     cfg = json.loads((ROOT / "site/vercel.json").read_text(encoding="utf-8"))
     csp = next(h["value"] for h in cfg["headers"][0]["headers"]
                if h["key"] == "Content-Security-Policy")
-    assert "connect-src https://raw.githubusercontent.com;" in csp
+    assert "connect-src 'self' https://raw.githubusercontent.com;" in csp
     assert "connect-src 'self'" not in csp
     node = shutil.which("node")
     if node:
