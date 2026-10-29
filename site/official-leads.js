@@ -54,7 +54,7 @@ const OFFICIAL_LEADS = Object.freeze([
     deadline: null,
     requirements: "Graduado o próximo a recibirse en Sistemas. Relevamiento funcional, ArcGIS, SQL; Python, JavaScript, Node.js y metodologías ágiles.",
     check: "Se exige formación en Sistemas. Comprobar si aceptan formación en geociencias y experiencia de software antes de postular.",
-    priority: 2
+    priority: 4
   },
 ]);
 
