@@ -8,13 +8,18 @@ ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "site/index.html"
 
 
-def test_public_gemini_briefing_has_no_private_password_or_api_call():
+def test_company_atlas_and_owner_only_gemini_share_the_existing_radar():
     html = HTML.read_text(encoding="utf-8")
-    assert 'id="todayJobs"' in html
-    assert "Preparar selección para Gemini" in html
+    assert 'id="companyGrid"' in html
+    assert 'id="companySearch"' in html
+    assert 'id="companyScope"' in html
+    assert 'id="companyReset"' in html
+    assert "function companyGroups()" in html
+    assert "function renderCompanies()" in html
+    assert "if(!key||!safeUrl(j.source_url))continue" in html
+    assert "j.geographic_scope==='ARGENTINA'&&j.argentina_province" in html
     assert "function relevance(j)" in html
     assert "function renderToday()" in html
-    assert "function preparePrompt(selected)" in html
     assert "status(j)==='applied'" in html
     assert "status(j)==='ignored'" in html
     assert "j.argentina_eligible==='NO'" in html
@@ -22,24 +27,20 @@ def test_public_gemini_briefing_has_no_private_password_or_api_call():
     assert "sort((a,b)=>b.rank-a.rank" in html
     assert "if(candidates.length===5)break" in html
     assert "if((byCompany.get(company)||0)>=2)continue" in html
-    assert "const advanced=" not in html
-    assert "function relevance(j)" in html
     assert "const junior=" in html
     assert "talent pool" in html
-    assert "liferay|snowflake" in html
     assert "senior|senior-level" in html
-    assert "Sin ofertas con ubicación y requisitos suficientes" not in html
 
-    assert "https://gemini.google.com/app" in html
-    assert "navigator.clipboard.writeText" in html
-    assert "function launchGemini(selected)" in html
-    assert "window.open('https://gemini.google.com/app'" in html
-    assert 'id="briefText" readonly' in html
-    assert "geminiToken" not in html
-    assert "geminiDialog" not in html
-    assert "OPPORTUNITY_REVIEW_TOKEN" not in html
-    assert "/api/review" not in html
-    assert not (ROOT / "site/api/review.py").exists()
+    assert 'id="reviewDialog"' in html
+    assert "function openGeminiReview(j)" in html
+    assert "fetch('/api/review'" in html
+    assert "credentials:'omit'" in html
+    assert "ownerReviewToken" in html
+    assert "localStorage.setItem(storageKey" in html  # existing LOCAL tracking
+    assert "localStorage.setItem('ownerReviewToken'" not in html
+    assert "sessionStorage.setItem" not in html
+    assert "window.open('https://gemini.google.com/app'" not in html
+    assert (ROOT / "site/api/review.py").is_file()
 
 
 def test_browser_script_and_csp_remain_valid():
@@ -47,8 +48,7 @@ def test_browser_script_and_csp_remain_valid():
     cfg = json.loads((ROOT / "site/vercel.json").read_text(encoding="utf-8"))
     csp = next(h["value"] for h in cfg["headers"][0]["headers"]
                if h["key"] == "Content-Security-Policy")
-    assert "connect-src https://raw.githubusercontent.com;" in csp
-    assert "connect-src 'self'" not in csp
+    assert "connect-src 'self' https://raw.githubusercontent.com;" in csp
     node = shutil.which("node")
     if node:
         script = html.split("<script>", 1)[1].split("</script>", 1)[0]
@@ -67,7 +67,7 @@ const fs=require('fs');
 const vm=require('vm');
 const html=fs.readFileSync(process.argv[1],'utf8');
 const start=html.indexOf('function relevance(j){');
-const end=html.indexOf('function preparePrompt(selected){',start);
+const end=html.indexOf('function companyKey(name){',start);
 if(start===-1 || end<=start)throw Error('policy function missing');
 const code=html.slice(start,end);
 const context={
