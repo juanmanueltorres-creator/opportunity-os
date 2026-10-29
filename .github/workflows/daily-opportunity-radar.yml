@@ -43,6 +43,8 @@ jobs:
         run: python scripts/daily_job_radar.py
       - name: Export safe public feed
         run: python scripts/publish_public_snapshot.py artifacts/daily-radar/jobs.json artifacts/daily-radar/public.json
+      - name: Prepare today's evidence-first review report
+        run: python scripts/triage_public_feed.py --feed artifacts/daily-radar/public.json --output artifacts/daily-radar/revisar-20.md
       - name: Publish public feed for Vercel
         env:
           GH_TOKEN: ${{ github.token }}
@@ -69,5 +71,6 @@ jobs:
             artifacts/daily-radar/jobs.html
             artifacts/daily-radar/radar.html
             artifacts/daily-radar/public.json
+            artifacts/daily-radar/revisar-20.md
           if-no-files-found: warn
           retention-days: 14
