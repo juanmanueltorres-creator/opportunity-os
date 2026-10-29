@@ -74,6 +74,36 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 @media(max-width:1100px){.list{grid-template-columns:1fr}.hero-right{display:none}}
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}}
 @media(prefers-reduced-motion:no-preference){.card{transition:border-color .15s ease}.tab,.smallbtn{transition:background .12s ease}}
+
+/* COMPANY ATLAS V1 — derived only from the public jobs feed; no invented geocodes */
+.company-atlas{margin:19px 0 28px;border:1px solid #36463b;background:linear-gradient(140deg,#17221d,#101516 58%);border-radius:10px;padding:21px}
+.company-top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:14px}
+.company-top h2{font-size:clamp(25px,3.4vw,38px);margin:4px 0 6px;line-height:1.02}
+.company-controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.company-controls input,.company-controls select{border:1px solid #43554b;background:#0b1310;color:#f1f4f0;border-radius:5px;padding:11px 12px;font:13px system-ui;min-width:190px}
+.company-controls input{flex:1}
+.company-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.company-item{border:1px solid #3b4a42;border-radius:7px;padding:17px;background:#111a16;display:flex;flex-direction:column;gap:11px;min-height:182px}
+.company-item:hover{border-color:#aacc84}
+.company-item-head{display:flex;gap:10px;align-items:center}
+.company-monogram{background:#243c2d;color:#d8f3b8;font-weight:800;font-size:17px;border:1px solid #537257;width:40px;height:40px;display:grid;place-items:center;border-radius:7px}
+.company-item strong{font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.company-item small{display:block;color:var(--muted);font-size:11px}
+.company-item .actions{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+.company-item .smallbtn{font-size:11px}
+.company-geo{font-size:11px;color:#bdc7bc}
+.company-selection{margin:10px 0;color:var(--lime);font-size:12px}
+.review-dialog{background:#111b16;color:var(--ink);border:1px solid #71946d;border-radius:9px;padding:24px;max-width:min(95vw,680px);width:100%}
+.review-dialog::backdrop{background:#000c}
+.review-dialog h2{margin:4px 0 8px}
+.review-dialog label{display:block;margin:12px 0;font-size:12px;color:#c6d8c4}
+.review-dialog input,.review-dialog textarea{width:100%;display:block;background:#0a100d;color:#f1f4f0;border:1px solid #4b6150;border-radius:5px;padding:11px;margin-top:6px;font:13px/1.5 system-ui}
+.review-dialog textarea{min-height:95px;resize:vertical}
+.review-output{white-space:pre-wrap;color:#edf5e9;font-size:13px;line-height:1.65;margin:14px 0}
+.review-output p{margin:5px 0 14px}
+@media(max-width:1000px){.company-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.company-grid{grid-template-columns:1fr}.company-atlas{padding:15px}}
+
 </style></head>
 <body>
 <div class="top"><div class="topin"><div class="brand">◈ OPPORTUNITY <span>/ OS</span></div><div class="network"><span class="led"></span><span class="micro">RADAR GLOBAL · FUENTES PÚBLICAS</span></div></div></div>
@@ -91,7 +121,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <section class="today" aria-label="Vacantes para revisar hoy">
 <div class="today-head">
 <div><div class="micro">TRIAGE / ESPAÑOL PRIMERO</div><h2>Para revisar hoy</h2><p class="note">Búsqueda laboral actual en español: exige idioma laboral español explícito o, de forma provisoria, aviso en español sin idioma laboral confirmado. Excluye inglés avanzado y bilingüe. El idioma del aviso NO garantiza el idioma de trabajo. Si no hay coincidencias, muestra menos de cinco.</p></div>
-<button class="gemini-brief" id="briefFive" type="button">Preparar selección para Gemini</button>
+<button class="gemini-brief" id="briefFive" type="button">Analizar primera vacante con Gemini</button>
 </div>
 <div class="today-list" id="todayJobs"><span class="note">Cargando ofertas…</span></div>
 <p id="briefStatus" role="status" aria-live="polite" class="gemini-note"></p>
@@ -100,6 +130,26 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <h2>Lectura territorial / muestras disponibles</h2>
 <p class="note">Conteos del último conjunto de avisos, no estadísticas oficiales del empleo. Solo sumamos una provincia cuando el anuncio la identifica. Las vacantes remotas sin destino definido no se asignan a una provincia.</p>
 <div class="territory-bars" id="territoryBars"><span>Analizando ubicaciones declaradas…</span></div>
+</section>
+
+<section class="company-atlas" id="empresas" aria-labelledby="companiesTitle">
+ <div class="company-top">
+  <div><div class="micro eyebrow">EMPRESAS / RADAR DE CONTRATACIÓN</div>
+    <h2 id="companiesTitle">Explorá empresas.<br><em>Encontrá oportunidades.</em></h2>
+    <p class="note">Agrupadas por empleador a partir de avisos públicos. La ubicación de una vacante no es la sede de la empresa.</p>
+  </div>
+  <div class="micro"><strong id="companyTotal">—</strong> EMPRESAS CON AVISOS</div>
+ </div>
+ <div class="company-controls">
+  <input id="companySearch" type="search" placeholder="Empresa o tecnología…" aria-label="Buscar empresa">
+  <select id="companyScope" aria-label="Prioridad de empresas">
+   <option value="spanish">Con avisos en español (prioridad)</option>
+   <option value="all">Todas las empresas</option>
+  </select>
+ </div>
+ <div id="companyGrid" class="company-grid"><span class="note">Preparando directorio…</span></div>
+ <div class="actions" style="margin-top:14px"><button id="companyMore" class="control" type="button" hidden>Mostrar más empresas</button></div>
+ <p class="note">«Aviso en español» es una pista, no confirmación del idioma laboral. Los enlaces de vacantes remiten a sus fuentes.</p>
 </section>
 <div class="layout">
 <aside class="filters" aria-label="Filtros laborales"><h2>Filtros / 01</h2>
@@ -131,7 +181,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <button class="topic" data-topic="technical_business" type="button">Desarrollo comercial técnico</button>
 </div>
 <div class="tabs" id="tabs"><button class="tab active" data-lane="ALL" type="button">Todas</button><button class="tab" data-lane="APPLICABLE" type="button">Para postular</button><button class="tab" data-lane="ARGENTINA_RELOCATION" type="button">Reubicación Argentina</button><button class="tab" data-lane="REVIEW" type="button">Por evaluar</button><button class="tab" data-lane="EXPLORE" type="button">Atlas global</button></div>
-<p id="update" class="update">Cargando última ejecución…</p>
+<p id="update" class="update">Cargando última ejecución…</p><div id="companySelection" class="company-selection" hidden></div><button id="companyReset" class="smallbtn" type="button" hidden>Ver todas las vacantes</button>
 <div class="list" id="cards"><div class="empty">Consultando resultados publicados por Opportunity OS…</div></div>
 <div class="bottombar"><span id="limitNote" class="note"></span><button id="more" class="control" type="button" hidden>Mostrar más</button></div>
 </section></div>
@@ -160,14 +210,22 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </section>
 <footer>OPPORTUNITY OS · OFERTAS PÚBLICAS, NO VERIFICACIÓN DE VIGENCIA · LA SEDE DE LA EMPRESA NO DEFINE LOS PAÍSES DESDE LOS QUE CONTRATA · <a href="https://github.com/juanmanueltorres-creator/opportunity-os/actions/workflows/daily-opportunity-radar.yml" target="_blank" rel="noopener noreferrer">VER ACTUALIZACIONES EN GITHUB</a></footer>
 </main>
-<dialog id="briefDialog" class="gemini-prompt-dialog" aria-labelledby="briefHeading">
-<h2 id="briefHeading">Consulta lista para Gemini</h2>
-<p class="note">El texto contiene únicamente datos públicos de los anuncios. Copialo y pegalo en tu propia sesión de Gemini; no hace falta contraseña de Opportunity OS ni compartir tu API key.</p>
-<textarea id="briefText" readonly aria-label="Consulta preparada"></textarea>
-<div class="actions"><button id="copyBrief" class="control primary" type="button">Copiar consulta</button>
-<a id="openGemini" class="control" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">Abrir Gemini</a>
-<button id="closeBrief" class="control" type="button">Cerrar</button></div>
-<p id="copyBriefStatus" role="status" class="note"></p>
+
+<dialog class="review-dialog" id="reviewDialog" aria-labelledby="reviewTitle">
+ <div class="micro eyebrow">GEMINI / ANÁLISIS PRIVADO</div><h2 id="reviewTitle">Analizar vacante</h2>
+ <p id="reviewJob" class="note"></p>
+ <p class="note">Gemini no confirma apertura, idioma ni elegibilidad. En el nivel gratuito, Google puede utilizar los datos enviados para mejorar sus productos. No pegues CV completo, correos ni datos sensibles.</p>
+ <label>Acceso privado del propietario (token, no API key)
+  <input id="reviewAccess" type="password" autocomplete="off" placeholder="Token de acceso privado">
+ </label>
+ <label>Tu experiencia verificable (opcional; sin datos personales)
+  <textarea id="reviewContext" maxlength="1500" placeholder="Geociencias, minería, Python, FastAPI, PostGIS… solo lo que puedas demostrar."></textarea>
+ </label>
+ <label>Requisitos originales del aviso (opcional, hasta 6000 caracteres)
+  <textarea id="reviewPosting" maxlength="6000" placeholder="Pegá los requisitos desde el anuncio oficial para un análisis más preciso."></textarea>
+ </label>
+ <div class="actions"><button class="control primary" id="reviewRun" type="button">Analizar en Opportunity OS</button><button class="control" id="reviewClose" type="button">Cerrar</button></div>
+ <div id="reviewResult" role="status" aria-live="polite" class="review-output"></div>
 </dialog>
 <script>
 (()=>{
@@ -175,6 +233,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 const PUBLIC_FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
 const $=id=>document.getElementById(id);
 let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30,todaySelected=[];
+let selectedCompanyKey='', companyShow=18, reviewJob=null, ownerReviewToken='';
 const lanes={REMOTE_ARGENTINA:'APPLICABLE',CORDOBA_LOCAL:'APPLICABLE',
  ARGENTINA_RELOCATION:'ARGENTINA_RELOCATION',ARGENTINA_REVIEW:'REVIEW',
  REVIEW:'REVIEW',REVIEW_RESTRICTED:'EXPLORE',
@@ -224,8 +283,8 @@ function card(j){
   const b=el('button',label,'smallbtn');b.type='button';b.setAttribute('aria-pressed',status(j)===value?'true':'false');
   b.addEventListener('click',()=>setStatus(j,status(j)===value?'new':value));tools.append(b);
  }
- const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
- btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
+ const btnGemini=el('button','Analizar con Gemini','smallbtn');
+ btnGemini.type='button';btnGemini.addEventListener('click',()=>openGeminiReview(j));
  tools.append(btnGemini);
  foot.append(tools);const link=safeUrl(j.source_url);
  if(link){const a=el('a','Aviso original ↗');a.href=link;a.target='_blank';a.rel='noopener noreferrer';foot.append(a);}
@@ -289,64 +348,84 @@ function relevance(j){
  const legacy=Math.max(0,Math.min(100,Number(j.score)||0))*0.2;
  return area+hiring+territory+observed+fresh+legacy+spanishEvidence;
 }
-function preparePrompt(selected){
- const lines=[
-  'Sos un orientador laboral crítico. Compará estas vacantes públicas para una persona en Argentina interesada en GIS/SIG, geociencias/minería, Python/FastAPI/PostGIS y tecnología aplicada. Este perfil es una referencia temática, NO un CV validado.',
-  'Objetivo: elegir un máximo de 3 postulaciones prioritarias, si hay evidencia suficiente. Si ninguna resulta convincente, decirlo sin completar un cupo. Proponer una siguiente acción concreta para cada una.',
-  'Filtro actual excluyente: empleos para trabajar en español. Si idioma laboral UNKNOWN pero aviso en español, pedir confirmación antes de postular. No sugerir oportunidades que requieran inglés avanzado ni bilingüe.',
-  'Antes de recomendar, marcá la ubicación admitida, seniority, idioma laboral, frescura y requisitos NO COMPROBADOS. No confundas "visto en ATS" con "abierto".',
-  'Ordená según lo que se sabe de los avisos; señalá explícitamente si el detalle de requisitos falta y pedí comprobarlo en el link original. No asumas que Argentina está admitida si figura UNKNOWN.',
-  'No redactes postulaciones ni CV con experiencia inventada. Respuesta breve en español argentino.',
-  '',
- ];
- selected.forEach((j,i)=>lines.push(
-  (i+1)+') '+(j.company||'Empresa')+' — '+(j.title||'Puesto'),
-  'URL: '+j.source_url,
-  'Ubicación: '+(j.location||'NO INFORMADA')+'; Modalidad: '+(j.remote_mode||'UNKNOWN')+
-  '; Argentina: '+(j.argentina_eligible||'UNKNOWN')+
-  '; Idioma de trabajo: '+(j.work_language||'UNKNOWN'),
-  'Publicada: '+(j.published_at||'SIN FECHA')+
-  '; Listado ATS: '+(j.source_check||'NOT_CHECKED')+
-  ' ('+(j.source_checked_at||'SIN COMPROBACIÓN')+')',
-  'Temas detectados: '+(Array.isArray(j.topics)?j.topics.join(', '):'Sin etiquetas'),
-  ''
- ));
- return lines.join('\n');
-}
-function prepareBrief(selected){
- if(!selected.length)return;
- $('briefText').value=preparePrompt(selected);
- $('copyBriefStatus').textContent='';
- $('briefDialog').showModal();
-}
-async function copyBriefing(){
- const value=$('briefText').value;
- try{await navigator.clipboard.writeText(value);
-  $('copyBriefStatus').textContent='Copiado. Abrí Gemini y pegá el texto (Ctrl+V).';
- }catch{
-  $('briefText').focus();$('briefText').select();
-  $('copyBriefStatus').textContent='Seleccionado: copiá con Ctrl+C, abrí Gemini y pegalo.';
+
+function companyKey(name){return norm(name).replace(/[^a-z0-9]/g,'');}
+function spanishLead(j){return j.work_language==='ES'||(j.work_language==='UNKNOWN'&&j.listing_language==='ES');}
+function companyGroups(){
+ const groups=new Map();
+ for(const j of jobs){
+  const key=companyKey(j.company||'');
+  if(!key||!safeUrl(j.source_url))continue;
+  if(!groups.has(key))groups.set(key,{key,name:j.company,jobs:[],spanish:0,priority:0,territories:new Set(),topics:new Set()});
+  const c=groups.get(key);c.jobs.push(j);
+  if(spanishLead(j))c.spanish++;
+  if(Number.isFinite(relevance(j)))c.priority++;
+  if(j.geographic_scope==='ARGENTINA'&&j.argentina_province)c.territories.add(j.argentina_province);
+  if(Array.isArray(j.topics))j.topics.forEach(t=>c.topics.add(t));
  }
+ return [...groups.values()].sort((a,b)=>b.priority-a.priority||b.spanish-a.spanish||b.jobs.length-a.jobs.length||a.name.localeCompare(b.name));
 }
-$('copyBrief').addEventListener('click',copyBriefing);
-$('closeBrief').addEventListener('click',()=>$('briefDialog').close());
-async function launchGemini(selected){
- if(!selected.length)return;
- const prompt=preparePrompt(selected);
- // The new window must be opened synchronously from the user's click.
- // Google Gemini web does not natively support authenticated prompt-prefill URLs.
- const copyAction=navigator.clipboard?.writeText?
-  navigator.clipboard.writeText(prompt):Promise.reject(new Error('clipboard unavailable'));
- window.open('https://gemini.google.com/app','_blank','noopener,noreferrer');
+function renderCompanies(){
+ const all=companyGroups(),term=norm($('companySearch').value.trim()),scope=$('companyScope').value;
+ $('companyTotal').textContent=all.length;
+ const found=all.filter(c=>(scope==='all'||c.spanish>0)&&(!term||norm(c.name+' '+[...c.topics].join(' ')).includes(term)));
+ const root=$('companyGrid');root.replaceChildren();
+ if(!found.length){root.append(el('p','No hay empresas en este segmento. Probá ver todas.','note'));}
+ for(const c of found.slice(0,companyShow)){
+  const box=el('article',null,'company-item'),head=el('div',null,'company-item-head');
+  head.append(el('span',(c.name.trim()[0]||'?').toUpperCase(),'company-monogram'));
+  const title=el('div');title.append(el('strong',c.name),el('small',c.jobs.length+' avisos · '+c.spanish+' en español (estimado)'));head.append(title);box.append(head);
+  const geo=[...c.territories].slice(0,3);
+  box.append(el('div',geo.length?'Provincias mencionadas en vacantes: '+geo.join(', '):'Sin provincia argentina comprobada','company-geo'));
+  const relevant=el('small',c.priority+' vacantes pasan los filtros prioritarios; apertura individual no verificada.');
+  box.append(relevant);
+  const foot=el('div',null,'actions'),button=el('button','Ver vacantes de esta empresa','smallbtn');
+  button.type='button';button.addEventListener('click',()=>{
+    selectedCompanyKey=c.key;render();$('cards').scrollIntoView({behavior:'smooth',block:'start'});
+  });foot.append(button);box.append(foot);root.append(box);
+ }
+ $('companyMore').hidden=found.length<=companyShow;
+}
+$('companySearch').addEventListener('input',()=>{companyShow=18;renderCompanies();});
+$('companyScope').addEventListener('change',()=>{companyShow=18;renderCompanies();});
+$('companyMore').addEventListener('click',()=>{companyShow+=18;renderCompanies();});
+$('companyReset').addEventListener('click',()=>{selectedCompanyKey='';render();});
+
+function openGeminiReview(j){
+ if(!j)return;
+ reviewJob=j;$('reviewJob').textContent=(j.company||'Empresa')+' · '+(j.title||'Puesto')+' · '+(j.work_language==='ES'?'Español laboral documentado':'Idioma laboral no confirmado');
+ $('reviewResult').replaceChildren();
+ $('reviewAccess').placeholder=ownerReviewToken?'Acceso cargado en esta pestaña':'Token privado de propietario';
+ $('reviewDialog').showModal();
+}
+$('reviewClose').addEventListener('click',()=>$('reviewDialog').close());
+$('reviewRun').addEventListener('click',async()=>{
+ if(!reviewJob)return;
+ const supplied=$('reviewAccess').value.trim();
+ if(supplied)ownerReviewToken=supplied;
+ $('reviewAccess').value=''; // never retain a token in browser storage or the input
+ const target=$('reviewResult');target.replaceChildren();
+ if(ownerReviewToken.length<32){target.textContent='Falta el token privado del propietario. No pegues tu GEMINI_API_KEY.';return;}
+ const payload={opportunity_id:reviewJob.id,posting_text:$('reviewPosting').value,candidate_context:$('reviewContext').value};
+ const button=$('reviewRun');button.disabled=true;target.textContent='Analizando una vacante…';
  try{
-  await copyAction;
-  $('briefStatus').textContent='Consulta copiada al portapapeles. Pegala en Gemini con Ctrl+V.';
- }catch{
-  prepareBrief(selected);
-  $('copyBriefStatus').textContent='No se pudo copiar automáticamente. Copiá el texto con Ctrl+C y pegalo en Gemini.';
- }
-}
-$('briefFive').addEventListener('click',()=>launchGemini(todaySelected));
+  const response=await fetch('/api/review',{method:'POST',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
+     headers:{'Content-Type':'application/json','Authorization':'Bearer '+ownerReviewToken},body:JSON.stringify(payload)});
+  const data=await response.json();
+  if(!response.ok){
+    if(response.status===401){ownerReviewToken='';}
+    target.textContent=(data.error||'No se pudo analizar la vacante')+' (HTTP '+response.status+')';return;
+  }
+  target.replaceChildren();
+  target.append(el('strong','Ajuste orientativo: '+data.fit+' · Próxima acción: '+data.recommendation));
+  target.append(el('p',data.summary||'Sin resumen'));
+  if(Array.isArray(data.strengths)&&data.strengths.length)target.append(el('p','Coincidencias: '+data.strengths.join(' · ')));
+  if(Array.isArray(data.gaps)&&data.gaps.length)target.append(el('p','Brechas / faltantes: '+data.gaps.join(' · ')));
+  target.append(el('p',data.caveat||'Confirmá las condiciones en el aviso original.'));
+ }catch{target.textContent='No se pudo conectar con el análisis privado. Revisá el despliegue o la conexión.';}
+ finally{button.disabled=false;}
+});
+$('briefFive').addEventListener('click',()=>openGeminiReview(todaySelected[0]));
 function renderToday(){
  const ranked=jobs
   .map(j=>({j,rank:relevance(j)}))
@@ -384,7 +463,8 @@ function renderToday(){
 function chosen(){
 const q=norm($('q').value).trim(),loc=norm($('location').value).trim(),queryTheme=keywordThemes[q]||'';
 const track=$('track').value,mode=$('mode').value,eligible=$('eligible').value,language=$('language').value,listing=$('listingLanguage').value,progress=$('progress').value,age=$('age').value,sourceCheck=$('sourceCheck').value;
-return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
+return jobs.filter(j=>(!selectedCompanyKey||companyKey(j.company||'')===selectedCompanyKey)
+  &&(lane==='ALL'||group(j)===lane)
   &&(!activeTopic||(Array.isArray(j.topics)&&j.topics.includes(activeTopic))
       ||(activeTopic==='agro'&&j.company_industry==='agtech'))
   &&(!q||norm((j.company||'')+' '+(j.title||'')+' '+(Array.isArray(j.topics)?j.topics.join(' '):'')+' '+(j.company_industry||'')).includes(q)
@@ -397,6 +477,9 @@ return jobs.filter(j=>(lane==='ALL'||group(j)===lane)
 }
 function render(){
 const found=chosen();
+$('companySelection').hidden=!selectedCompanyKey;
+$('companyReset').hidden=!selectedCompanyKey;
+$('companySelection').textContent=selectedCompanyKey?'Filtrando vacantes de: '+(companyGroups().find(c=>c.key===selectedCompanyKey)?.name||'empresa')+' · estados marcados solo en este navegador':'';
 const precedence={APPLICABLE:0,ARGENTINA_RELOCATION:1,REVIEW:2,EXPLORE:3};
 found.sort((a,b)=>(precedence[group(a)]??3)-(precedence[group(b)]??3)||(Number(b.score)||0)-(Number(a.score)||0));
 $('count').textContent=found.length+' RESULTADOS';$('cards').replaceChildren();
@@ -413,7 +496,7 @@ try{
  const data=await result.json();if(!data||!Array.isArray(data.atlas))throw Error('Formato inesperado');
  report=data;const seen=new Set();
  jobs=data.atlas.filter(j=>{if(!j||typeof j!=='object'||typeof j.id!=='string'||!safeUrl(j.source_url)||seen.has(j.id))return false;seen.add(j.id);return true;});
- renderToday();
+ renderToday();renderCompanies();
  $('statJobs').textContent=jobs.length;
  $('statApply').textContent=jobs.filter(j=>group(j)==='APPLICABLE').length;
  $('statReview').textContent=jobs.filter(j=>group(j)==='REVIEW').length;
@@ -449,7 +532,7 @@ try{
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 document.querySelectorAll('[data-topic]').forEach(b=>b.addEventListener('click',()=>{activeTopic=b.dataset.topic;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
-$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';visibleLimit=30;render();});
+$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');lane='ALL';activeTopic='';selectedCompanyKey='';visibleLimit=30;render();});
 $('export').addEventListener('click',()=>{
  const marked=jobs.filter(j=>status(j)!=='new');
  const rows=[['id','empresa','puesto','estado_local','url']];
