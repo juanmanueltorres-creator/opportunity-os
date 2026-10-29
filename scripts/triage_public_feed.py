@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 SENIOR = re.compile(r"\b(senior|sr\.?|principal|staff|director|head|lead)\b", re.I)
 JUNIOR = re.compile(r"\b(junior|jr\.?|trainee|entry.level|pasant[ií]a)\b", re.I)
 DOMAIN = re.compile(r"\b(gis|sig|qgis|arcgis|postgis|geospatial|geoespacial|"
-                    r"geolog[ií]a|minera|mining|python|fastapi|backend|"
+                    r"geolog[ií]a|minera|mining|geoai|geo ai|business intelligence|"\n                    r"analista de performance|python|fastapi|backend|"
                     r"back.end|soporte t[eé]cnico|technical support|"
                     r"analista de datos|data analyst|sql|postgresql|integrations)\b", re.I)
 UNRELATED = re.compile(r"\b(liferay|snowflake|outsystems|talent pool|talent community)\b", re.I)
@@ -48,7 +48,7 @@ def priority(job: dict, *, now: datetime) -> int | None:
     if not DOMAIN.search(title) and not JUNIOR.search(title):
         return None
     score = 0
-    if re.search(r"\b(gis|sig|qgis|arcgis|postgis|geoespacial|geolog|miner)\w*\b", title):
+    if re.search(r"\b(gis|sig|qgis|arcgis|postgis|geoespacial|geoai|geolog|miner)\w*\b", title):
         score += 28
     if DOMAIN.search(title):
         score += 12
@@ -91,6 +91,11 @@ def unknowns(job: dict) -> str:
         pending.append("requisitos originales")
     if not job.get("published_at"):
         pending.append("fecha publicada")
+    place = normalize(job.get("location"))
+    if "caba" in place or "buenos aires" in place:
+        pending.append("disponibilidad para trabajar en Buenos Aires")
+    if job.get("remote_mode") == "ONSITE" and not place:
+        pending.append("ciudad del puesto presencial")
     pending.append("apertura / postulación vigentes")
     return ", ".join(pending)
 

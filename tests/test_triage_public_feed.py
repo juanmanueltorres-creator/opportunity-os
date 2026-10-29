@@ -42,3 +42,29 @@ def test_higher_evidence_and_junior_ranks_first_without_padding():
     rows = shortlist({"atlas": [b, a]}, now=NOW, limit=20)
     assert len(rows) == 2
     assert rows[0]["job"]["id"] == "getonboard:j"
+
+
+
+def test_relevant_geoai_and_bi_titles_reach_the_human_review_report():
+    geo = job(
+        id="publicpage:aeroterra-geoai",
+        company="Aeroterra",
+        title="Analista GeoAI",
+        source_url="https://www.aeroterra.com/es-ar/trabaja-con-nosotros/busquedas-actuales/geo-ai",
+        track="gis_geoscience", location="CABA, Argentina",
+        argentina_eligible="YES",
+    )
+    bi = job(
+        id="publicpage:utn-ammazy-bi",
+        company="AMMAZY",
+        title="Analista de Performance – Business Intelligence",
+        source_url="https://portalseu.frc.utn.edu.ar/oportunidades-laborales/analista-de-performance-business-intelligence/",
+        track="software_ai", location=None, remote_mode="ONSITE",
+    )
+    results = shortlist({"atlas": [geo, bi]}, now=NOW)
+    assert {x["job"]["title"] for x in results} == {
+        "Analista GeoAI", "Analista de Performance – Business Intelligence"
+    }
+    report = markdown({"atlas": [geo, bi]}, now=NOW)
+    assert "disponibilidad para trabajar en Buenos Aires" in report
+    assert "ciudad del puesto presencial" in report
