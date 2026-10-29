@@ -285,7 +285,10 @@ class JobMatch:
     listing_language: str = "UNKNOWN"
 
     def as_public_dict(self) -> dict[str, Any]:
-        return {
+        from app.radar.application_readiness import application_readiness
+        from app.radar.public_requirements import public_requirements
+
+        row = {
             "id": self.job.id, "source": self.job.source,
             "company": self.job.company, "title": self.job.title,
             "source_url": self.job.source_url, "location": self.job.location,
@@ -302,6 +305,14 @@ class JobMatch:
             "historial_postulaciones_cruzado": False,
             "verification_status": "PENDING",
         }
+        row.update(public_requirements(self.job.description))
+        # No inferred verification: collectors have not yet checked official
+        # application links or candidate-compatible requirements.
+        row.update(application_readiness(
+            {**row, "description": text_only(self.job.description)},
+            now=datetime.now(timezone.utc),
+        ))
+        return row
 
 
 def classify(
