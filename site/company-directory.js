@@ -55,6 +55,38 @@ function filterVacancies(vacancies, selectedCompanyKey) {
   );
 }
 
+const WORK_NOW_MODE = 'Trabajo ahora · Español';
+const EXPLORE_ALL_MODE = 'Explorar todo';
+
+function isSpanishFirstVacancy(vacancy) {
+  if (!vacancy || vacancy.work_language === 'EN' || vacancy.work_language === 'BILINGUAL') {
+    return false;
+  }
+
+  return vacancy.work_language === 'ES'
+    || (vacancy.work_language === 'UNKNOWN' && vacancy.listing_language === 'ES');
+}
+
+function buildWorkspace(vacancies, options = {}) {
+  const allVacancies = Array.isArray(vacancies) ? vacancies : [];
+  const mode = options.mode === EXPLORE_ALL_MODE ? EXPLORE_ALL_MODE : WORK_NOW_MODE;
+  const visibleVacancies = mode === EXPLORE_ALL_MODE
+    ? allVacancies
+    : allVacancies.filter(isSpanishFirstVacancy);
+  const companyIndex = deriveCompanies(visibleVacancies);
+  const selectedCompanyKey = options.selectedCompanyKey || null;
+  const selectedCompany = companyIndex.find(({ key }) => key === selectedCompanyKey) || null;
+  const linkedVacancies = selectedCompany ? selectedCompany.vacancies : [];
+
+  return {
+    mode,
+    vacancies: visibleVacancies,
+    companyIndex,
+    selectedCompany,
+    linkedVacancies,
+  };
+}
+
 function mapAvailability(vacancies) {
   const hasCoordinate = (value) =>
     (typeof value === 'number' || (typeof value === 'string' && value.trim() !== ''))
@@ -84,6 +116,10 @@ const companyDirectory = {
   deriveCompanies,
   searchCompanies,
   filterVacancies,
+  isSpanishFirstVacancy,
+  buildWorkspace,
+  WORK_NOW_MODE,
+  EXPLORE_ALL_MODE,
   mapAvailability,
   officialSourceUrl,
 };

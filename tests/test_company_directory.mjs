@@ -73,6 +73,53 @@ test('selecting a company filters the existing vacancies and clearing selection 
   assert.deepEqual(implementation().filterVacancies(vacancies, null), vacancies);
 });
 
+test('workspace defaults to Spanish-first work and excludes advanced-English requirements', () => {
+  const englishRequired = {
+    ...vacancies[2],
+    id: 'vacancy-english-required',
+    work_language: 'EN',
+    listing_language: 'ES',
+  };
+  const candidates = [
+    { ...vacancies[0], work_language: 'ES' },
+    { ...vacancies[1], work_language: 'UNKNOWN', listing_language: 'ES' },
+    englishRequired,
+    { ...vacancies[3], company: 'Delta Labs', work_language: 'BILINGUAL' },
+  ];
+  const workspace = implementation().buildWorkspace(candidates);
+
+  assert.equal(workspace.mode, 'Trabajo ahora · Español');
+  assert.deepEqual(workspace.vacancies.map(({ id }) => id), ['vacancy-1', 'vacancy-2']);
+  assert.deepEqual(workspace.companyIndex.map(({ name, vacancyCount }) => [name, vacancyCount]), [
+    [vacancies[0].company, 2],
+  ]);
+});
+
+test('Explorar todo includes all records and selection derives detail and linked vacancies', () => {
+  const all = [...vacancies, {
+    id: 'vacancy-english-required',
+    company: 'Delta Labs',
+    title: 'English-only role',
+    work_language: 'EN',
+    listing_language: 'ES',
+    source_url: 'https://jobs.example.org/english',
+  }];
+  const selectedKey = implementation().companyKey('Delta Labs');
+  const workspace = implementation().buildWorkspace(all, {
+    mode: 'Explorar todo',
+    selectedCompanyKey: selectedKey,
+  });
+
+  assert.equal(workspace.mode, 'Explorar todo');
+  assert.equal(workspace.vacancies.length, all.length);
+  assert.equal(workspace.selectedCompany.name, 'Delta Labs');
+  assert.deepEqual(workspace.linkedVacancies.map(({ id }) => id), ['vacancy-3', 'vacancy-english-required']);
+  assert.equal(implementation().officialSourceUrl(workspace.linkedVacancies[1]), 'https://jobs.example.org/english');
+  assert.equal(workspace.linkedVacancies[1].location, undefined);
+  assert.equal('applications' in workspace, false);
+  assert.equal('crm' in workspace, false);
+});
+
 test('vacancies without verified coordinates report an honest no-map state', () => {
   const state = implementation().mapAvailability([
     ...vacancies,

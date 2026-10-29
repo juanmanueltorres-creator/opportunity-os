@@ -53,5 +53,29 @@ The current radar presents vacancies and sources, but it does not provide a comp
 - Follow-up commit: `fix(site): allow same-origin company directory script` (final SHA will be included in the delivery handoff).
 - Follow-up native assessment: `risk=medium`, `review_due=false`, `review_due_reason=under_budget` against the same `a07614248d2fb0904c5784d1f89f22b520cd5a4a` boundary; pre-existing `.atl/` remained excluded and untouched.
 
+## Continuation scope — Empresas workspace
+
+The next authorized increment keeps the same public feed and display-only company model, but promotes Empresas to the primary workspace:
+
+- Default mode: `Trabajo ahora · Español`.
+- Alternate mode: `Explorar todo`.
+- Three-column layout: compact company index, selected company record, and linked public vacancies.
+- Vacancies requiring advanced English must stay out of the prioritized/default view, while remaining discoverable in `Explorar todo`.
+- Remove manual application-follow-up/CRM controls from this public workspace; preserve source links and the existing backend/data boundaries.
+
+## Continuation checklist
+
+- [x] T4 — Add the Spanish-first/default and Explore-all filtering contract to the display-only model with tests.
+- [x] T5 — Replace the stacked directory/feed presentation with a responsive three-column Empresas workspace.
+- [x] T6 — Run focused/full checks and Playwright validation; record actual results.
+
+## Continuation progress
+
+- T4: Added `buildWorkspace`, `isSpanishFirstVacancy`, and explicit `WORK_NOW_MODE` / `EXPLORE_ALL_MODE` exports in `site/company-directory.js`. The default keeps explicit Spanish work and Spanish listings with unknown work language; `EN` and `BILINGUAL` stay out of the default. `Explorar todo` retains every public record.
+- T5: Replaced the stacked directory/feed with a responsive three-column workspace in `site/index.html`: compact company index, evidence-labeled company profile, and linked vacancy cards. The selected company now filters the third column. Removed manual application status controls, local follow-up storage, and CSV follow-up export from the public workspace; Gemini remains an optional public-data briefing action.
+- T6 focused checks: `node tests/test_company_directory.mjs` — 9 passed; `node tests/test_company_workspace.mjs` — 2 passed; `git diff --check` — exit 0.
+- T6 Playwright: local `python -m http.server 4173 --directory site` plus browser-automation script returned HTTP 200, 0 console errors/warnings, 0 failed requests. Default mode rendered `39 EMPRESAS · 68 VACANTES`; Explore-all rendered `111 EMPRESAS · 275 VACANTES`; selecting BC Tecnología rendered 6 linked company cards and 6 official HTTPS links; returning to default cleared the selection.
+- T6 full pytest: delegated run observed 1,559 passed and 7 failures outside the restricted sandbox; the failures were pre-existing/environment-specific (API profile expectations, a prior `pyproject.toml` baseline comparison, Windows encoding, and Linux x86_64 assumptions). The restricted run additionally hit temporary-directory permission errors while tests ran concurrently; no failure implicated the static workspace files.
+
 ## Next step
-Next: mirror this full progress document to Engram. No additional feature scope is included.
+Implement T4, then T5, then verify T6. Keep this document and its Engram mirror synchronized after each task.
