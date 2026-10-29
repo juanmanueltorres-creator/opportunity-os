@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from datetime import datetime, timezone
-from app.radar.source_evidence import observed_on_public_ats
+from app.radar.source_evidence import observed_on_public_ats, observed_on_public_source_page
 from urllib.parse import urlsplit
 import re
 import html
@@ -24,6 +24,7 @@ PUBLIC_JOB_HOSTS = {
     "remoteok": ("remoteok.com",),
     "arbeitnow": ("arbeitnow.com",),
     "himalayas": ("himalayas.app",),
+    "publicpage": ("aeroterra.com", "portalseu.frc.utn.edu.ar"),
 }
 MAX_PUBLIC_DESCRIPTION = 2200
 SAFE_READINESS_REASONS = {
@@ -102,6 +103,11 @@ def public_snapshot(report: dict) -> dict:
         # Do not accept arbitrary source-check claims from a raw report:
         # require a matching official ATS URL, provider-owned source id and
         # a capture timestamp near the report timestamp.
+        valid_source_page = observed_on_public_source_page(
+            source=str(item.get("source") or ""),
+            source_url=str(item.get("source_url") or ""),
+            source_id=str(item.get("id") or "").partition(":")[2],
+        )
         valid_ats = observed_on_public_ats(
             source=str(item.get("source") or ""),
             source_url=str(item.get("source_url") or ""),
@@ -114,8 +120,9 @@ def public_snapshot(report: dict) -> dict:
                              and 0 <= (checked_at - generated_at).total_seconds() <= 900)
         except (TypeError, ValueError, KeyError):
             fresh_capture = False
-        if not (item.get("source_check") == "LISTED_ON_PUBLIC_ATS"
-                and valid_ats and fresh_capture):
+        valid_status = ((item.get("source_check") == "LISTED_ON_PUBLIC_ATS" and valid_ats)
+                        or (item.get("source_check") == "LISTED_ON_OFFICIAL_SOURCE" and valid_source_page))
+        if not (valid_status and fresh_capture):
             item["source_check"] = "NOT_CHECKED"
             item["source_checked_at"] = None
         else:

@@ -252,8 +252,8 @@ function card(j){
    ...(j.company_industry==='agtech'?[badge('Empresa AgTech · sector','cyan')]:[]),
    badge(j.listing_language==='ES'?'Aviso en español (estimado)':j.listing_language==='EN'?'Aviso en inglés (estimado)':j.listing_language==='MIXED'?'Aviso bilingüe/mixto (estimado)':'Idioma del aviso no determinado'),
    badge(j.published_at?'Publicado: '+date(j.published_at):'Publicación sin fecha','cyan'),
-   ...(j.source_check==='LISTED_ON_PUBLIC_ATS'&&j.source_checked_at
-      ?[badge('Visto en ATS oficial: '+date(j.source_checked_at),'yes')]
+   ...((j.source_check==='LISTED_ON_PUBLIC_ATS'||j.source_check==='LISTED_ON_OFFICIAL_SOURCE')&&j.source_checked_at
+      ?[badge('Observado en fuente pública: '+date(j.source_checked_at),'yes')]
       :[badge('Sin comprobación directa en fuente')])
  );
  art.append(tags);
