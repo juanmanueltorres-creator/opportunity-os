@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const require = createRequire(import.meta.url);
@@ -95,4 +96,18 @@ test('vacancy navigation uses only each public official HTTPS source URL', () =>
   assert.equal(implementation().officialSourceUrl(vacancies[0]), 'https://careers.example.com/jobs/1');
   assert.equal(implementation().officialSourceUrl({ source_url: 'javascript:alert(1)' }), null);
   assert.equal(implementation().officialSourceUrl({ url: 'https://unverified.example.com/job' }), null);
+});
+
+test('Vercel CSP permits the same-origin directory script without changing other directives', () => {
+  const siteDirectory = new URL('../site/', import.meta.url);
+  const html = readFileSync(new URL('index.html', siteDirectory), 'utf8');
+  const config = JSON.parse(readFileSync(new URL('vercel.json', siteDirectory), 'utf8'));
+  const csp = config.headers.flatMap(({ headers }) => headers)
+    .find(({ key }) => key === 'Content-Security-Policy')?.value;
+
+  assert.match(html, /<script src="\.\/company-directory\.js"><\/script>/);
+  assert.equal(
+    csp,
+    "default-src 'none'; connect-src https://raw.githubusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
+  );
 });
