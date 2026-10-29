@@ -94,9 +94,6 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}.workspace-head{align-items:stretch;flex-direction:column}.workspace-modes{justify-content:flex-start}.workspace-grid{display:block}.workspace-column{border-right:0;border-bottom:1px solid var(--line)}.workspace-column:last-child{border-bottom:0}.company-index .company-rows{max-height:300px}.vacancy-column .list{grid-template-columns:1fr}}
 @media(max-width:740px){.directory-head{align-items:stretch;flex-direction:column}.directory-layout{grid-template-columns:1fr}.company-rows{border-right:0;border-bottom:1px solid var(--line);max-height:300px}.company-detail{padding:18px}}
 @media(prefers-reduced-motion:no-preference){.card{transition:border-color .15s ease}.tab,.smallbtn{transition:background .12s ease}}
-.gemini-prompt-dialog .field textarea,.gemini-prompt-dialog .field input{display:block;width:100%;min-height:70px;padding:11px;background:#0b1010;border:1px solid #405049;border-radius:5px;color:var(--ink);font-size:13px}
-.gemini-prompt-dialog .field input{min-height:42px}.gemini-prompt-dialog .review-output{margin-top:14px;white-space:pre-wrap;color:var(--ink);font-size:13px;line-height:1.55}
-.gemini-prompt-dialog .review-output p{margin:9px 0}
 </style></head>
 <body>
 <div class="top"><div class="topin"><div class="brand">◈ OPPORTUNITY <span>/ OS</span></div><div class="network"><span class="led"></span><span class="micro">RADAR GLOBAL · FUENTES PÚBLICAS</span></div></div></div>
@@ -202,19 +199,6 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </section>
 <footer>OPPORTUNITY OS · OFERTAS PÚBLICAS, NO VERIFICACIÓN DE VIGENCIA · LA SEDE DE LA EMPRESA NO DEFINE LOS PAÍSES DESDE LOS QUE CONTRATA · <a href="https://github.com/juanmanueltorres-creator/opportunity-os/actions/workflows/daily-opportunity-radar.yml" target="_blank" rel="noopener noreferrer">VER ACTUALIZACIONES EN GITHUB</a></footer>
 </main>
-<dialog id="reviewDialog" class="gemini-prompt-dialog" aria-labelledby="reviewTitle">
-<h2 id="reviewTitle">Revisar esta vacante con Gemini</h2>
-<p id="reviewJob" class="note"></p>
-<p class="note">Análisis orientativo: no verifica apertura, idioma laboral ni requisitos. En el nivel gratuito de Gemini, Google puede utilizar los datos enviados para mejorar sus productos. No pegues CV completo, DNI, teléfono ni emails.</p>
-<label class="field"><span>Acceso privado del propietario (token, NO la API key de Gemini)</span><input id="reviewAccess" type="password" autocomplete="off" placeholder="Token privado de Vercel"></label>
-<label class="field"><span>Experiencia comprobable para comparar (opcional, sin datos personales)</span><textarea id="reviewContext" maxlength="1500" placeholder="Por ejemplo: React/TypeScript, Python/FastAPI, SQL/PostGIS, GIS…"></textarea></label>
-<label class="field"><span>Texto público del anuncio (podés corregirlo)</span><textarea id="reviewPosting" maxlength="6000" placeholder="Requisitos publicados en el aviso"></textarea></label>
-<div class="actions"><button id="reviewRun" type="button" class="control primary">Analizar aquí</button>
-<button id="reviewCopy" type="button" class="control">Copiar ficha para preparar CV</button>
-<a id="reviewSource" class="control" target="_blank" rel="noopener noreferrer">Abrir postulación original</a>
-<button id="reviewClose" type="button" class="control">Cerrar</button></div>
-<div id="reviewResult" role="status" aria-live="polite" class="review-output"></div>
-</dialog>
 <dialog id="briefDialog" class="gemini-prompt-dialog" aria-labelledby="briefHeading">
 <h2 id="briefHeading">Consulta lista para Gemini</h2>
 <p class="note">El texto contiene únicamente datos públicos de los anuncios. Copialo y pegalo en tu propia sesión de Gemini; no hace falta contraseña de Opportunity OS ni compartir tu API key.</p>
@@ -232,7 +216,6 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 const PUBLIC_FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
 const $=id=>document.getElementById(id);
 let jobs=[],report=null,lane='ALL',activeTopic='',visibleLimit=30,selectedCompanyKey=null,workspaceMode='NOW';
-let reviewJob=null,ownerReviewToken='';
 const lanes={REMOTE_ARGENTINA:'APPLICABLE',CORDOBA_LOCAL:'APPLICABLE',
  ARGENTINA_RELOCATION:'ARGENTINA_RELOCATION',ARGENTINA_REVIEW:'REVIEW',
  REVIEW:'REVIEW',REVIEW_RESTRICTED:'EXPLORE',
@@ -296,8 +279,8 @@ function card(j){
  detail.append(el('p','Idioma laboral: '+(j.work_language==='ES'?'Español exigido':j.work_language==='EN'?'Inglés exigido':'No confirmado')+
    ' · Argentina: '+(j.argentina_eligible==='YES'?'Señal de elegibilidad':j.argentina_eligible==='NO'?'No admitida':'No confirmada'),'note'));
  art.append(detail);
- const btnGemini=el('button','Analizar con Gemini','smallbtn');
- btnGemini.type='button';btnGemini.addEventListener('click',()=>openGeminiReview(j));
+ const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
+ btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
  tools.append(btnGemini);
  foot.append(tools);const link=safeUrl(j.source_url);
  if(link){const a=el('a','Aviso original ↗');a.href=link;a.target='_blank';a.rel='noopener noreferrer';foot.append(a);}
@@ -401,79 +384,8 @@ async function copyBriefing(){
 }
 $('copyBrief').addEventListener('click',copyBriefing);
 $('closeBrief').addEventListener('click',()=>$('briefDialog').close());
-function openGeminiReview(j){
- if(!j)return;
- reviewJob=j;$('reviewJob').textContent=(j.company||'Empresa')+' · '+(j.title||'Puesto')+
-   ' · '+(j.work_language==='ES'?'Idioma laboral explícito':'Idioma laboral NO VERIFICADO');
- $('reviewPosting').value=String(j.description||j.requirements||'').slice(0,6000);
- $('reviewResult').replaceChildren();
- $('reviewAccess').placeholder=ownerReviewToken?'Token cargado en esta pestaña':'Token privado de Vercel';
- const source=safeUrl(j.source_url);
- $('reviewSource').hidden=!source;if(source)$('reviewSource').href=source;
- $('reviewDialog').showModal();
-}
-$('reviewClose').addEventListener('click',()=>$('reviewDialog').close());
-$('reviewCopy').addEventListener('click',async()=>{
- if(!reviewJob)return;
- const text=[
-  'OFERTA PARA REVISIÓN HUMANA — NO CONFIRMADA ABIERTA',
-  'Empresa: '+(reviewJob.company||'No informada'),
-  'Puesto: '+(reviewJob.title||'No informado'),
-  'Ubicación: '+(reviewJob.location||'No confirmada'),
-  'Idioma laboral: '+(reviewJob.work_language||'NO VERIFICADO'),
-  'Requisitos del anuncio: '+$('reviewPosting').value,
-  'Fuente: '+(reviewJob.source_url||'Sin URL'),
-  'Adaptar CV usando solo formación y proyectos reales comprobables. No inventar experiencia.'
- ].join('\n');
- try{await navigator.clipboard.writeText(text);$('reviewResult').textContent='Ficha copiada. Usala para revisar o adaptar tu CV; el sistema no genera todavía un PDF desde este panel.';}
- catch{$('reviewResult').textContent='No se pudo copiar. Revisá permisos del portapapeles.';}
-});
-$('reviewRun').addEventListener('click',async()=>{
- if(!reviewJob)return;
- const supplied=$('reviewAccess').value.trim();
- if(supplied)ownerReviewToken=supplied;
- $('reviewAccess').value=''; // no localStorage, sessionStorage, cookie or URL token
- const result=$('reviewResult');result.replaceChildren();
- if(ownerReviewToken.length<32){
-  result.textContent='Ingresá el token privado OPPORTUNITY_REVIEW_TOKEN de Vercel (NO pegues la clave API de Gemini).';return;
- }
- const manual=String(reviewJob.id).startsWith('manual:');
- const payload={
-  opportunity_id:reviewJob.id,
-  posting_text:$('reviewPosting').value.slice(0,6000),
-  candidate_context:$('reviewContext').value.slice(0,1500),
- };
- if(manual)payload.manual_job={
-  title:String(reviewJob.title||'').slice(0,160),
-  company:String(reviewJob.company||'').slice(0,160),
-  source_url:reviewJob.source_url,
-  location:String(reviewJob.location||'').slice(0,160)
- };
- const btn=$('reviewRun');btn.disabled=true;result.textContent='Analizando vacante con Gemini…';
- try{
-  const response=await fetch('/api/review',{method:'POST',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
-   headers:{'Content-Type':'application/json','Authorization':'Bearer '+ownerReviewToken},
-   body:JSON.stringify(payload)});
-  const data=await response.json();
-  if(!response.ok){
-   if(response.status===401)ownerReviewToken='';
-   result.textContent=(data.error||'No se pudo analizar')+' (HTTP '+response.status+')'+
-    (response.status===503?' · La función o variables pueden no estar habilitadas en este despliegue.':'');return;
-  }
-  result.replaceChildren();
-  result.append(el('strong','Ajuste orientativo: '+(data.fit||'indeterminado')+' · Próxima acción: '+(data.recommendation||'revisar')));
-  result.append(el('p',data.summary||'Sin resumen'));
-  if(Array.isArray(data.strengths)&&data.strengths.length)result.append(el('p','Coincidencias: '+data.strengths.join(' · ')));
-  if(Array.isArray(data.gaps)&&data.gaps.length)result.append(el('p','Brechas: '+data.gaps.join(' · ')));
-  result.append(el('p',data.caveat||'Confirmá condiciones en la fuente.'));
-  result.append(el('p','IA orientativa. El enlace original sigue siendo la única vía de postulación.','note'));
- }catch{result.textContent='No se pudo conectar al análisis privado. Verificá el despliegue y la conexión.';}
- finally{btn.disabled=false;}
-});
-
 async function launchGemini(selected){
  if(!selected.length)return;
- if(selected.length===1){openGeminiReview(selected[0]);return;}
  const prompt=preparePrompt(selected);
  // The new window must be opened synchronously from the user's click.
  // Google Gemini web does not natively support authenticated prompt-prefill URLs.
@@ -620,13 +532,6 @@ function renderOfficialLeads(){
    link.href=href;link.target='_blank';link.rel='noopener noreferrer';
    actions.append(link);
   }
-  const analyze=el('button','Analizar con Gemini','smallbtn');analyze.type='button';
-  analyze.addEventListener('click',()=>openGeminiReview({
-    id:'manual:'+j.id,company:j.company,title:j.title,source_url:j.source_url,
-    location:j.location,requirements:j.requirements,description:j.requirements,
-    work_language:'UNKNOWN',argentina_eligible:'UNKNOWN'
-  }));
-  actions.append(analyze);
   const copy=el('button','Copiar requisitos para preparar CV','smallbtn'),statusText=el('span','', 'note');
   statusText.setAttribute('role','status');copy.type='button';
   copy.addEventListener('click',async()=>{

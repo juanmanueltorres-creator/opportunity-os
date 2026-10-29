@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "site/index.html"
 
 
-def test_browser_uses_private_server_endpoint_without_exposing_api_key():
+def test_public_gemini_briefing_has_no_private_password_or_api_call():
     """Public workspace and clipboard briefing remain secret-free after UI changes."""
     html = HTML.read_text(encoding="utf-8")
     assert "function relevance(j)" in html
@@ -23,9 +23,7 @@ def test_browser_uses_private_server_endpoint_without_exposing_api_key():
     # No browser-side API credentials, private review endpoint, or storage.
     assert "GEMINI_API_KEY" not in html
     assert "OPPORTUNITY_REVIEW_TOKEN" not in html
-    assert "fetch('/api/review'" in html
-    assert "credentials:'omit'" in html
-    assert "ownerReviewToken" in html
+    assert "/api/review" not in html
     assert "geminiToken" not in html
     assert "sessionStorage.setItem" not in html
     assert not (ROOT / "site/api/review.py").exists()
@@ -36,7 +34,7 @@ def test_browser_script_and_csp_remain_valid():
     cfg = json.loads((ROOT / "site/vercel.json").read_text(encoding="utf-8"))
     csp = next(h["value"] for h in cfg["headers"][0]["headers"]
                if h["key"] == "Content-Security-Policy")
-    assert "connect-src 'self' https://raw.githubusercontent.com;" in csp
+    assert "connect-src https://raw.githubusercontent.com;" in csp
     assert "connect-src 'self'" not in csp
     node = shutil.which("node")
     if node:
@@ -102,13 +100,3 @@ console.log('shortlist semantic gates OK');
     result = subprocess.run([node, "-e", program, str(HTML)], text=True,
                             capture_output=True, timeout=15)
     assert result.returncode == 0, result.stderr
-
-
-def test_public_card_and_curated_lead_have_in_site_gemini_review_without_external_window():
-    html = HTML.read_text(encoding="utf-8")
-    assert "btnGemini.addEventListener('click',()=>openGeminiReview(j))" in html
-    assert "id=\"reviewDialog\"" in html
-    assert "payload.manual_job" in html
-    assert "if(manual)payload.manual_job" in html
-    assert "localStorage.setItem('ownerReviewToken'" not in html
-    assert "Abrir postulación original" in html

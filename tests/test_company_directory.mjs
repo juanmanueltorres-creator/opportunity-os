@@ -155,7 +155,7 @@ test('Vercel CSP permits the same-origin directory script without changing other
   assert.match(html, /<script src="\.\/company-directory\.js"><\/script>/);
   assert.equal(
     csp,
-    "default-src 'none'; connect-src 'self' https://raw.githubusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
+    "default-src 'none'; connect-src https://raw.githubusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
   );
 });
 
