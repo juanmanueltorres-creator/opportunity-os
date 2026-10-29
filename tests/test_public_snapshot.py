@@ -96,3 +96,41 @@ def test_untrusted_evidence_is_not_forwarded():
     assert safe["eligibility_evidence"] is None
     assert safe["language_evidence"] is None
     assert "private@example.test" not in json.dumps(safe)
+
+
+def test_public_description_is_exported_only_from_provider_board():
+    report = {"atlas": [{
+        "id": "getonboard:gis", "source": "getonboard",
+        "title": "Analista GIS", "source_url": "https://www.getonbrd.com/jobs/gis",
+        "description": "<p>Python, QGIS y PostGIS</p>",
+        "category": "REVISAR",
+        "readiness_reasons": ["language_compatible_verified", "SECRET token"],
+        "candidate_email": "secret@example.org"
+    }]}
+    job = public_snapshot(report)["atlas"][0]
+    assert job["description"] == "Python, QGIS y PostGIS"
+    assert job["category"] == "REVISAR"
+    assert job["readiness_reasons"] == ["language_compatible_verified"]
+    assert "secret@example.org" not in json.dumps(job)
+
+
+def test_private_manual_description_and_unknown_checks_are_not_exported():
+    job = public_snapshot({"atlas": [{
+        "id": "manual:1", "source": "manual", "title": "GIS",
+        "source_url": "https://example.com/1",
+        "description": "CV privado: private@example.org",
+        "readiness_reasons": ["private@example.org"],
+    }]})["atlas"][0]
+    assert job["description"] is None
+    assert job["readiness_reasons"] == []
+    assert job["category"] == "REVISAR"
+
+
+def test_public_description_is_bounded():
+    job = public_snapshot({"atlas": [{
+        "id": "ashby:long", "source": "ashby", "title": "Python",
+        "source_url": "https://jobs.ashbyhq.com/org/long",
+        "description": "Python " * 1000
+    }]})["atlas"][0]
+    assert len(job["description"]) <= 2200
+    assert job["description_truncated"] is True

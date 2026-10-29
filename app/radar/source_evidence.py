@@ -37,11 +37,24 @@ def observed_on_public_ats(*, source: str, source_url: str, source_id: str) -> b
     return parts[-1] == source_id
 
 
+def observed_on_public_source_page(*, source: str, source_url: str, source_id: str) -> bool:
+    """Source must be one specific, explicitly audited employer/university URL."""
+    if source != "publicpage":
+        return False
+    from app.radar.argentina_official_sources import OFFICIAL_PAGE_URLS
+    expected = OFFICIAL_PAGE_URLS.get(source_id)
+    return bool(expected and expected == source_url)
+
+
 def source_evidence(job) -> dict:
     """Call only for live, newly fetched official-connector Opportunity objects."""
-    if not observed_on_public_ats(
+    from_public_page = observed_on_public_source_page(
         source=job.source, source_url=job.source_url, source_id=job.source_id,
-    ):
+    )
+    from_ats = observed_on_public_ats(
+        source=job.source, source_url=job.source_url, source_id=job.source_id,
+    )
+    if not from_public_page and not from_ats:
         return {"source_check": "NOT_CHECKED", "source_checked_at": None}
     if not isinstance(job.discovered_at, datetime):
         return {"source_check": "NOT_CHECKED", "source_checked_at": None}
@@ -49,6 +62,6 @@ def source_evidence(job) -> dict:
     if checked_at.tzinfo is None:
         return {"source_check": "NOT_CHECKED", "source_checked_at": None}
     return {
-        "source_check": "LISTED_ON_PUBLIC_ATS",
+        "source_check": "LISTED_ON_OFFICIAL_SOURCE" if from_public_page else "LISTED_ON_PUBLIC_ATS",
         "source_checked_at": checked_at.astimezone(timezone.utc).isoformat(),
     }

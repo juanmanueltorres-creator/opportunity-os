@@ -1,0 +1,41 @@
+name: Descargar preview local de Opportunity OS
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/atlas-empresas-local-v1
+    paths:
+      - "site/**"
+      - ".github/workflows/browser-preview-download.yml"
+permissions:
+  contents: read
+jobs:
+  prepare-browser-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify static files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s site/index.html
+          test -s site/company-directory.js
+          test -s site/official-leads.js
+          test -s site/cv-workspace.js
+          ! grep -R -E 'BEGIN PRIVATE KEY|sk-[A-Za-z0-9]{30,}' site/ || exit 1
+      - name: Pack ready-to-open HTML preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-local-opportunity-os
+          path: |
+            site/index.html
+            site/company-directory.js
+            site/official-leads.js
+            site/cv-workspace.js
+            site/favicon.ico
+          if-no-files-found: warn
+          retention-days: 14

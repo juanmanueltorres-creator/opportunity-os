@@ -1,0 +1,48 @@
+name: Review Argentine vacancy sources (branch only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/atlas-empresas-local-v1]
+    paths:
+      - "app/radar/**"
+      - "scripts/daily_job_radar.py"
+      - "scripts/publish_public_snapshot.py"
+      - "scripts/triage_public_feed.py"
+      - ".github/workflows/review-argentina-sources.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  review-public-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      # Intentionally no DB credentials: produce public-only evidence artifacts.
+      OPPORTUNITY_POSTGRES_WRITE_DSN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project
+        run: python -m pip install -e .
+      - name: Collect real public opportunities (no DB write)
+        run: python scripts/daily_job_radar.py
+      - name: Create privacy-filtered feed
+        run: python scripts/publish_public_snapshot.py artifacts/daily-radar/jobs.json artifacts/daily-radar/public.json
+      - name: Export ranked review leads
+        run: python scripts/triage_public_feed.py --feed artifacts/daily-radar/public.json --output artifacts/daily-radar/revisar-20.md
+      - name: Save evidence without deploying
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argentina-source-review
+          path: |
+            artifacts/daily-radar/public.json
+            artifacts/daily-radar/revisar-20.md
+            artifacts/daily-radar/jobs.md
+          if-no-files-found: warn
+          retention-days: 7

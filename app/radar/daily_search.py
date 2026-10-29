@@ -33,14 +33,14 @@ TRACKS: dict[str, dict[str, object]] = {
         "cv": "desarrollo_software_ia",
         "terms": ("developer", "desarrollador", "full stack", "fullstack", "frontend",
                   "backend", "python", "node.js", "typescript", "react", "software",
-                  "data engineer", "data analyst", "analista de datos",
+                  "data engineer", "data analyst", "analista de datos", "business intelligence", "analista de performance",
                   "automatización", "automation", "integraciones", "api engineer",
                   "machine learning", "inteligencia artificial", "qa automation"),
     },
     "gis_geoscience": {
         "label": "GIS, geociencias y minería",
         "cv": "gis_geociencias",
-        "terms": ("gis", "sig", "geospatial", "geoespacial", "postgis", "qgis",
+        "terms": ("gis", "sig", "geospatial", "geoespacial", "postgis", "qgis", "geoai", "geo ai",
                   "geology", "geólogo", "geologia", "geología", "hydrogeology",
                   "hidrogeología", "teledetección", "remote sensing", "mining",
                   "minería", "cartografía", "cartography", "geodata", "geomatics",
@@ -285,7 +285,10 @@ class JobMatch:
     listing_language: str = "UNKNOWN"
 
     def as_public_dict(self) -> dict[str, Any]:
-        return {
+        from app.radar.application_readiness import application_readiness
+        from app.radar.public_requirements import public_requirements
+
+        row = {
             "id": self.job.id, "source": self.job.source,
             "company": self.job.company, "title": self.job.title,
             "source_url": self.job.source_url, "location": self.job.location,
@@ -302,6 +305,14 @@ class JobMatch:
             "historial_postulaciones_cruzado": False,
             "verification_status": "PENDING",
         }
+        row.update(public_requirements(self.job.description))
+        # No inferred verification: collectors have not yet checked official
+        # application links or candidate-compatible requirements.
+        row.update(application_readiness(
+            {**row, "description": text_only(self.job.description)},
+            now=datetime.now(timezone.utc),
+        ))
+        return row
 
 
 def classify(
@@ -442,6 +453,12 @@ async def discover() -> tuple[list[Opportunity], dict[str, str]]:
         additional_jobs, additional_diagnostics = await collect_extended_sources(client, now=now)
         jobs.extend(additional_jobs)
         diagnostics.update(additional_diagnostics)
+        # Narrow Argentine employer/university pages: fetched live and checked
+        # for the exact vacancy heading. Failure means NO job row.
+        from app.radar.argentina_official_sources import collect_argentina_official_pages
+        local_jobs, local_diagnostics = await collect_argentina_official_pages(client, now=now)
+        jobs.extend(local_jobs)
+        diagnostics.update(local_diagnostics)
         # Official company ATS feeds add geospatial, agritech and environmental
         # roles that general remote-tech aggregators systematically miss.
         from app.radar.targeted_companies import collect_targeted_companies

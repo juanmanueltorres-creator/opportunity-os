@@ -27,6 +27,8 @@ def test_latam_remote_fits_software_with_cv_track():
     assert item.work_language=="UNKNOWN"  # Spanish ad does not prove team language
     assert item.cv_track=="desarrollo_software_ia"
     public=item.as_public_dict()
+    assert public['description'] == 'Se busca desarrollador Python.'
+    assert public['last_verified_at'] == 'No verificado'
     assert public["cv_pdf_generado"] is False
     assert public["historial_postulaciones_cruzado"] is False
     assert public["verification_status"]=="PENDING"
