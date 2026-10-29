@@ -48,6 +48,16 @@ def priority(job: dict, *, now: datetime) -> int | None:
         return None
     if not DOMAIN.search(title) and not JUNIOR.search(title):
         return None
+    # A foreign onsite/hybrid/unknown-modality role cannot serve as a
+    # tomorrow-from-Argentina application unless the publisher explicitly
+    # states Argentine eligibility. Remote is retained for manual review only.
+    foreign_location = any(country in normalize(job.get("location")) for country in (
+        "chile", "peru", "colombia", "santiago", "bogota", "lima",
+        "mexico", "montevideo", "uruguay",
+    ))
+    if (foreign_location and job.get("argentina_eligible") != "YES"
+            and job.get("remote_mode") != "REMOTE"):
+        return None
     score = 0
     if re.search(r"\b(gis|sig|qgis|arcgis|postgis|geoespacial|geoai|geolog|miner)\w*\b", title):
         score += 28
@@ -66,9 +76,9 @@ def priority(job: dict, *, now: datetime) -> int | None:
     if job.get("source_check") == "LISTED_ON_PUBLIC_ATS":
         score += 3
     location = normalize(job.get("location"))
-    if any(x in location for x in ("chile", "peru", "colombia", "santiago", "bogota", "lima")):
-        if job.get("argentina_eligible") != "YES":
-            score -= 14
+    if foreign_location and job.get("argentina_eligible") != "YES":
+        # Remote listing without country eligibility is still exploratory.
+        score -= 30
     if isinstance(job.get("description"), str) and job["description"].strip():
         score += 4
     published = job.get("published_at")

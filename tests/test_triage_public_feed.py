@@ -68,3 +68,33 @@ def test_relevant_geoai_and_bi_titles_reach_the_human_review_report():
     report = markdown({"atlas": [geo, bi]}, now=NOW)
     assert "disponibilidad para trabajar en Buenos Aires" in report
     assert "ciudad del puesto presencial" in report
+
+
+
+def test_foreign_unverified_onsite_jobs_do_not_displace_argentina_review():
+    for mode in ("ONSITE", "HYBRID", "UNKNOWN"):
+        assert priority(job(
+            id="getonboard:chile",
+            title="Junior GIS Analyst",
+            location="Chile",
+            argentina_eligible="UNKNOWN",
+            remote_mode=mode
+        ), now=NOW) is None
+
+    # Chile-remote without Argentina evidence can be investigated, not applied.
+    foreign_remote = job(
+        id="getonboard:chile-remote",
+        title="Junior GIS Analyst",
+        location="Chile",
+        argentina_eligible="UNKNOWN",
+        remote_mode="REMOTE"
+    )
+    assert priority(foreign_remote, now=NOW) is not None
+    domestic = job(
+        id="getonboard:arg",
+        title="Junior GIS Analyst",
+        location="Argentina",
+        argentina_eligible="YES",
+        remote_mode="REMOTE"
+    )
+    assert priority(domestic, now=NOW) > priority(foreign_remote, now=NOW)
