@@ -32,9 +32,9 @@ def application_readiness(row: dict, *, now: datetime) -> dict:
     blockers = []
     if re.search(r"\b(?:senior|sr\.?|staff|principal|director|head(?:\s+of)?)\b", title):
         blockers.append("Senior experience requires review outside the priority lane")
-    clauses = re.split(r"[.;\\n]", title + ". " + description)
+    clauses = re.split(r"[.;\n]", title + ". " + description)
     required_english = any(
-        not re.search(r"\\b(?:deseable|no\\s+excluyente|optional|preferred|not\\s+required)\\b", clause)
+        not re.search(r"\b(?:deseable|no\s+excluyente|optional|preferred|not\s+required)\b", clause)
         and any(re.search(pattern, clause) for pattern in ADVANCED_ENGLISH_REQUIRED)
         for clause in clauses
     )
