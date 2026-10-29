@@ -56,14 +56,18 @@ def test_provider_exposes_no_github_mutation_methods():
         assert not hasattr(GitHubPublicContributionProvider, name)
 
 
-def test_pyproject_is_unchanged_in_feature_diff():
+def test_pyproject_only_allows_explicit_windows_timezone_runtime_dependency():
+    """Contribution intake still introduces no new packages beyond Windows tzdata."""
     result = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main...HEAD", "--", "pyproject.toml"],
-        check=True,
-        capture_output=True,
-        text=True,
+        ["git", "diff", "--unified=0", "origin/main...HEAD", "--", "pyproject.toml"],
+        check=True, capture_output=True, text=True,
     )
-    assert result.stdout.strip() == ""
+    changes = [
+        line for line in result.stdout.splitlines()
+        if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
+    ]
+    # Required by zoneinfo on Windows/Python 3.12; no other dependency drift.
+    assert changes == ["+  \"tzdata>=2024.1; platform_system == 'Windows'\","]
 
 
 def test_workflow_private_guard_contains_contribution_sqlite_glob():
