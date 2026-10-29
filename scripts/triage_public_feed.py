@@ -16,7 +16,8 @@ from urllib.parse import urlsplit
 SENIOR = re.compile(r"\b(senior|sr\.?|principal|staff|director|head|lead)\b", re.I)
 JUNIOR = re.compile(r"\b(junior|jr\.?|trainee|entry.level|pasant[ií]a)\b", re.I)
 DOMAIN = re.compile(r"\b(gis|sig|qgis|arcgis|postgis|geospatial|geoespacial|"
-                    r"geolog[ií]a|minera|mining|geoai|geo ai|business intelligence|"\n                    r"analista de performance|python|fastapi|backend|"
+                    r"geolog[ií]a|minera|mining|geoai|geo ai|business intelligence|"
+                    r"analista de performance|python|fastapi|backend|"
                     r"back.end|soporte t[eé]cnico|technical support|"
                     r"analista de datos|data analyst|sql|postgresql|integrations)\b", re.I)
 UNRELATED = re.compile(r"\b(liferay|snowflake|outsystems|talent pool|talent community)\b", re.I)
