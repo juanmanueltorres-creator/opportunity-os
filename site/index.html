@@ -94,6 +94,36 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 @media(max-width:740px){.topin,.wrap{padding-left:16px;padding-right:16px}.topin{gap:10px}.hero{padding-top:10px}h1{font-size:49px}.statrow{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.layout{display:block}.filters{position:static;margin-bottom:22px}.list{grid-template-columns:1fr}.card{padding:17px}.headline{align-items:start}.network .micro{display:none}.workspace-head{align-items:stretch;flex-direction:column}.workspace-modes{justify-content:flex-start}.workspace-grid{display:block}.workspace-column{border-right:0;border-bottom:1px solid var(--line)}.workspace-column:last-child{border-bottom:0}.company-index .company-rows{max-height:300px}.vacancy-column .list{grid-template-columns:1fr}}
 @media(max-width:740px){.directory-head{align-items:stretch;flex-direction:column}.directory-layout{grid-template-columns:1fr}.company-rows{border-right:0;border-bottom:1px solid var(--line);max-height:300px}.company-detail{padding:18px}}
 @media(prefers-reduced-motion:no-preference){.card{transition:border-color .15s ease}.tab,.smallbtn{transition:background .12s ease}}
+
+/* Browser-only CV composer. Existing Opportunity OS layout remains unchanged. */
+.cv-dialog{border:1px solid #4f6458;border-radius:9px;background:#121918;color:#f1f4f0;padding:23px;width:min(760px,94vw);max-height:89vh;overflow:auto}
+.cv-dialog::backdrop{background:rgba(0,0,0,.78)}
+.cv-dialog h2{margin:0 0 12px;font-size:25px}
+.cv-dialog .cv-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:18px 0}
+.cv-dialog .cv-field{font-size:12px;color:#c4d0ca;display:block}
+.cv-dialog .cv-field input,.cv-dialog .cv-field textarea{display:block;box-sizing:border-box;width:100%;padding:10px;border:1px solid #526158;color:#f1f4f0;background:#0b1010;font:13px system-ui;margin-top:5px;border-radius:5px}
+.cv-dialog .cv-field input:focus,.cv-dialog .cv-field textarea:focus{outline:2px solid #cef482}
+.cv-dialog .cv-field:nth-child(n+6){grid-column:span 2}
+.cv-dialog .cv-actions{display:flex;flex-wrap:wrap;gap:10px;margin:13px 0}
+.cv-dialog .cv-actions a{padding:7px 10px;border:1px solid #5b6b61;border-radius:5px;font-size:12px}
+#cvPrintable{display:none}
+@media(max-width:600px){.cv-dialog .cv-field-grid{grid-template-columns:1fr}.cv-dialog .cv-field:nth-child(n+6){grid-column:auto}}
+@media print{
+ @page{size:A4;margin:13mm}
+ html,body{margin:0!important;padding:0!important;background:white!important;color:#111!important}
+ body>*:not(#cvPrintable){display:none!important}
+ #cvPrintable{display:block!important;position:static!important;background:#fff!important;color:#151515!important;font:10pt/1.3 Arial,Helvetica,sans-serif!important}
+ #cvPrintable h1{font:700 23pt/1.05 Arial,sans-serif;letter-spacing:-.02em;margin:0 0 7pt;color:#111}
+ #cvPrintable h2{font:700 11pt/1.2 Arial,sans-serif;margin:0 0 5pt;color:#222}
+ #cvPrintable h3{font:700 10pt/1.1 Arial,sans-serif;text-transform:uppercase;margin:14pt 0 4pt;border-bottom:1px solid #888;padding-bottom:3pt;color:#111}
+ #cvPrintable p{margin:4pt 0;white-space:pre-wrap}
+ #cvPrintable ul{margin:4pt 0 5pt 14pt;padding:0}
+ #cvPrintable li{margin:3pt 0;break-inside:avoid;overflow-wrap:anywhere}
+ #cvPrintable a{color:#151515;text-decoration:underline;overflow-wrap:anywhere}
+ #cvPrintable .cv-links{font-size:8pt;overflow-wrap:anywhere}
+ #cvPrintable .cv-contact{font-size:9pt}
+ #cvPrintable .cv-sheet{max-width:none}
+}
 </style></head>
 <body>
 <div class="top"><div class="topin"><div class="brand">◈ OPPORTUNITY <span>/ OS</span></div><div class="network"><span class="led"></span><span class="micro">RADAR GLOBAL · FUENTES PÚBLICAS</span></div></div></div>
@@ -210,6 +240,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </dialog>
 <script src="./company-directory.js"></script>
 <script src="./official-leads.js"></script>
+<script src="./cv-workspace.js"></script>
 <script>
 (()=>{
 'use strict';
@@ -279,6 +310,9 @@ function card(j){
  detail.append(el('p','Idioma laboral: '+(j.work_language==='ES'?'Español exigido':j.work_language==='EN'?'Inglés exigido':'No confirmado')+
    ' · Argentina: '+(j.argentina_eligible==='YES'?'Señal de elegibilidad':j.argentina_eligible==='NO'?'No admitida':'No confirmada'),'note'));
  art.append(detail);
+ const btnCV=el('button','Preparar CV','smallbtn');
+ btnCV.type='button';btnCV.addEventListener('click',()=>window.CvWorkspace.open(j));
+ tools.append(btnCV);
  const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
  btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
  tools.append(btnGemini);
@@ -532,6 +566,12 @@ function renderOfficialLeads(){
    link.href=href;link.target='_blank';link.rel='noopener noreferrer';
    actions.append(link);
   }
+  const prep=el('button','Preparar CV','smallbtn');prep.type='button';
+  prep.addEventListener('click',()=>window.CvWorkspace.open({
+   title:j.title,company:j.company,location:j.location,
+   description:j.requirements,requirements:j.requirements,source_url:j.source_url
+  }));
+  actions.append(prep);
   const copy=el('button','Copiar requisitos para preparar CV','smallbtn'),statusText=el('span','', 'note');
   statusText.setAttribute('role','status');copy.type='button';
   copy.addEventListener('click',async()=>{
