@@ -31,6 +31,13 @@ test("does not trust arbitrary links",()=>{
  assert.equal(cv.safeHttp("https://example.com/cv"),"https://example.com/cv");
 });
 
+test("print worksheet recognizes HTTPS project links but keeps them private",()=>{
+  const code=fs.readFileSync(new URL("../site/cv-workspace.js", import.meta.url),"utf8");
+  assert.ok(code.includes("appendSafeLinks(li,v)"));
+  assert.ok(code.includes('a.rel="noopener noreferrer"'));
+  assert.ok(!code.includes("sendBeacon"));
+});
+
 test("new workspace is an explicit print-only, in-browser CV operation",()=>{
  const html=fs.readFileSync(new URL("../site/index.html", import.meta.url),"utf8");
  const code=fs.readFileSync(new URL("../site/cv-workspace.js", import.meta.url),"utf8");

@@ -43,6 +43,19 @@ function skillsForJob(profile,job){
  scored.sort((a,b)=>Number(b.match)-Number(a.match)||a.index-b.index);
  return scored.map(x=>x.value);
 }
+function appendSafeLinks(node,text){
+ const tokens=String(text).split(/(https:\/\/[^\s<>]+)/g);
+ for(const token of tokens){
+   if(!token)continue;
+   const match=token.match(/^(https:\/\/[^\s<>]*?)([.,;)]*)$/);
+   const href=match?safeHttp(match[1]):null;
+   if(href){
+     const a=makeEl("a",match[1]);a.href=href;a.rel="noopener noreferrer";a.target="_blank";
+     node.append(a);
+     if(match[2])node.append(document.createTextNode(match[2]));
+   }else node.append(document.createTextNode(token));
+ }
+}
 function makeEl(tag,text,cls){
  const node=document.createElement(tag);
  if(text!==undefined&&text!==null)node.textContent=String(text);
@@ -71,7 +84,7 @@ function createPrintable(profile,job){
    if(!list.length)return;
    section.append(makeEl("h3",label));
    const u=makeEl("ul");
-   for(const v of list)u.append(makeEl("li",v));
+   for(const v of list){const li=makeEl("li");appendSafeLinks(li,v);u.append(li);}
    section.append(u);
  }
  section.append(makeEl("h3","Perfil"));
