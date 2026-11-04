@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-04",
+  "source": "CESSI · Directorio de empresas",
+  "statement": "Ficha de empresa publicada por CESSI. Domicilio informado en el directorio, NO vacante abierta ni política de trabajo remoto. País Argentina.",
+  "source_home": "https://cessi.org.ar/directorio-de-empresas/",
+  "companies": [
+    {
+      "name": "AIVIENTO",
+      "province": "Buenos Aires",
+      "city": "San Pedro",
+      "activity": "Inteligencia artificial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "EQUILYBRIO GROUP",
+      "province": "Buenos Aires",
+      "city": "Vicente López",
+      "activity": "Tecnología y experiencia de usuario",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "HP Consultores",
+      "province": "Buenos Aires",
+      "city": "Lanús",
+      "activity": "Actividad no informada en la ficha",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Lomasoft",
+      "province": "Buenos Aires",
+      "city": "Llavallol",
+      "activity": "Software ERP y gestión",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Medeatec",
+      "province": "Buenos Aires",
+      "city": "Mar del Plata",
+      "activity": "Licenciamiento y suscripciones",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "MTC Tech",
+      "province": "Buenos Aires",
+      "city": "Mar del Plata",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "Proda Software",
+      "province": "Buenos Aires",
+      "city": "Bernal",
+      "activity": "Software CRM y gestión comercial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "RINHO TELEMATICS",
+      "province": "Buenos Aires",
+      "city": "General Rodríguez",
+      "activity": "Servicios IoT",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    },
+    {
+      "name": "SOLUTIONS FOREST - SIMPLICIA ERP",
+      "province": "Buenos Aires",
+      "city": "Villa Ballester",
+      "activity": "Software ERP y gestión",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    },
+    {
+      "name": "StaffRock IT",
+      "province": "Buenos Aires",
+      "city": "Villa Lynch",
+      "activity": "RR. HH. y gestión de personal",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    },
+    {
+      "name": "Aliantum SA",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Integración de soluciones informáticas",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Argensys",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Soporte de infraestructura",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "boolear S.A.",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Experiencia de usuario y tecnología",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Codes SA",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "DOCTEC",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Integración de soluciones informáticas",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "ENORTHTECH SA",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Desarrollo de aplicaciones móviles",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Expertice Servicios Informáticos",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Servicios informáticos e integración",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "HEY FARDO",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Inteligencia artificial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Inside Technologies",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Consultoría de procesos",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "MasterSoft",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Software ERP y gestión",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Nezzed",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "Potencia Technologies",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Inteligencia artificial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "Red Hat",
+      "province": "CABA",
+      "city": "Ciudad Autónoma de Buenos Aires",
+      "activity": "Arquitectura de software",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    },
+    {
+      "name": "AVENGA ARGENTINA SRL",
+      "province": "Córdoba",
+      "city": "Córdoba Capital",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Teleprom",
+      "province": "Córdoba",
+      "city": "Córdoba",
+      "activity": "Inteligencia artificial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    },
+    {
+      "name": "ConsulGlobalAI",
+      "province": "Santa Fe",
+      "city": "Cañada de Gómez",
+      "activity": "Blockchain",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Kainet",
+      "province": "Santa Fe",
+      "city": "Rosario",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Fantommers",
+      "province": "Santa Fe",
+      "city": "Rosario",
+      "activity": "Arquitectura de software",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Disruptive SW",
+      "province": "Tucumán",
+      "city": "San Miguel de Tucumán",
+      "activity": "Inteligencia artificial",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/"
+    },
+    {
+      "name": "Merovingian Data",
+      "province": "Mendoza",
+      "city": "Luján de Cuyo",
+      "activity": "Servicios informáticos e integración",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=3"
+    },
+    {
+      "name": "Fit",
+      "province": "Río Negro",
+      "city": "Viedma",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=2"
+    },
+    {
+      "name": "Software Makers",
+      "province": "San Juan",
+      "city": "San Juan",
+      "activity": "Desarrollo de software a medida",
+      "source_url": "https://cessi.org.ar/directorio-de-empresas/?pagina=4"
+    }
+  ]
+}

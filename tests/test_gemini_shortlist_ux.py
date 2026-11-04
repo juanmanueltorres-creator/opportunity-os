@@ -47,8 +47,14 @@ def test_browser_script_and_csp_remain_valid():
     cfg = json.loads((ROOT / "site/vercel.json").read_text(encoding="utf-8"))
     csp = next(h["value"] for h in cfg["headers"][0]["headers"]
                if h["key"] == "Content-Security-Policy")
-    assert "connect-src https://raw.githubusercontent.com;" in csp
-    assert "connect-src 'self'" not in csp
+    # Same-origin public snapshots (CEP XXI, CESSI) now require self for read-only JSON.
+    directives = {parts[0]: parts[1:] for chunk in csp.split(";")
+                  if (parts := chunk.strip().split())}
+    connect = directives["connect-src"]
+    assert "'self'" in connect
+    assert "https://raw.githubusercontent.com" in connect
+    assert "*" not in connect and "https:" not in connect
+    assert "data:" not in connect and "blob:" not in connect
     node = shutil.which("node")
     if node:
         script = html.split("<script>", 1)[1].split("</script>", 1)[0]
