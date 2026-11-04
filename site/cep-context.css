@@ -1,0 +1,35 @@
+/* CEP XXI: estadísticas oficiales históricas, separadas del directorio privado */
+.cep-context{padding:22px 23px;margin:16px 0 21px;background:#0d171a;border:1px solid #44606a;border-radius:8px}
+.cep-head{display:flex;gap:24px;align-items:start;justify-content:space-between}
+.cep-head h3{font-size:clamp(18px,2vw,25px);font-weight:740;letter-spacing:-.045em;margin:7px 0 10px}
+.cep-head .note{max-width:760px;margin:0;line-height:1.65}
+.cep-head>a{font-size:11px;color:#a6e4f0;flex-shrink:0;text-decoration:none;margin-top:16px}
+.cep-head>a:hover{text-decoration:underline}
+.cep-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:18px 0 14px}
+.cep-controls label{font-size:10px;color:#a7c0c5;display:block;flex:1 1 180px}
+.cep-controls select{display:block;width:100%;min-height:40px;background:#0a1316;color:#e4f2f2;border:1px solid #46616a;border-radius:5px;padding:9px 10px;font-size:12px;margin-top:6px}
+.cep-controls #cepAll{min-height:40px;flex-shrink:0}
+.cep-kpis{display:grid;grid-template-columns:1.2fr 1fr 1fr .6fr;gap:1px;border:1px solid #3a5660;background:#3a5660;border-radius:7px;overflow:hidden;margin:16px 0}
+.cep-kpis>div{padding:14px 15px;background:#0e1a1d;min-width:0}
+.cep-kpis span{font:9px/1.5 ui-monospace,Consolas,monospace;letter-spacing:.08em;color:#95b2b8;display:block}
+.cep-kpis strong{display:block;font-size:clamp(20px,2.2vw,31px);font-variant-numeric:tabular-nums;line-height:1.25;color:#edf7f8;margin-top:5px;overflow-wrap:break-word}
+.cep-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cep-graph{min-width:0;border:1px solid #2e4a52;border-radius:7px;background:#0a1215;padding:14px 15px}
+.cep-graph h4{margin:0 0 5px;font-size:12px;font-weight:700;color:#e7f3f4}
+.cep-graph>.note{font-size:10px;margin:0 0 12px}
+.cep-bars{max-height:428px;overflow:auto;display:grid;gap:6px;padding:0 3px 4px 0}
+.cep-sector-bars{max-height:428px}
+.cep-bar{display:block;width:100%;border:1px solid transparent;padding:6px 7px 8px;text-align:left;border-radius:5px;background:#111f23;color:#d7e6e8}
+.cep-bar:hover,.cep-bar:focus-visible{border-color:#9bcbd0}
+.cep-bar.active{border-color:#bce8c0;background:#192c2d}
+.cep-bar-label{display:flex;justify-content:space-between;align-items:start;gap:8px;font-size:10px;line-height:1.4}
+.cep-bar-label>span{overflow-wrap:anywhere}
+.cep-bar-label strong{font-size:11px;color:#f2f8f8;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cep-bar-rail{display:block;width:100%;height:5px;background:#31474c;border-radius:3px;margin-top:6px;overflow:hidden}
+.cep-bar-fill{display:block;height:100%;background:#76c2c9;border-radius:2px}
+.cep-bar.active .cep-bar-fill{background:#cef482}
+.cep-more{display:block;padding:8px 10px;background:none;color:#a6e4f0;border:1px dashed #395862;border-radius:5px;font-size:11px}
+.cep-foot{margin:14px 0 0;line-height:1.7;font-size:10px}
+.cep-context [hidden]{display:none!important}
+@media(max-width:980px){.cep-grid{grid-template-columns:1fr}.cep-bars{max-height:330px}}
+@media(max-width:690px){.cep-context{padding:15px}.cep-head{display:block}.cep-head>a{display:inline-block;margin-top:9px}.cep-controls{display:grid;grid-template-columns:1fr 1fr}.cep-controls label:first-child{grid-column:1/-1}.cep-controls #cepAll{grid-column:1/-1}.cep-kpis{grid-template-columns:1fr 1fr}.cep-kpis strong{font-size:23px}.cep-graph{padding:12px}}
