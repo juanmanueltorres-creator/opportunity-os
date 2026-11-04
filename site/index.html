@@ -9,8 +9,9 @@
 <link rel="stylesheet" href="/cep-context.css">
 <link rel="stylesheet" href="/clarity.css">
 <link rel="stylesheet" href="/workspace-hub.css">
+<link rel="stylesheet" href="/orientation-guide.css">
 <link rel="stylesheet" href="/remote-targets.css">
-<meta name="description" content="Radar de oportunidades laborales: Argentina, LATAM, Estados Unidos y Europa. Fuentes verificables y criterios explícitos.">
+<meta name="description" content="Orientación laboral pública: descubrí vacantes, empresas y caminos freelance con fuentes consultables. No requiere Excel ni registro.">
 <style>
 :root{--bg:#090c0d;--panel:#14191a;--surface:#101516;--line:#313b39;--ink:#f1f4f0;--muted:#99aaa5;--lime:#cef482;--orange:#fb7444;--cyan:#80dbe8;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
@@ -86,8 +87,8 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <main class="wrap">
 <section class="hero"><div><div class="micro eyebrow">TRABAJO · EMPRESAS · POSIBILIDADES</div>
 <h1>Encontrá tu<br>próxima <em>oportunidad.</em></h1>
-<p class="lead">Explorá primero por GIS, geología, minería, ambiente, agro, software o desarrollo técnico-comercial. Después evaluá ubicación, modalidad, idioma y la posibilidad de reubicarte. Argentina y el mundo, sin descartar destinos prematuramente.</p></div>
-<div class="hero-right"><span class="micro">UNA HERRAMIENTA PARA ACTUAR</span><p>Seleccioná un puesto, comprobá las condiciones en la fuente original y registrá tu avance. Sin postulaciones automáticas ni IA inventando ofertas.</p></div></section>
+<p class="lead">Un lugar para decidir por dónde empezar: explorar vacantes, conocer empresas o encontrar clientes. Orientación pública y fuentes consultables, sin registro ni planillas obligatorias.</p></div>
+<div class="hero-right"><span class="micro">MENOS RUIDO · MÁS CRITERIO</span><p>Elegí una ruta, consultá las fuentes originales y decidí tu próxima acción. Ninguna oferta ni condición laboral se inventa con IA.</p></div></section>
 <div class="statrow">
 <div class="stat"><strong id="statJobs">—</strong><span>AVISOS DE INTERÉS</span></div>
 <div class="stat"><strong id="statApply">—</strong><span>ELEGIBILIDAD INDICADA</span></div>
@@ -168,7 +169,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 </main>
 <dialog id="briefDialog" class="gemini-prompt-dialog" aria-labelledby="briefHeading">
 <h2 id="briefHeading">Consulta lista para Gemini</h2>
-<p class="note">El texto contiene únicamente datos públicos de los anuncios. Copialo y pegalo en tu propia sesión de Gemini; no hace falta contraseña de Opportunity OS ni compartir tu API key.</p>
+<p class="note">La consulta contiene datos públicos de los anuncios o las preferencias que acabás de elegir. Copiala en tu propia sesión de Gemini; no se comparte tu Excel ni ninguna clave de API.</p>
 <textarea id="briefText" readonly aria-label="Consulta preparada"></textarea>
 <div class="actions"><button id="copyBrief" class="control primary" type="button">Copiar consulta</button>
 <a id="openGemini" class="control" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">Abrir Gemini</a>
@@ -471,6 +472,7 @@ load();
 <script src="/company-atlas.js" defer></script>
 <script src="/cep-context.js" defer></script>
 <script src="/clarity.js" defer></script>
+<script src="/orientation-guide.js" defer></script>
 <script src="/workspace-hub.js" defer></script>
 <script src="/remote-targets.js" defer></script>
 </body></html>
