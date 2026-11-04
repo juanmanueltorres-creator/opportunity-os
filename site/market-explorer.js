@@ -40,13 +40,14 @@
     '<div class="public-map-entry"><div><h4>Mapa de la cobertura del directorio</h4>',
     '<p class="note">Puntos agrupados por provincia o región de referencia. No son coordenadas de oficinas ni mapas de vacantes. La cobertura es una muestra editorial, no un censo.</p></div>',
     '<button type="button" class="control" id="publicMapLoad">Abrir mapa Leaflet</button></div>',
+    '<label class="public-map-layer" for="publicMapLayer">Mostrar en el mapa <select id="publicMapLayer"><option value="companies">Empresas de esta guía</option><option value="G">Empleo en comercio 2022 (CEP)</option><option value="B">Empleo en minería 2022 (CEP)</option><option value="J">Empleo en información y comunicaciones 2022 (CEP)</option></select></label>',
     '<p class="public-map-privacy">El mapa se carga solo si lo abrís. Usa Leaflet y teselas de OpenStreetMap, que reciben una solicitud desde tu navegador.</p>',
     '<div id="publicMap" class="public-map" hidden aria-label="Mapa agregado de empresas y fuentes"></div>',
     '<p id="publicMapStatus" class="note" role="status"></p>'
   ].join('');
   discovery.insertAdjacentElement('afterbegin',guide);
   const g=id=>guide.querySelector('#'+id);
-  let items=[],companiesCessi=[],map=null;
+  let items=[],companiesCessi=[],cepRows=[],map=null,drawnMarkers=[];
   let current=6;
   const area=id=>String(id||'').toLowerCase();
   function regionLabel(place){
@@ -81,7 +82,16 @@
     'Río Negro':[-40.8,-63],'San Juan':[-31.53,-68.52],
     'Argentina':[-38,-63],'Sudamérica':[-12,-58],
     'LATAM':[4,-79],'Colombia / Ecuador / Panamá':[3,-75],
-    'Internacional':[31,-15]
+    'Internacional':[31,-15],
+    'Catamarca':[-28.47,-65.78],'Chaco':[-27.45,-58.99],
+    'Chubut':[-43.3,-65.1],'Corrientes':[-27.47,-58.83],
+    'Entre Ríos':[-31.74,-60.52],'Formosa':[-26.18,-58.16],
+    'Jujuy':[-24.18,-65.3],'La Pampa':[-36.62,-64.29],
+    'La Rioja':[-29.41,-66.85],'Misiones':[-27.36,-55.9],
+    'Neuquén':[-38.95,-68.06],'Salta':[-24.78,-65.41],
+    'San Luis':[-33.3,-66.34],'Santa Cruz':[-51.62,-69.23],
+    'Santiago del Estero':[-27.78,-64.27],
+    'Tierra del Fuego':[-54.8,-68.31]
   };
   function mapGroups(){
     const groups=new Map();
@@ -96,6 +106,30 @@
     }
     return [...groups].filter(([k])=>CENTERS[k]);
   }
+  function drawMapLayer(){
+    if(!map)return;
+    drawnMarkers.forEach(marker=>map.removeLayer(marker));drawnMarkers=[];
+    const layer=g('publicMapLayer').value;
+    let rows=[];
+    if(layer==='companies'){
+      rows=mapGroups().map(([place,count])=>({place,count,note:'fichas de la guía pública, NO vacantes ni empresas representativas de un sector.'}));
+    }else{
+      rows=cepRows.filter(x=>x.code===layer&&CENTERS[x.province]).map(x=>({place:x.province,count:Number(x.jobs)||0,note:'puestos registrados en el dataset CEP XXI 2022 (agregación territorial). No son vacantes de 2026.'}));
+    }
+    const maximum=Math.max(...rows.map(x=>x.count),1);
+    for(const entry of rows){
+      const mark=window.L.circleMarker(CENTERS[entry.place],{
+        radius:layer==='companies'?Math.min(22,8+Math.sqrt(entry.count)*3):6+24*Math.sqrt(entry.count/maximum),
+        color:'#c9eda0',fillColor:'#799c61',fillOpacity:.6,weight:2
+      }).addTo(map);
+      const label=node('div','');
+      label.append(node('strong','',entry.place),node('p','',fmt(entry.count)+' '+entry.note));
+      mark.bindPopup(label);drawnMarkers.push(mark);
+    }
+    map.invalidateSize();
+    g('publicMapStatus').textContent=rows.length+' agrupaciones regionales. '+(layer==='companies'?'Muestra editorial CESSI + portales; no representa el mercado completo.':'Fuente CEP XXI · año 2022, datos históricos por provincia, NO empleo disponible.');
+  }
+  g('publicMapLayer').addEventListener('change',drawMapLayer);
   function initMap(){
     if(!window.L)throw Error('No se encontró Leaflet.');
     const host=g('publicMap');host.hidden=false;
@@ -103,17 +137,7 @@
     window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
       maxZoom:9,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
-    for(const [place,count] of mapGroups()){
-      const mark=window.L.circleMarker(CENTERS[place],{
-        radius:Math.min(22,8+Math.sqrt(count)*3),color:'#c9eda0',fillColor:'#799c61',
-        fillOpacity:.6,weight:2
-      }).addTo(map);
-      const label=node('div','');
-      label.append(node('strong','',place),node('p','',count+' fichas de la selección pública. Ubicación regional aproximada; no es una vacante ni sede geocodificada.'));
-      mark.bindPopup(label);
-    }
-    map.invalidateSize();
-    g('publicMapStatus').textContent=mapGroups().length+' agrupaciones regionales representadas. Fuente: CESSI y portales oficiales; no es el universo de empresas.';
+    drawMapLayer();
   }
   g('publicMapLoad').addEventListener('click',()=>{
     const button=g('publicMapLoad');
@@ -173,13 +197,14 @@
     data.sources.forEach(x=>{const a=link(x.label,x.url);if(a)sources.append(a);});
   }
   (async()=>{
-    const files=['market-context-2026.json','public-company-guides-2026.json','discovery-companies-2026.json'];
+    const files=['market-context-2026.json','public-company-guides-2026.json','discovery-companies-2026.json','cep-provincial-2022.json'];
     const results=await Promise.all(files.map(name=>fetch('/'+name,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(name);return r.json();})));
-    const [market,curated,cessi]=results;
+    const [market,curated,cessi,cep]=results;
     if(market.schema_version!==1||curated.schema_version!==1||cessi.schema_version!==1||
-      !Array.isArray(market.figures)||!Array.isArray(curated.targets)||!Array.isArray(cessi.companies))throw Error('Formato inesperado');
-    items=curated.targets;companiesCessi=cessi.companies;
+      !Array.isArray(market.figures)||!Array.isArray(curated.targets)||!Array.isArray(cessi.companies)||!Array.isArray(cep.rows)||cep.reference_year!==2022)throw Error('Formato inesperado');
+    items=curated.targets;companiesCessi=cessi.companies;cepRows=cep.rows;
     renderMarket(market);renderCompanies();
+    if(map)drawMapLayer();
     g('publicMapStatus').textContent='Mapa opcional · no se descarga hasta que lo abras.';
   })().catch(()=>{
     $('marketFigures').textContent='No se cargaron los indicadores. Consultá directamente OEDE y SIACAM.';
