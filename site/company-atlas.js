@@ -20,6 +20,7 @@
     ['SIACAM · Minería','https://www.argentina.gob.ar/economia/mineria/siacam','Proyectos, cadenas y estadísticas mineras.'],
     ['Agencia I+D+i · Adjudicaciones por provincia','https://www.argentina.gob.ar/ciencia/agencia/ueac-informes-y-publicaciones/informes-provinciales','Montos y proyectos adjudicados por provincia; no implica inversión ejecutada ni contratación.'],
     ['Fundar · Monitor de Empresas','https://empresas.fund.ar/','Empresas empleadoras según SRT; gráficos públicos por sector, provincia y tamaño.'],
+    ['OPC · Inversión pública por provincia','https://opc.gob.ar/monitores/inversion-publica-de-la-administracion-nacional/','Mapa y montos de proyectos de inversión pública (BAPIN / e-Sidif); no son presupuestos de cada empresa.'],
     ['Registro Nacional de Sociedades','https://www.argentina.gob.ar/node/143590','Datos societarios por consulta puntual; no equivale a vacante.'],
     ['Georef · Provincias oficiales','https://www.argentina.gob.ar/georef/descarga-de-la-base-completa','Nomenclador de jurisdicciones; no geocodifica empresas automáticamente.']
   ];
@@ -145,6 +146,7 @@
         const name=getField(row,head,family==='federal'?['organismo']:['empresa / entidad','empresa']);
         if(!name)continue;
         const location=getField(row,head,['provincia','ubicación','ubicacion','localidad']);
+        const municipality=getField(row,head,['municipio','localidad']);
         const country=getField(row,head,['país','pais'])||countryFrom(location);
         const province=country==='Argentina'?provinceFrom(location):'';
         const area=getField(row,head,['sector / área','hipótesis / rol','área / dependencia','area','objetivo','sector','tema']);
@@ -154,8 +156,8 @@
         const next=getField(row,head,['próxima acción','accion','acción','objetivo']);
         const priority=getField(row,head,['prioridad']);
         results.push({
-          name:name.slice(0,150),key:norm(name)+'|'+norm(country),
-          country:country.slice(0,55),province,type,
+          name:name.slice(0,150),key:norm(name)+'|'+norm(country)+(type==='Organismo'?'|'+norm(province)+'|'+norm(municipality):''),
+          country:country.slice(0,55),province,municipality:municipality.slice(0,85),type,
           sector:sectorFrom(area+' '+name),area:area.slice(0,200),
           placeText:location.slice(0,100),state:stateFrom(current),stateOriginal:current.slice(0,90),
           action:next.slice(0,230),priority:priority.slice(0,80),
@@ -323,7 +325,7 @@
     put(root,'div',record.type+' · '+record.country+(record.province?' / '+record.province:''),'micro');
     put(root,'h4',record.name);
     const grid=put(root,'div','','atlas-facts');
-    [['Sector',record.sector],['Ubicación informada',record.placeText||'No informada'],
+    [['Sector',record.sector],['Ubicación informada',[record.placeText,record.municipality].filter(Boolean).join(' · ')||'No informada'],
      ['Estado de contacto',record.stateOriginal||labels[record.state]],
      ['Prioridad registrada',record.priority||'No informada'],
      ['Tamaño / empleados','Sin dato individual verificado'],
