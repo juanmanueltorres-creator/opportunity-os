@@ -58,9 +58,11 @@ test('reads EMPRESAS_400, Unificado and federal directorio headers', () => {
 
   const federal = parsing.asRows([
     ['#','Prioridad','Nivel','Provincia','Municipio','Organismo','Área / Dependencia','Estado','Fuente URL'],
-    [1,'A','Provincial','Santa Fe','','Secretaría de Turismo Ejemplo','Turismo','YA ENVIADO','https://example.org/']
+    [1,'A','Provincial','Santa Fe','','Secretaría de Turismo Ejemplo','Turismo','YA ENVIADO','https://example.org/'],
+    [2,'A','Provincial','Córdoba','','Secretaría de Turismo Ejemplo','Turismo','SIN CONTACTAR','https://example.org/']
   ],'Directorio');
-  assert.equal(federal.length,1);
+  assert.equal(federal.length,2);
+  assert.notEqual(federal[0].key,federal[1].key,'same-name agencies from different provinces must remain separate');
   assert.equal(federal[0].type,'Organismo');
   assert.equal(federal[0].province,'Santa Fe');
   assert.equal(federal[0].state,'sent');
