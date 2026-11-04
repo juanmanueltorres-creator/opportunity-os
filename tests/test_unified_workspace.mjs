@@ -26,7 +26,7 @@ test('directory views preserve private/public/historical boundaries',()=>{
   assert.match(unified,/role','tabpanel'/);
   assert.match(unified,/aria-selected/);
   assert.match(unified,/Datos de empleo y establecimientos de 2022/);
-  assert.match(unified,/no se suman a tus contactos ni representan vacantes abiertas/);
+  assert.match(unified,/No se suman a tus contactos ni representan vacantes abiertas/);
   assert.match(unified,/atlas\.insertBefore\(wrapper,sourcePanel\)/);
   assert.doesNotMatch(unified,/fetch\(|new XMLHttpRequest|navigator\.sendBeacon/);
 });
