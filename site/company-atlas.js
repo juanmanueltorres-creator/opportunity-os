@@ -52,7 +52,8 @@
     '<label>Ordenar<select id="atlasSort"><option value="priority">Prioridad / acciones</option><option value="name">Nombre A–Z</option><option value="province">Provincia A–Z</option><option value="rating">Mi valoración privada</option></select></label>',
     '<button type="button" id="atlasReset" class="control">Limpiar filtros</button></div>',
     '<div class="atlas-geo"><div><h3>Radar por provincias</h3>',
-    '<p class="note">Cada provincia cuenta organizaciones identificadas en tus planillas, NO todas las empresas existentes. Si solo figura «Argentina», no se asigna una provincia.</p></div>',
+    '<p class="note">Organizaciones identificadas en tu Excel, NO el total provincial. Buenos Aires (provincia) y CABA van por separado.</p>',
+    '<p class="atlas-geo-insight" id="atlasUnknownHint">Importá el directorio para revisar cobertura geográfica.</p></div>',
     '<div id="atlasTerritory" class="atlas-territory" aria-label="Seleccionar una provincia de Argentina"></div></div>',
     '<div class="atlas-workspace"><div class="atlas-listpane"><div class="atlas-subhead"><h3>Directorio navegable</h3><span id="atlasVisible" class="micro"></span></div>',
     '<div id="atlasRows" class="atlas-rows"><p class="note">Importá un archivo para navegar el atlas.</p></div>',
@@ -72,7 +73,7 @@
   const CACHE = 'opportunity-os-company-atlas-v1';
   const REVIEWS = 'opportunity-os-atlas-personal-notes-v1';
   const safeLink = value => {try {const u=new URL(String(value));return u.protocol==='https:'?u.href:null;}catch{return null;}};
-  let records=[],selectedKey='',limit=30,lastImport='',isLoading=false;
+  let records=[],selectedKey='',limit=30,lastImport='',isLoading=false,showAllProvinces=false;
   let personal={};
   try {const x=JSON.parse(localStorage.getItem(REVIEWS)||'{}');if(x&&typeof x==='object'&&!Array.isArray(x))personal=x;}catch{}
 
@@ -285,7 +286,7 @@
       state=$('atlasState').value;
     return records.filter(r=>
       (!q||norm([r.name,r.area,r.sector,r.country,r.province,r.type,r.action].join(' ')).includes(q)) &&
-      (!country||r.country===country)&&(!province||r.province===province)&&
+      (!country||r.country===country)&&(!province||((province==='__UNKNOWN__')?!r.province:r.province===province))&&
       (!sector||r.sector===sector)&&(!type||r.type===type)&&(!state||r.state===state)
     );
   }
@@ -308,16 +309,48 @@
     const root=$('atlasTerritory');root.replaceChildren();
     const per=new Map(PROVINCES.map(p=>[p,0]));
     rows.forEach(r=>{if(per.has(r.province))per.set(r.province,per.get(r.province)+1);});
+    const missing=rows.filter(r=>!r.province).length;
+    const sorted=[...per.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'));
     const max=Math.max(...per.values(),1);
-    [...per.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es')).forEach(([province,count])=>{
-      const b=document.createElement('button');b.type='button';b.className='atlas-province'+($('atlasProvince').value===province?' active':'');
+    const focus=new Set(['Buenos Aires','CABA','Córdoba']);
+    const spotlight=[...sorted.filter(([name])=>focus.has(name)),...sorted.filter(([name])=>!focus.has(name)&&per.get(name)>0).slice(0,5)];
+    const visible=showAllProvinces?sorted:spotlight;
+    const hint=$('atlasUnknownHint');
+    hint.textContent=records.length?
+      missing+' organizaciones sin provincia identificada en esta selección · revisar esos registros antes de atribuirles domicilio.':
+      'Todavía no se cargaron empresas. Usá los enlaces de descubrimiento verificados más abajo.';
+    function provinceButton(name,count){
+      const b=document.createElement('button');b.type='button';
+      b.className='atlas-province'+($('atlasProvince').value===name?' active':'');
       b.style.setProperty('--province-share',Math.max(2,count/max*100).toFixed(1)+'%');
-      b.setAttribute('aria-pressed',String($('atlasProvince').value===province));
-      b.disabled=!count&&$('atlasProvince').value!==province;
-      put(b,'span',province);put(b,'strong',count);
-      b.addEventListener('click',()=>{$('atlasProvince').value=$('atlasProvince').value===province?'':province;limit=30;render();});
-      root.append(b);
-    });
+      b.setAttribute('aria-pressed',String($('atlasProvince').value===name));
+      put(b,'span',name);put(b,'strong',count);
+      b.addEventListener('click',()=>{
+        $('atlasProvince').value=$('atlasProvince').value===name?'':name;
+        limit=30;render();
+      });
+      return b;
+    }
+    visible.forEach(([name,count])=>root.append(provinceButton(name,count)));
+    if(rows.length){
+      const unknown=document.createElement('button');unknown.type='button';
+      unknown.className='atlas-province atlas-province-unknown'+($('atlasProvince').value==='__UNKNOWN__'?' active':'');
+      unknown.setAttribute('aria-pressed',String($('atlasProvince').value==='__UNKNOWN__'));
+      put(unknown,'span','Sin provincia');put(unknown,'strong',missing);
+      unknown.addEventListener('click',()=>{$('atlasProvince').value=$('atlasProvince').value==='__UNKNOWN__'?'':'__UNKNOWN__';limit=30;render();});
+      root.append(unknown);
+    }
+    if(!showAllProvinces){
+      const more=document.createElement('button');more.type='button';more.className='atlas-expand';
+      more.textContent='Ver las 24 provincias';
+      more.addEventListener('click',()=>{showAllProvinces=true;render();});
+      root.append(more);
+    } else {
+      const fewer=document.createElement('button');fewer.type='button';fewer.className='atlas-expand';
+      fewer.textContent='Ver solo las principales';
+      fewer.addEventListener('click',()=>{showAllProvinces=false;render();});
+      root.append(fewer);
+    }
   }
   function drawDetail(record){
     const root=$('atlasDetail');root.replaceChildren();
@@ -327,15 +360,15 @@
     const grid=put(root,'div','','atlas-facts');
     [['Sector',record.sector],['Ubicación informada',[record.placeText,record.municipality].filter(Boolean).join(' · ')||'No informada'],
      ['Estado de contacto',record.stateOriginal||labels[record.state]],
-     ['Prioridad registrada',record.priority||'No informada'],
-     ['Tamaño / empleados','Sin dato individual verificado'],
-     ['Fondos / inversión','Sin dato individual verificado'],
-     ['Proyectos','No relevados en esta fuente']].forEach(([key,value])=>{
+     ['Prioridad registrada',record.priority||'No informada']].forEach(([key,value])=>{
         const box=put(grid,'div','','atlas-fact');
         put(box,'small',key);put(box,'strong',value);
       });
     if(record.area)put(root,'p','Perfil / área: '+record.area,'atlas-detail-text');
     if(record.action)put(root,'p','Próxima gestión registrada: '+record.action,'atlas-detail-text');
+    const missing=put(root,'details','','atlas-missing');
+    put(missing,'summary','Datos pendientes de verificar');
+    put(missing,'p','Cantidad de empleados, fondos, proyectos y reputación pública: no comprobados para esta organización. No se infieren de estadísticas provinciales.','note');
     put(root,'p','Fuentes de la ficha: '+record.origin+' · Revisar vigencia antes de contactar.','note');
     if(record.source){
       const a=put(root,'a','Abrir fuente guardada ↗','atlas-source-link');
@@ -343,7 +376,9 @@
     }
     const tools=put(root,'div','','atlas-external');
     [
-      ['Buscar empresa en LinkedIn','https://www.linkedin.com/search/results/companies/?keywords='+encodeURIComponent(record.name)],
+      ['Buscar posibles vacantes · LinkedIn','https://www.linkedin.com/jobs/search/?keywords='+encodeURIComponent(record.name)+'&location=Argentina'],
+      ['Buscar vacantes · Indeed','https://ar.indeed.com/jobs?q='+encodeURIComponent(record.name)+'&l=Argentina'],
+      ['Ver perfil de empresa · LinkedIn','https://www.linkedin.com/search/results/companies/?keywords='+encodeURIComponent(record.name)],
       ['Consultar reseñas externas','https://www.google.com/search?q='+encodeURIComponent(record.name+' reseñas empleados opiniones')]
     ].forEach(([label,url])=>{
       const a=put(tools,'a',label+' ↗');a.href=url;a.target='_blank';a.rel='noopener noreferrer';
@@ -383,7 +418,8 @@
     $('atlasErase').hidden=!records.length;
     const countries=[...new Set(records.map(r=>r.country).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
     selectOptions('atlasCountry',countries,'Todos los países');
-    selectOptions('atlasProvince',PROVINCES,'Todas las provincias');
+    selectOptions('atlasProvince',[...PROVINCES,'__UNKNOWN__'],'Todas las provincias');
+    const noProv=$('atlasProvince').querySelector('option[value="__UNKNOWN__"]');if(noProv)noProv.textContent='Sin provincia informada';
     selectOptions('atlasSector',SECTORS,'Todos los sectores');
     $('atlasCount').textContent=String(records.length||'—');
     $('atlasKnown').textContent=String(records.filter(r=>r.province).length||0);
@@ -400,6 +436,7 @@
     drawRows(result);
     const current=records.find(r=>r.key===selectedKey);
     drawDetail(current||null);
+    window.dispatchEvent(new CustomEvent('opportunity:atlas-change'));
   }
   $('atlasUpload').addEventListener('click',()=>$('atlasFiles').click());
   $('atlasFiles').addEventListener('change',async event=>{
