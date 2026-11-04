@@ -36,6 +36,6 @@ test('Gemini uses the existing local dialog with an evidence-first prompt',()=>{
   assert.match(js,/briefText/);
   assert.match(js,/sin inventar ofertas/);
   assert.match(html,/id="openGemini"/);
-  assert.match(html,/No se comparte tu Excel ni ninguna clave de API/);
+  assert.match(html,/no se comparte tu Excel ni ninguna clave de API/i);
   assert.ok(!js.includes('generativelanguage.googleapis.com'));
 });
