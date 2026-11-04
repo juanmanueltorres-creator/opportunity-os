@@ -142,7 +142,7 @@ export default async function handler(req,res){
     'Cuando el feed no esté disponible, decilo y basate solamente en fuentes estadísticas y el directorio, sin inventar puestos.',
     'Para preguntas sobre sectores, compará las diferencias de alcance y períodos en las cifras.',
     'La lista de vacantes es una muestra de fuentes consultadas, NO un censo del mercado.',
-    'Si usás CEP XXI 2022, aclarás que sus cifras históricas por provincia no son ofertas vigentes.'
+    'Si usás CEP XXI 2022, aclarás que sus cifras históricas por provincia no son ofertas vigentes.',
     'Elegí 2 o 3 acciones concretas. No inventes sueldos, vacantes, salarios, tasas de éxito, correos o disponibilidad.',
     'Cuando uses una fuente, citá su ID [S1], [S2] según la lista fuentes del contexto. No agregues links externos no suministrados.',
     'No incluyas datos personales ni pidas subir CV. Límite orientativo: 250 palabras.'
