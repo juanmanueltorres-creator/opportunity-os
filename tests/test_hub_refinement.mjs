@@ -39,6 +39,7 @@ test('preserve original hub privacy and one canonical import',()=>{
   assert.match(hub,/Sumar directorio adicional/);
   assert.doesNotMatch(hub,/localStorage\.setItem/);
   assert.doesNotMatch(hub,/sendBeacon|sendEmail|mailto:|fetch\(/);
-  assert.match(hub,/Fuente de verdad: tu Excel/);
-  assert.match(hub,/ni se fusionan automáticamente con tus contactos/);
+  assert.match(hub,/La orientación, las vacantes y el directorio público funcionan sin Excel/);
+  assert.match(hub,/El seguimiento personal es opcional/);
+  assert.match(hub,/view!==\x27seguimiento\x27/);
 });

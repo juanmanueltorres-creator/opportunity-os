@@ -3,6 +3,9 @@
 (() => {
   'use strict';
   const nav=document.querySelector('.clarity-nav');
+  const orientation=document.querySelector('.orientation-guide');
+  const publicChat=document.querySelector('.public-chat');
+  const marketLearning=document.querySelector('.market-learning');
   const quick=document.querySelector('.quick-panel');
   const routes=document.querySelector('.clarity-routes');
   const atlas=document.querySelector('#atlas-empresas');
@@ -14,7 +17,7 @@
   const statrow=document.querySelector('.statrow');
   const territorial=document.querySelector('.territory');
   const sources=document.querySelector('.sources');
-  if(!nav||!quick||!routes||!atlas||!discovery||!tracker||!cep||!today||!vacancies) return;
+  if(!nav||!orientation||!publicChat||!marketLearning||!quick||!routes||!atlas||!discovery||!tracker||!cep||!today||!vacancies) return;
   // Show one search surface: specialty + region, not two competing large panels.
   const chips=quick.querySelector('#quickChips');
   if(chips){
@@ -26,21 +29,21 @@
   companySwitch.setAttribute('role','group');
   companySwitch.setAttribute('aria-label','Elegir qué empresas explorar');
   const companyChoices=[
-    ['private','Mi directorio · Excel'],
-    ['discovery','Descubrir empresas · fuentes públicas']
+    ['discovery','Explorar empresas · público'],
+    ['private','Mi directorio · privado']
   ];
   const companyHint=document.createElement('p');
   companyHint.className='note hub-company-hint';
-  let companyMode='discovery';
+  let companyMode='discovery',hasPrivate=false;
   try{
     const stored=JSON.parse(localStorage.getItem('opportunity-os-company-atlas-v1')||'null');
-    if(Array.isArray(stored?.records)&&stored.records.length)companyMode='private';
+    hasPrivate=Boolean(Array.isArray(stored?.records)&&stored.records.length);
   }catch{}
-  if(location.hash==='#discovery-targets')companyMode='discovery';
-  if(location.hash==='#atlas-empresas')companyMode='private';
+  if(location.hash==='#atlas-empresas'&&hasPrivate)companyMode='private';
   companyChoices.forEach(([key,label])=>{
     const button=document.createElement('button');button.type='button';
     button.dataset.companyView=key;button.className='hub-company-option';button.textContent=label;
+    if(key==='private')button.hidden=!hasPrivate;
     button.addEventListener('click',()=>{companyMode=key;switchCompanies();});
     companySwitch.append(button);
   });
@@ -60,10 +63,11 @@
       'Estas fichas tienen fuente pública, pero no confirman vacantes ni se añaden a tu seguimiento.';
   }
   const VIEWS={
+    orientacion:{label:'Orientarme',hint:'Un punto de partida público: elegí un objetivo, un área y tu modalidad. No requiere Excel.',sections:[orientation,publicChat]},
     buscar:{label:'Buscar trabajo',hint:'Vacantes verificables y búsquedas directas, priorizando oportunidades en español.',sections:[quick,routes,statrow,today,vacancies]},
-    empresas:{label:'Empresas',hint:'Organizaciones y organismos de tu directorio, más objetivos públicos para investigar.',sections:[companySwitch,atlas,discovery]},
+    empresas:{label:'Empresas',hint:'Empresas nacionales e internacionales con fuentes públicas; podés explorar sin Excel.',sections:[companySwitch,atlas,discovery]},
     seguimiento:{label:'Seguimiento',hint:'Tus postulaciones y contactos, sin duplicar ni publicar el Excel.',sections:[tracker]},
-    datos:{label:'Datos y fuentes',hint:'Indicadores territoriales oficiales y trazabilidad de las fuentes. No son vacantes.',sections:[cep,territorial,sources]}
+    datos:{label:'Datos y fuentes',hint:'Aprendé cómo interpretar el tamaño de los sectores, el empleo y las fuentes sin confundirlos con vacantes.',sections:[marketLearning,cep,territorial,sources]}
   };
   // CEP is rendered by its own module inside atlas. Move the element,
   // retaining all existing event listeners and its pointers to atlas filters.
@@ -100,6 +104,7 @@
       for(const section of config.sections)if(section)section.hidden=id!==view;
     }
     if(view==='empresas')switchCompanies();
+    top.querySelector('.hub-action').hidden=view!=='seguimiento';
     hint.textContent=VIEWS[view].hint+(view==='seguimiento'?' '+statusMessage():'');
     tabs.querySelectorAll('[data-view]').forEach(button=>{
       const selected=button.dataset.view===view;
@@ -113,7 +118,7 @@
     if(scroll)top.scrollIntoView({behavior:'auto',block:'start'});
     document.dispatchEvent(new CustomEvent('opportunity:workspace-view',{detail:{view}}));
   }
-  const icons={buscar:'01',empresas:'02',seguimiento:'03',datos:'04'};
+  const icons={orientacion:'01',buscar:'02',empresas:'03',seguimiento:'04',datos:'05'};
   for(const [id,{label}] of Object.entries(VIEWS)){
     const button=document.createElement('button');
     button.type='button';button.role='tab';button.dataset.view=id;
@@ -186,6 +191,49 @@
     }
     vacancies.scrollIntoView({behavior:'smooth',block:'start'});
   });
+  // The public orientation selects a destination; existing components own their
+  // filtering and data. No parallel search engine or private data handling.
+  document.addEventListener('opportunity:workspace-go',event=>{
+    const detail=event.detail||{};
+    if(detail.view==='buscar'){
+      choose('buscar');
+      // Fresh orientation starts with a clean view, not stale previous filters.
+      document.getElementById('clear')?.click();
+      const q=document.getElementById('q'),track=document.getElementById('track'),
+        mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage'),
+        sourceCheck=document.getElementById('sourceCheck');
+      // A full category must not be accidentally narrowed by one keyword.
+      if(q)q.value=detail.track?'':String(detail.query||'');
+      if(track)track.value=String(detail.track||'');
+      if(mode)mode.value=detail.mode==='REMOTE'?'REMOTE':'';
+      if(listing)listing.value='';
+      if(sourceCheck)sourceCheck.value='';
+      for(const input of [q,track,mode,listing,sourceCheck].filter(Boolean)){
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+      }
+      const quickQuery=quick.querySelector('#quickQuery');
+      if(quickQuery){
+        quickQuery.value=String(detail.query||'empleo');
+        quickQuery.dispatchEvent(new Event('input',{bubbles:true}));
+      }
+      vacancies.scrollIntoView({behavior:'auto',block:'start'});
+      return;
+    }
+    if(detail.view==='empresas'){
+      companyMode='discovery';
+      choose('empresas');
+      const region=document.getElementById('publicCompanyRegion');
+      if(region&&['arg','latam','global'].includes(detail.scope)){
+        region.value=detail.scope;
+        region.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      if(detail.goal==='freelance'){
+        document.querySelector('#remote-targets [data-target-tab="services"]')?.click();
+        document.getElementById('remote-targets')?.scrollIntoView({behavior:'auto',block:'start'});
+      }else discovery.scrollIntoView({behavior:'auto',block:'start'});
+    }
+  });
+
   // The main import button already shares the same Excel with the atlas; keep extra
   // multi-file atlas import available for specialized regional directories.
   atlas.querySelector('#atlasUpload').textContent='Sumar directorio adicional';
@@ -195,6 +243,8 @@
   window.addEventListener('opportunity:atlas-change',()=>{
     const count=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
     if(count>0&&!hadPrivate){
+      hasPrivate=true;
+      companySwitch.querySelector('[data-company-view="private"]')?.removeAttribute('hidden');
       companyMode='private';
       if(current==='empresas')switchCompanies();
     }
@@ -216,7 +266,7 @@
     };
     return VIEWS[raw]?raw:anchors[raw]||null;
   }
-  const initial=routeHash()||'buscar';
+  const initial=routeHash()||'orientacion';
   choose(initial,{scroll:false,replace:false});
   window.addEventListener('popstate',()=>{
     const requested=routeHash();
@@ -230,6 +280,6 @@
   // remains available through stable view hash even if the layout is rearranged.
   const sheetNote=document.createElement('p');
   sheetNote.className='hub-context-note';
-  sheetNote.textContent='Fuente de verdad: tu Excel. Las empresas públicas para investigar y los indicadores CEP XXI no cuentan como postulaciones ni se fusionan automáticamente con tus contactos.';
+  sheetNote.textContent='La orientación, las vacantes y el directorio público funcionan sin Excel. El seguimiento personal es opcional y queda en tu navegador. Domicilio, vacante y modalidad no son lo mismo.';
   top.insertAdjacentElement('afterend',sheetNote);
 })();

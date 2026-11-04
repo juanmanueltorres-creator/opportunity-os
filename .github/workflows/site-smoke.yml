@@ -44,6 +44,13 @@ jobs:
         run: |
           node --check site/workspace-hub.js
           node --test tests/test_hub_refinement.mjs
+      - name: Validate public market, map, embedded chat and server RAG privacy
+        run: |
+          node --check site/orientation-guide.js
+          node --check site/public-chat.js
+          node --check site/market-explorer.js
+          node --check site/api/chat.js
+          node --test tests/test_public_orientation.mjs tests/test_public_market_chat.mjs
       - name: Validate remote employer targets and freelance service proof gates
         run: |
           node --check site/remote-targets.js

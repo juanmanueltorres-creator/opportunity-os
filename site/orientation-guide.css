@@ -1,0 +1,34 @@
+/* Public orientation: a focused first step, independent of the private workbook. */
+.orientation-guide{margin:0 0 22px;padding:26px 27px 19px;border:1px solid #56755a;border-radius:10px;background:radial-gradient(circle at 92% 6%,rgba(124,173,119,.12),transparent 36%),#0e1918;box-shadow:0 10px 40px rgba(0,0,0,.12)}
+.orientation-intro{display:flex;gap:24px;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.orientation-intro h2{font-size:clamp(27px,3.3vw,43px);font-weight:710;letter-spacing:-.06em;line-height:1.09;margin:9px 0 11px}
+.orientation-intro .note{font-size:12px;color:#bdd1c6;max-width:650px;margin:0;line-height:1.7}
+.orientation-public{font:10px/1.3 ui-monospace,Consolas,monospace;letter-spacing:.08em;border:1px solid #54755d;color:#d0eba7;padding:9px 10px;border-radius:4px;white-space:nowrap}
+.orientation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.86fr);gap:24px}
+.orientation-choices{display:grid;gap:18px;padding-right:22px;border-right:1px solid #354b40}
+.orientation-choices fieldset{border:0;padding:0;margin:0;min-width:0}
+.orientation-choices legend{font-size:13px;font-weight:650;color:#ecf5ee;margin-bottom:11px;width:100%}
+.orientation-step{display:inline-flex;font:10px ui-monospace,Consolas,monospace;color:#c6eb8e;margin-right:12px}
+.orientation-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.orientation-choices .orientation-modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+.orientation-choice{background:#192724;color:#d1e0d8;border:1px solid #40584c;border-radius:6px;min-height:55px;padding:10px 9px;text-align:left;font-size:12px;font-weight:570;line-height:1.35}
+.orientation-choice:hover{border-color:#a8cc98;background:#22372b}
+.orientation-choice.active{background:#cbea98;color:#142019;border-color:#cbea98;font-weight:750}
+.orientation-select-label{font-size:11px;color:#a8bdb3;display:block;margin-bottom:7px}
+.orientation-choices select{background:#131f1d;color:#ebf2eb;border:1px solid #56715f;border-radius:6px;width:100%;height:45px;padding:0 12px;font-size:13px}
+.orientation-result{min-width:0;display:flex;flex-direction:column;align-items:flex-start;padding:21px 22px 18px;border:1px solid #3e604b;background:linear-gradient(142deg,#1c3227,#10201a);border-radius:9px}
+.orientation-result h3{font-size:clamp(20px,2.5vw,30px);line-height:1.2;letter-spacing:-.045em;margin:17px 0 12px}
+.orientation-result>p{color:#c0d5c6;font-size:12px;line-height:1.65;margin:0 0 12px}
+.orientation-constraint{border-left:3px solid #b4d88a;padding:5px 0 5px 11px;color:#d1dfce!important}
+.orientation-main-action{min-height:44px;margin-top:8px;font-size:13px!important;padding:12px 17px!important}
+.orientation-links{display:flex;gap:15px;flex-wrap:wrap;align-items:center;margin-top:17px}
+.orientation-links>a,.orientation-text-button{color:#c4eea9;font-size:11px;background:none;border:0;padding:3px 0;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.orientation-links>a:hover,.orientation-text-button:hover{color:white}
+.orientation-result .orientation-foot{color:#93aa9b;font-size:10px;line-height:1.65;margin:18px 0 0}
+.orientation-bottom{display:flex;flex-wrap:wrap;gap:9px 19px;align-items:center;border-top:1px solid #31493b;margin-top:21px;padding-top:13px}
+.orientation-bottom>span{font-size:10px;color:#a7baad}
+.orientation-bottom #orientationStatus{color:#c7eda7;overflow-wrap:anywhere}
+.orientation-guide[hidden]{display:none!important}
+@media(max-width:850px){.orientation-grid{grid-template-columns:1fr;gap:16px}.orientation-choices{padding:0 0 19px;border-right:0;border-bottom:1px solid #354b40}.orientation-result{padding:18px}.orientation-intro{flex-wrap:wrap;gap:11px}}
+@media(max-width:560px){.orientation-guide{padding:18px 14px}.orientation-intro h2{font-size:30px}.orientation-options{grid-template-columns:1fr}.orientation-choices .orientation-modes{grid-template-columns:repeat(2,minmax(0,1fr))}.orientation-choice{min-height:43px}.orientation-result h3{font-size:23px}.orientation-public{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.orientation-guide *{scroll-behavior:auto}}

@@ -6,8 +6,9 @@
 .hub-action{display:flex;flex-direction:column;gap:7px;min-width:175px;max-width:245px;align-items:flex-end}
 .hub-action button{white-space:nowrap}
 .hub-action span{font-size:10px;color:#a9bcb0;text-align:right;line-height:1.4}
-.hub-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:stretch;margin-top:18px}
+.hub-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:stretch;margin-top:18px}
 .hub-tab{background:#182622;color:#c1d3cc;border:1px solid #334c41;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 14px;min-height:51px}
+.hub-action[hidden]{display:none!important}
 .hub-tab:hover{border-color:#86aa8a;background:#1a3025}
 .hub-tab.active{border-color:#c6ec8c;background:#c6ec8c;color:#142215}
 .hub-tab-num{font:10px/1.4 ui-monospace,Consolas,monospace;opacity:.72}
@@ -16,7 +17,7 @@
 .hub-context-note{color:#9db0a8;font-size:10px;margin:0 0 18px;padding:0 4px;line-height:1.5}
 .workspace-hub~[hidden],.wrap>[hidden],.company-atlas[hidden],.tracker-panel[hidden],.cep-context[hidden],.quick-panel[hidden],.clarity-routes[hidden],.clarity-nav[hidden],.statrow[hidden],.today[hidden],.layout[hidden],.territory[hidden],.sources[hidden],.discovery-targets[hidden]{display:none!important}
 html{scroll-behavior:smooth}
-@media(max-width:760px){.workspace-hub{padding:14px 13px 0}.hub-heading{flex-direction:column;gap:12px}.hub-action{max-width:none;width:100%;align-items:flex-start}.hub-action span{text-align:left}.hub-tabs{gap:3px;margin-top:14px}.hub-tab{padding:9px 6px;gap:3px;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;min-height:57px}.hub-tab strong{font-size:10px}.hub-tab-num{font-size:9px}}
+@media(max-width:760px){.workspace-hub{padding:14px 13px 0}.hub-heading{flex-direction:column;gap:12px}.hub-action{max-width:none;width:100%;align-items:flex-start}.hub-action span{text-align:left}.hub-tabs{gap:3px;margin-top:14px;grid-template-columns:repeat(3,minmax(0,1fr))}.hub-tab{padding:9px 6px;gap:3px;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;min-height:57px}.hub-tab strong{font-size:10px}.hub-tab-num{font-size:9px}}
 
 
 /* Avoid nested card inflation: one search panel and a compact company switch. */

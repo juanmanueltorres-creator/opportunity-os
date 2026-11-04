@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-04",
+  "country": "Argentina",
+  "scope_note": "Las cifras provienen de fuentes y períodos distintos. No se suman, no calculan vacantes ni probabilidades personales y no permiten inferir sueldos individuales.",
+  "figures": [
+    {
+      "id": "registered_employers",
+      "value": 480067,
+      "unit": "empleadores con personal registrado",
+      "period": "2026-07",
+      "scope": "Total argentino · SRT",
+      "label": "Empleadores registrados",
+      "source_name": "Fundar / SRT",
+      "source_url": "https://empresas.fund.ar/",
+      "caution": "No equivale a empresas contratando ahora ni incluye todas las unidades sin empleados."
+    },
+    {
+      "id": "commerce_services",
+      "value": 4203016,
+      "unit": "asalariados registrados promedio",
+      "period": "2025",
+      "scope": "Comercio y Servicios (conjunto amplio)",
+      "label": "Empleo en comercio y servicios",
+      "source_name": "CAC / Secretaría de Trabajo",
+      "source_url": "https://www.cac.com.ar/noticias/el-empleo-en-comercio-y-servicios-se-mantuvo-estable-durante-2025",
+      "caution": "Agregado amplio del comercio y múltiples servicios. No es solo el comercio minorista."
+    },
+    {
+      "id": "direct_mining",
+      "value": 39698,
+      "unit": "empleos formales directos",
+      "period": "2026-01",
+      "scope": "Minería directa SIACAM",
+      "label": "Empleo minero directo",
+      "source_name": "SIACAM / Secretaría de Minería",
+      "source_url": "https://www.argentina.gob.ar/economia/mineria/siacam/en",
+      "caution": "Excluye una parte del empleo indirecto en proveedores, tecnología, transporte, consultoría y servicios."
+    },
+    {
+      "id": "private_employment",
+      "value": 6080000,
+      "unit": "asalariados privados aprox.",
+      "period": "2026-07",
+      "scope": "SIPA · asalariados privados",
+      "label": "Empleo registrado privado",
+      "source_name": "Secretaría de Trabajo / SIPA",
+      "source_url": "https://www.argentina.gob.ar/trabajo/estadisticas",
+      "caution": "Dato redondeado del sitio oficial. No se puede comparar directamente con puestos publicados en la web."
+    }
+  ],
+  "comparison": [
+    {
+      "id": "commerce",
+      "label": "Comercio y operaciones",
+      "level": "Mercado amplio",
+      "possibilities": "Atención, ventas, gestión, compras, stock, soporte, e-commerce y proveedores.",
+      "tradeoff": "Más establecimientos potenciales; no significa más puestos remotos ni mejores condiciones.",
+      "route": "Priorizar tecnología para comercios y operaciones si buscás remoto.",
+      "search_terms": [
+        "customer success",
+        "operaciones",
+        "soporte de aplicaciones",
+        "e-commerce",
+        "gestión gastronómica"
+      ]
+    },
+    {
+      "id": "mining",
+      "label": "Minería y geociencias",
+      "level": "Sector directo más acotado",
+      "possibilities": "Operadoras, contratistas, SIG, ingeniería, servicios ambientales, datos y proveedores.",
+      "tradeoff": "Menos empleo directo, mayor especialización y movilidad o presencialidad en muchos puestos; no descartar la cadena de valor.",
+      "route": "Para remoto: geoespacial, datos, soporte GIS y proveedores tecnológicos.",
+      "search_terms": [
+        "GIS",
+        "geoespacial",
+        "remote sensing",
+        "datos ambientales",
+        "proveedores mineros"
+      ]
+    },
+    {
+      "id": "software",
+      "label": "Tecnología y servicios digitales",
+      "level": "Transversal",
+      "possibilities": "Python, automatización, soporte, datos, QA, diseño y producto en muchos sectores.",
+      "tradeoff": "Publicar muchas vacantes no prueba que acepten junior, B1 o residentes argentinos.",
+      "route": "Buscar puestos con habilidades transferibles, no competir solo por Senior Backend.",
+      "search_terms": [
+        "soporte técnico",
+        "analista funcional",
+        "data quality",
+        "Python junior",
+        "operations analyst"
+      ]
+    },
+    {
+      "id": "freelance",
+      "label": "Servicios a negocios",
+      "level": "Vía comercial propia",
+      "possibilities": "Web, automatización, catálogo, formularios, fotografías y mapas.",
+      "tradeoff": "Más negocios no implica clientes dispuestos a pagar; exige validar problema y presupuesto.",
+      "route": "Ofrecer entregas pequeñas a negocios concretos, con demostración.",
+      "search_terms": [
+        "sitio web",
+        "carta digital",
+        "automatización",
+        "landing",
+        "mapa de cobertura"
+      ]
+    }
+  ],
+  "questions": [
+    "¿Estoy contando empresas, trabajadores, avisos o puestos para los que cumplo requisitos?",
+    "¿El puesto es 100 % remoto y contrata legalmente desde mi país?",
+    "¿Qué barrera de ingreso tengo: idioma, experiencia, título, ubicación?",
+    "¿La publicación está vigente y en el sitio oficial del empleador?",
+    "¿Cuál es mi ventaja comparativa en ese sector, más allá del tamaño?"
+  ],
+  "sources": [
+    {
+      "label": "OEDE · empleo y demografía empresaria por sector",
+      "url": "https://www.argentina.gob.ar/trabajo/estadisticas/observatorio-de-empleo-y-dinamica-empresarial-oede-0"
+    },
+    {
+      "label": "Fundar · Monitor mensual de empresas (SRT)",
+      "url": "https://empresas.fund.ar/"
+    },
+    {
+      "label": "SIACAM · cifras de minería formal directa",
+      "url": "https://www.argentina.gob.ar/economia/mineria/siacam/en"
+    },
+    {
+      "label": "CAC · empleo en Comercio y Servicios 2025",
+      "url": "https://www.cac.com.ar/noticias/el-empleo-en-comercio-y-servicios-se-mantuvo-estable-durante-2025"
+    },
+    {
+      "label": "Secretaría de Trabajo · estadísticas laborales SIPA",
+      "url": "https://www.argentina.gob.ar/trabajo/estadisticas"
+    }
+  ]
+}
