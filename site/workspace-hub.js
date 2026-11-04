@@ -222,6 +222,11 @@
     if(detail.view==='empresas'){
       companyMode='discovery';
       choose('empresas');
+      const region=document.getElementById('publicCompanyRegion');
+      if(region&&['arg','latam','global'].includes(detail.scope)){
+        region.value=detail.scope;
+        region.dispatchEvent(new Event('change',{bubbles:true}));
+      }
       if(detail.goal==='freelance'){
         document.querySelector('#remote-targets [data-target-tab="services"]')?.click();
         document.getElementById('remote-targets')?.scrollIntoView({behavior:'auto',block:'start'});
