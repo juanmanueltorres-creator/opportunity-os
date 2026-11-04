@@ -29,21 +29,21 @@
   companySwitch.setAttribute('role','group');
   companySwitch.setAttribute('aria-label','Elegir qué empresas explorar');
   const companyChoices=[
-    ['private','Mi directorio · Excel'],
-    ['discovery','Descubrir empresas · fuentes públicas']
+    ['discovery','Explorar empresas · público'],
+    ['private','Mi directorio · privado']
   ];
   const companyHint=document.createElement('p');
   companyHint.className='note hub-company-hint';
-  let companyMode='discovery';
+  let companyMode='discovery',hasPrivate=false;
   try{
     const stored=JSON.parse(localStorage.getItem('opportunity-os-company-atlas-v1')||'null');
-    if(Array.isArray(stored?.records)&&stored.records.length)companyMode='private';
+    hasPrivate=Boolean(Array.isArray(stored?.records)&&stored.records.length);
   }catch{}
-  if(location.hash==='#discovery-targets')companyMode='discovery';
-  if(location.hash==='#atlas-empresas')companyMode='private';
+  if(location.hash==='#atlas-empresas'&&hasPrivate)companyMode='private';
   companyChoices.forEach(([key,label])=>{
     const button=document.createElement('button');button.type='button';
     button.dataset.companyView=key;button.className='hub-company-option';button.textContent=label;
+    if(key==='private')button.hidden=!hasPrivate;
     button.addEventListener('click',()=>{companyMode=key;switchCompanies();});
     companySwitch.append(button);
   });
@@ -238,6 +238,8 @@
   window.addEventListener('opportunity:atlas-change',()=>{
     const count=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
     if(count>0&&!hadPrivate){
+      hasPrivate=true;
+      companySwitch.querySelector('[data-company-view="private"]')?.removeAttribute('hidden');
       companyMode='private';
       if(current==='empresas')switchCompanies();
     }
