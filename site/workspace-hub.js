@@ -195,13 +195,24 @@
     const detail=event.detail||{};
     if(detail.view==='buscar'){
       choose('buscar');
+      // Fresh orientation starts with a clean view, not stale previous filters.
+      document.getElementById('clear')?.click();
       const q=document.getElementById('q'),track=document.getElementById('track'),
-        mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage');
+        mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage'),
+        sourceCheck=document.getElementById('sourceCheck');
       if(q)q.value=String(detail.query||'');
       if(track)track.value=String(detail.track||'');
       if(mode)mode.value=detail.mode==='REMOTE'?'REMOTE':'';
       if(listing)listing.value='';
-      for(const input of [q,track,mode,listing].filter(Boolean))input.dispatchEvent(new Event('input',{bubbles:true}));
+      if(sourceCheck)sourceCheck.value='';
+      for(const input of [q,track,mode,listing,sourceCheck].filter(Boolean)){
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+      }
+      const quickQuery=quick.querySelector('#quickQuery');
+      if(quickQuery){
+        quickQuery.value=String(detail.query||'empleo');
+        quickQuery.dispatchEvent(new Event('input',{bubbles:true}));
+      }
       vacancies.scrollIntoView({behavior:'auto',block:'start'});
       return;
     }
