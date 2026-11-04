@@ -58,12 +58,13 @@ function sourceList(references){
   return references.filter(x=>x.url&&!seen.has(x.url)&&seen.add(x.url)).slice(0,14).map((x,i)=>({id:'S'+(i+1),label:bounded(x.label,130),url:x.url}));
 }
 async function retrieve(query){
-  const [feed,market,curated,cessi,remote]=await Promise.all([
+  const [feed,market,curated,cessi,remote,cep]=await Promise.all([
     remoteJson(FEED).catch(()=>null),
     dataset('market-context-2026.json'),
     dataset('public-company-guides-2026.json'),
     dataset('discovery-companies-2026.json'),
-    dataset('remote-targets-2026.json')
+    dataset('remote-targets-2026.json'),
+    dataset('cep-provincial-2022.json')
   ]);
   const tokens=words(query);
   const allJobs=Array.isArray(feed?.atlas)?feed.atlas.slice(0,6500).filter(x=>x&&typeof x==='object'&&url(x.source_url)):null;
@@ -74,11 +75,25 @@ async function retrieve(query){
     .sort((a,b)=>b.p-a.p).slice(0,8).map(x=>jobView(x.j));
   const companies=featured.map(c=>({c,p:matchScore(c,tokens)}))
     .sort((a,b)=>b.p-a.p).slice(0,8).map(x=>safeCompany(x.c));
+  const remoteOptions=(Array.isArray(remote?.targets)?remote.targets:[])
+    .map(x=>({empresa:bounded(x.name,85),foco:bounded(x.pitch,180),remoto:bounded(x.remote,130),idioma:bounded(x.english,140),limites:bounded(x.difficulty,160),url:url(x.rolesUrl)}));
+  const queryProvinces=[...new Set(Array.isArray(cep?.rows)?cep.rows.map(x=>x.province):[])]
+    .filter(x=>x&&norm(query).includes(norm(x)));
+  const codes=new Set();
+  if(/miner|geolog/.test(norm(query)))codes.add('B');
+  if(/comerc|vent|retail/.test(norm(query)))codes.add('G');
+  if(/software|tecnolog|python|datos|informatic/.test(norm(query)))codes.add('J');
+  if(/gastronom|hotel|restauran/.test(norm(query)))codes.add('I');
+  const provincialRows=Array.isArray(cep?.rows)?cep.rows.filter(x=>
+    (queryProvinces.length===0||queryProvinces.includes(x.province))&&
+    (codes.size===0||codes.has(x.code))
+  ).slice(0,12).map(x=>({provincia:x.province,letra_clae:x.code,puestos_2022:x.jobs,establecimientos_2022:x.establishments})):[];
   const figures=Array.isArray(market?.figures)?market.figures:[];
   const sourceRows=[
     ...figures.map(f=>({label:f.source_name+' · '+f.label,url:url(f.source_url)})),
-    ...jobs.map(j=>({label:j.empresa+' · '+j.puesto,url:j.url})),
-    ...companies.map(c=>({label:c.empresa+' · ficha o portal',url:c.url}))
+    ...(provincialRows.length?[{label:'CEP XXI · establecimientos y empleos territoriales 2022',url:url(cep?.catalog_url)}]:[]),
+    ...companies.slice(0,5).map(c=>({label:c.empresa+' · ficha o portal',url:c.url})),
+    ...jobs.slice(0,4).map(j=>({label:j.empresa+' · '+j.puesto,url:j.url}))
   ];
   const sources=sourceList(sourceRows);
   const totals=allJobs?{
@@ -87,7 +102,10 @@ async function retrieve(query){
     remoto_y_argentina_confirmada:allJobs.filter(j=>j.remote_mode==='REMOTE'&&j.argentina_eligible==='YES').length,
     por_area_de_clasificacion:Object.fromEntries([...new Set(allJobs.map(j=>String(j.track||'UNKNOWN')))].map(k=>[k,allJobs.filter(j=>(j.track||'UNKNOWN')===k).length]))
   }:null;
-  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],jobs,companies,sources};
+  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],
+    provincial_historico_2022:provincialRows,
+    cep_2022_scope:provincialRows.length?'Son puestos registrados y establecimientos productivos históricos por provincia y actividad: NO son vacantes ni empresas únicas.':null,
+    remote_company_paths:remoteOptions,jobs,companies,sources};
 }
 function respond(res,status,payload){
   res.statusCode=status;
@@ -124,6 +142,7 @@ export default async function handler(req,res){
     'Cuando el feed no esté disponible, decilo y basate solamente en fuentes estadísticas y el directorio, sin inventar puestos.',
     'Para preguntas sobre sectores, compará las diferencias de alcance y períodos en las cifras.',
     'La lista de vacantes es una muestra de fuentes consultadas, NO un censo del mercado.',
+    'Si usás CEP XXI 2022, aclarás que sus cifras históricas por provincia no son ofertas vigentes.'
     'Elegí 2 o 3 acciones concretas. No inventes sueldos, vacantes, salarios, tasas de éxito, correos o disponibilidad.',
     'Cuando uses una fuente, citá su ID [S1], [S2] según la lista fuentes del contexto. No agregues links externos no suministrados.',
     'No incluyas datos personales ni pidas subir CV. Límite orientativo: 250 palabras.'
