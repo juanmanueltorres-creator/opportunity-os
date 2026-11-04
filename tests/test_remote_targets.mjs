@@ -6,6 +6,8 @@ const src=n=>readFileSync(new URL(n,root),'utf8');
 const data=JSON.parse(src('remote-targets-2026.json'));
 const js=src('remote-targets.js');
 const html=src('index.html');
+const quick=src('enhancements.js');
+const routing=src('clarity.js');
 test('Five targets have public recruitment evidence and no invented salary/headcount',()=>{
   assert.equal(data.schema_version,1);
   assert.equal(data.reviewed_on,'2026-11-04');
@@ -31,6 +33,9 @@ test('Remote is default; main source feed and private tracker are unchanged',()=
   assert.match(js,/mode\.value='REMOTE'/);
   assert.match(js,/mode\.dispatchEvent\(new Event\('input'/);
   assert.match(js,/clear\.addEventListener\('click'/);
+  assert.match(routing,/active=paths\.findIndex\(path=>path\.value==='REMOTE'\)/);
+  assert.match(quick,/location=Argentina&f_WT=2/);
+  assert.match(quick,/trabajo-de-trabajo-remoto-en-remoto/);
   assert.doesNotMatch(js,/localStorage|sessionStorage|sendBeacon|fetch\(.*method|POST|API_KEY/);
   assert.ok(html.indexOf('src="/workspace-hub.js"') < html.indexOf('src="/remote-targets.js"'));
 });
