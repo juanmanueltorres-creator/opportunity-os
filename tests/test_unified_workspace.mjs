@@ -20,9 +20,10 @@ test('unified experience loads last and reuses existing components',()=>{
     assert.ok(unified.includes(part));
 });
 test('directory views preserve private/public/historical boundaries',()=>{
-  assert.match(unified,/unified-view-private/);
-  assert.match(unified,/unified-view-discovery/);
-  assert.match(unified,/unified-view-context/);
+  assert.match(unified, /'unified-view-'\+key/);
+  assert.match(unified, /\['private','Mi directorio'/);
+  assert.match(unified, /\['discovery','Descubrir empresas'/);
+  assert.match(unified, /\['context','Estadísticas provinciales'/);
   assert.match(unified,/role','tabpanel'/);
   assert.match(unified,/aria-selected/);
   assert.match(unified,/Datos de empleo y establecimientos de 2022/);
