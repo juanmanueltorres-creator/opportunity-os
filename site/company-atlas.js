@@ -286,7 +286,7 @@
       state=$('atlasState').value;
     return records.filter(r=>
       (!q||norm([r.name,r.area,r.sector,r.country,r.province,r.type,r.action].join(' ')).includes(q)) &&
-      (!country||r.country===country)&&(!province||((province==='__UNKNOWN__')?!r.province:r.province===province))&&
+      (!country||r.country===country)&&(!province||((province==='__UNKNOWN__')?(r.country==='Argentina'&&!r.province):r.province===province))&&
       (!sector||r.sector===sector)&&(!type||r.type===type)&&(!state||r.state===state)
     );
   }
@@ -309,7 +309,7 @@
     const root=$('atlasTerritory');root.replaceChildren();
     const per=new Map(PROVINCES.map(p=>[p,0]));
     rows.forEach(r=>{if(per.has(r.province))per.set(r.province,per.get(r.province)+1);});
-    const missing=rows.filter(r=>!r.province).length;
+    const missing=rows.filter(r=>r.country==='Argentina'&&!r.province).length;
     const sorted=[...per.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'));
     const max=Math.max(...per.values(),1);
     const focus=new Set(['Buenos Aires','CABA','Córdoba']);
@@ -317,7 +317,7 @@
     const visible=showAllProvinces?sorted:spotlight;
     const hint=$('atlasUnknownHint');
     hint.textContent=records.length?
-      missing+' organizaciones sin provincia identificada en esta selección · revisar esos registros antes de atribuirles domicilio.':
+      missing+' organizaciones argentinas sin provincia identificada · no se les puede atribuir Buenos Aires, CABA ni Córdoba sin evidencia.':
       'Todavía no se cargaron empresas. Usá los enlaces de descubrimiento verificados más abajo.';
     function provinceButton(name,count){
       const b=document.createElement('button');b.type='button';
@@ -336,7 +336,7 @@
       const unknown=document.createElement('button');unknown.type='button';
       unknown.className='atlas-province atlas-province-unknown'+($('atlasProvince').value==='__UNKNOWN__'?' active':'');
       unknown.setAttribute('aria-pressed',String($('atlasProvince').value==='__UNKNOWN__'));
-      put(unknown,'span','Sin provincia');put(unknown,'strong',missing);
+      put(unknown,'span','Argentina · sin provincia');put(unknown,'strong',missing);
       unknown.addEventListener('click',()=>{$('atlasProvince').value=$('atlasProvince').value==='__UNKNOWN__'?'':'__UNKNOWN__';limit=30;render();});
       root.append(unknown);
     }
