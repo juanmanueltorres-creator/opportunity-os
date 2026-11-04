@@ -1,0 +1,53 @@
+/* Educational market comparison and public company geography, no private records. */
+.market-learning{padding:25px 25px 22px;margin:0 0 23px;background:#10201c;border:1px solid #446d52;border-radius:10px}
+.market-heading h2{font-size:clamp(25px,3vw,38px);letter-spacing:-.055em;margin:8px 0 12px}
+.market-heading .note{max-width:850px;font-size:12px}
+.market-figures{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:22px 0 14px}
+.market-figure{display:flex;flex-direction:column;gap:7px;min-width:0;padding:17px;border:1px solid #395847;border-radius:7px;background:#0d1814}
+.market-figure strong{font-size:clamp(21px,2.2vw,31px);letter-spacing:-.05em;line-height:1.1;font-weight:750;color:#d4f0b2}
+.market-figure p{font-size:11px;margin:0;color:#d0e0d2}
+.market-figure small{font-size:10px;color:#9db2a6;line-height:1.5}
+.market-figure a{font-size:10px;color:#c5e8a5;margin-top:auto}
+.market-warning{background:#253124;color:#d6e1c2;border-left:3px solid #9ac88b;padding:12px 14px;font-size:11px;line-height:1.6;margin:0 0 23px}
+.market-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.market-path{background:#14231f;border:1px solid #3b584c;border-radius:8px;padding:19px}
+.market-path h3{font-size:18px;letter-spacing:-.035em;margin:8px 0}
+.market-path p{font-size:11px;color:#d5e2d7;line-height:1.7;margin:0 0 10px}
+.market-path .market-tradeoff{color:#b9cabc}
+.market-path .market-route{display:block;font-size:11px;line-height:1.65;color:#c6ec9f;padding-left:9px;border-left:2px solid #b6d88a;margin:12px 0}
+.market-path button{margin-top:4px}
+.market-questions{border-top:1px solid #405546;margin-top:22px;padding-top:15px}
+.market-questions h3{font-size:14px;margin:0 0 10px}
+.market-questions>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 19px}
+.market-questions p{font-size:11px;line-height:1.6;color:#b9caba;margin:0}
+.market-sources{margin-top:20px;border-top:1px solid #3c5747;padding-top:12px;font-size:12px;color:#c9d8c9}
+.market-sources summary{cursor:pointer}
+.market-sources>div{display:flex;gap:8px 20px;flex-wrap:wrap;margin-top:11px}
+.market-sources a{font-size:11px;color:#cbeea8}
+.public-company-guide{padding:18px 18px 20px;border:1px solid #3f614d;background:#10201a;border-radius:9px;margin:0 0 18px}
+.public-company-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.public-company-heading h3{font-size:clamp(20px,2.4vw,29px);letter-spacing:-.045em;margin:7px 0 8px}
+.public-company-heading .note{font-size:11px;max-width:720px}
+.public-company-count{font:10px/1.5 ui-monospace,Consolas,monospace;color:#b8daa0;padding:8px;border:1px solid #506b55;border-radius:5px;white-space:nowrap}
+.public-company-controls{display:flex;flex-wrap:wrap;gap:10px;margin:17px 0}
+.public-company-controls label{font-size:11px;color:#a9bdad;flex:1 1 190px}
+.public-company-controls input,.public-company-controls select{margin-top:6px;width:100%;min-height:41px;background:#0b1612;border:1px solid #425e49;color:#eef3e9;border-radius:5px;padding:8px 10px}
+.public-company-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.public-company-row{background:#0d1814;border:1px solid #355140;padding:15px;border-radius:7px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.public-company-meta h4{font-size:16px;margin:7px 0;letter-spacing:-.02em}
+.public-company-meta p,.public-company-caution{font-size:11px;line-height:1.6;color:#c5d8ca;margin:0}
+.public-company-caution{color:#a8c0b2}
+.public-company-row>a{font-size:11px;color:#c9eea3;align-self:flex-start;margin-top:auto;text-decoration:none}
+.public-company-row>a:hover{text-decoration:underline}
+#publicCompanyMore{margin-top:13px}
+.public-map-entry{display:flex;justify-content:space-between;gap:18px;align-items:center;border-top:1px solid #395444;margin-top:22px;padding-top:16px}
+.public-map-entry h4{font-size:15px;margin:0 0 7px}
+.public-map-entry .note{font-size:11px;margin:0}
+.public-map-entry button{flex-shrink:0}
+.public-map-privacy{font-size:10px;color:#9eb4a7;margin-top:13px;line-height:1.6}
+.public-map{height:410px;width:100%;margin-top:12px;border:1px solid #48614c;border-radius:7px;z-index:0}
+.public-map[hidden]{display:none!important}
+.public-map .leaflet-popup-content{color:#19231a;font-size:12px;line-height:1.5;max-width:230px}
+.public-map .leaflet-popup-content p{margin:5px 0 0}
+@media(max-width:950px){.market-figures{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:660px){.market-learning{padding:17px 13px}.market-figures{gap:7px}.market-figure{padding:11px}.market-figure strong{font-size:23px}.market-comparison,.market-questions>div,.public-company-list{grid-template-columns:1fr}.public-company-guide{padding:15px 12px}.public-company-heading{display:block}.public-company-count{display:inline-block;margin-top:7px}.public-map-entry{display:block}.public-map-entry button{margin-top:12px}.public-map{height:320px}}
