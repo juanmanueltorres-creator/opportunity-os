@@ -23,11 +23,13 @@
     remote:{label:'100 % remoto',desc:'La modalidad del aviso no prueba que contraten desde tu país.'},
     all:{label:'Todas las modalidades',desc:'La sede de la empresa y la ubicación del puesto son datos distintos.'}
   };
+  const scopes={ar:{label:'Argentina',location:'Argentina'},latam:{label:'Latinoamérica',location:'Latin America'},global:{label:'Internacional',location:'Worldwide'}};
   const params=new URLSearchParams(window.location.search);
   const valid=(value,table,fallback)=>Object.prototype.hasOwnProperty.call(table,value)?value:fallback;
   let goal=valid(params.get('objetivo'),goals,'jobs');
   let topic=valid(params.get('area'),topics,'general');
   let mode=valid(params.get('modalidad'),modes,'remote');
+  let scope=valid(params.get('ambito'),scopes,'ar');
 
   const section=document.createElement('section');
   section.className='orientation-guide';
@@ -43,6 +45,7 @@
     '<fieldset><legend><span class="orientation-step">01</span> ¿Qué necesitás?</legend><div id="orientationGoals" class="orientation-options"></div></fieldset>',
     '<fieldset><legend><span class="orientation-step">02</span> ¿En qué área?</legend><label class="orientation-select-label" for="orientationTopic">Elegí una especialidad o explorá todas</label><select id="orientationTopic"></select></fieldset>',
     '<fieldset><legend><span class="orientation-step">03</span> ¿Qué modalidad?</legend><div id="orientationModes" class="orientation-options orientation-modes"></div></fieldset>',
+    '<fieldset><legend><span class="orientation-step">04</span> ¿Dónde buscás?</legend><div id="orientationScope" class="orientation-options orientation-scope"></div></fieldset>',
     '</div>',
     '<div class="orientation-result" aria-live="polite">',
     '<div class="micro eyebrow">TU PRIMERA ACCIÓN</div>',
@@ -81,8 +84,8 @@
   const externalUrl=()=>{
     const terms=topics[topic].search+(mode==='remote'?' remoto':'');
     if(goal==='freelance')return 'https://www.workana.com/es/jobs?query='+encodeURIComponent(topics[topic].search);
-    if(goal==='companies')return 'https://cessi.org.ar/directorio-de-empresas/';
-    const qs=new URLSearchParams({keywords:terms,location:'Argentina'});
+    if(goal==='companies')return scope==='ar'?'https://cessi.org.ar/directorio-de-empresas/':scope==='latam'?'https://empleo.esri.co/':'https://www.esri.com/es-es/about/careers/overview';
+    const qs=new URLSearchParams({keywords:terms,location:scopes[scope].location});
     if(mode==='remote')qs.set('f_WT','2');
     return 'https://www.linkedin.com/jobs/search/?'+qs.toString();
   };
@@ -91,15 +94,17 @@
     u.searchParams.set('objetivo',goal);
     u.searchParams.set('area',topic);
     u.searchParams.set('modalidad',mode);
+    u.searchParams.set('ambito',scope);
     u.hash='orientacion';
     return u.toString();
   }
   function render(){
     makeOptions($('orientationGoals'),goals,goal,id=>{goal=id;render();});
     makeOptions($('orientationModes'),modes,mode,id=>{mode=id;render();});
+    makeOptions($('orientationScope'),scopes,scope,id=>{scope=id;render();});
     $('orientationTopic').value=topic;
     const g=goals[goal],t=topics[topic],m=modes[mode];
-    $('orientationResultTitle').textContent=g.label+' · '+t.label;
+    $('orientationResultTitle').textContent=g.label+' · '+t.label+' · '+scopes[scope].label;
     $('orientationResultDescription').textContent=g.desc;
     $('orientationConstraint').textContent=goal==='jobs'
       ? (mode==='remote'?'Filtro inicial: ofertas remotas. Comprobá también país admitido, idioma y vigencia.':'Búsqueda abierta a varias modalidades; revisá ubicación e idioma antes de postular.')
@@ -112,7 +117,7 @@
   }
   $('orientationGo').addEventListener('click',()=>{
     document.dispatchEvent(new CustomEvent('opportunity:workspace-go',{
-      detail:{view:goal==='jobs'?'buscar':'empresas',goal,query:topics[topic].query,track:topics[topic].track,mode:mode==='remote'?'REMOTE':''}
+      detail:{view:goal==='jobs'?'buscar':'empresas',goal,query:topics[topic].query,track:topics[topic].track,mode:mode==='remote'?'REMOTE':'',scope}
     }));
   });
   $('orientationShare').addEventListener('click',async()=>{
@@ -123,23 +128,15 @@
       $('orientationStatus').textContent='Enlace para copiar: '+shareUrl();
     }
   });
+  $('orientationGemini').textContent='Preguntarle al chat de la web';
   $('orientationGemini').addEventListener('click',()=>{
-    const dialog=document.getElementById('briefDialog');
-    const textarea=document.getElementById('briefText');
-    if(!dialog||!textarea)return;
-    const text=[
-      'Ayudame a orientar una búsqueda laboral con pasos concretos, sin inventar ofertas, sueldos ni empresas.',
-      'Objetivo: '+goals[goal].label+'.',
-      'Área: '+topics[topic].label+'.',
-      'Modalidad: '+modes[mode].label+'. Región de búsqueda: Argentina.',
-      'Proponé: (1) tres perfiles o tipos de cliente, (2) palabras clave útiles,',
-      '(3) cómo verificar modalidad, idioma, elegibilidad y vigencia,',
-      '(4) tres acciones pequeñas para hoy. Diferenciá hipótesis de datos comprobados.',
-      'Si mencionás una vacante, pedí verificar la publicación oficial.'
-    ].join('\n');
-    textarea.value=text;
-    document.getElementById('copyBriefStatus').textContent='';
-    dialog.showModal();
+    const chat=document.getElementById('chat');
+    const input=chat?.querySelector('#chatMessage');
+    if(input&&!input.value){
+      input.value='¿Qué sectores y empresas conviene investigar en '+scopes[scope].label+' para '+topics[topic].label+'? Modalidad: '+modes[mode].label+'. Diferenciá evidencia e hipótesis.';
+    }
+    chat?.scrollIntoView({behavior:'smooth',block:'start'});
+    input?.focus({preventScroll:true});
   });
   render();
 })();
