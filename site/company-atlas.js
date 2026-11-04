@@ -249,12 +249,13 @@
     }
     return found;
   }
-  async function importFiles(files) {
+  async function importFiles(files, fromTracker = false) {
     if(isLoading)return;
     isLoading=true;
     $('atlasUpload').disabled=true;
     const issues=[];
     let added=0;
+    const successful=[];
     try{
       for(const file of files){
         try{
@@ -262,12 +263,18 @@
           const parsed=await readFile(file);
           if(!parsed.length){issues.push(file.name+': sin columnas reconocidas');continue;}
           added+=parsed.length;
+          successful.push(file);
           addRecords(parsed);
           lastImport=file.name;
         }catch(err){issues.push(file.name+': '+(err.message||'error'));}
       }
       const saved=persist();
       render();
+      // One Excel may feed both panels, but never bounce back to the original importer.
+      if(!fromTracker && successful.length){
+        const shared=successful.find(f=>/\.(xlsx|xls)$/i.test(f.name))||successful[0];
+        window.dispatchEvent(new CustomEvent('opportunity:atlas-file',{detail:{file:shared}}));
+      }
       $('atlasStatus').textContent=(added?records.length+' organizaciones unificadas · '+added+' filas procesadas. ':'No se importaron registros. ')+
         (saved?'Resumen privado guardado en este navegador. ':'No se pudo guardar en el navegador. ')+issues.join(' | ');
     }finally{isLoading=false;$('atlasUpload').disabled=false;}
@@ -445,7 +452,7 @@
     event.target.value='';
   });
   window.addEventListener('opportunity:local-file',async event=>{
-    if(event.detail&&event.detail.file)await importFiles([event.detail.file]);
+    if(event.detail&&event.detail.file)await importFiles([event.detail.file],true);
   });
   $('atlasErase').addEventListener('click',()=>{
     records=[];selectedKey='';personal={};
