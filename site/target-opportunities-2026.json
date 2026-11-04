@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-04",
+  "requirements": {
+    "workplace": "100% remoto desde Argentina o freelance remoto",
+    "exclude": "Híbrido, presencial, reubicación obligatoria",
+    "note": "Aptitud para un puesto y nivel de inglés dependen del aviso específico, no del empleador."
+  },
+  "employers": [
+    {
+      "id": "telus-digital",
+      "name": "TELUS Digital",
+      "order": 1,
+      "scale": "78.000 expertos en 33 países (cifra global declarada por la empresa en el aviso)",
+      "argentina": "Proyecto de AI Community con elegibilidad para residentes en Argentina; el aviso se localiza en Buenos Aires, pero declara trabajo remoto.",
+      "focus": "Online Data Analyst · mapas, verificación geográfica y evaluación de datos para IA",
+      "remote": "Puesto remoto freelance confirmado en fuente oficial",
+      "english": "Exige dominio profesional de inglés y español: filtro crítico por comprobar en evaluación",
+      "pay": "Pago por tareas según disponibilidad y calidad; sin tarifa ni mínimo garantizado",
+      "match": "Geociencias, mapas, validación de fuentes, análisis espacial y documentación de procesos.",
+      "angle": "Mostrar un ejemplo concreto de verificación de datos espaciales y control de calidad construido en GeoPlatform.",
+      "source_url": "https://jobs.telusdigital.com/jobs/18301177-online-data-analyst-argentina",
+      "careers_url": "https://jobs.telusdigital.com/",
+      "status": "Puesto específico publicado; validar al aplicar"
+    },
+    {
+      "id": "accelone",
+      "name": "AccelOne",
+      "order": 2,
+      "scale": "Dotación global no verificada con precisión",
+      "argentina": "Vacantes catalogadas en Buenos Aires y Argentina; la modalidad declarada del puesto es remota.",
+      "focus": "Backend & Data Engineer · GIS, imágenes satelitales y fotogrametría",
+      "remote": "Aviso remoto para Argentina contrastado con la bolsa del empleador y un portal externo",
+      "english": "Nivel exigido: verificar en ficha y entrevista; publicación visible en inglés",
+      "pay": "No se publica monto verificable en el aviso consultado",
+      "match": "Python, pipelines, APIs, GIS, datos satelitales, calidad de información y sistemas geoespaciales.",
+      "angle": "GeoPlatform: pipeline Sentinel/índices y arquitectura Python, aclarando qué experiencia profesional en fotogrametría falta.",
+      "source_url": "https://accelone.breezy.hr/",
+      "careers_url": "https://himalayas.app/companies/accelone/jobs/backend-data-engineer",
+      "status": "Vacante en bolsa oficial; confirmar elegibilidad de Córdoba y requisitos de fotogrametría"
+    },
+    {
+      "id": "bairesdev",
+      "name": "BairesDev",
+      "order": 3,
+      "scale": "Más de 4.000 profesionales globales (declaración corporativa)",
+      "argentina": "Empresa remota internacional con profesionales de Argentina; no todas las vacantes aceptan cualquier nivel de inglés.",
+      "focus": "Application Support, operaciones comerciales, automatizaciones, datos y crecimiento",
+      "remote": "Empresa remote-first y avisos 100% remotos",
+      "english": "Varias posiciones de soporte y ventas exigen inglés avanzado; no presumir aptitud con B1",
+      "pay": "La empresa menciona compensación en USD o moneda local para algunos puestos; no hay oferta salarial personalizada confirmada",
+      "match": "Atención al cliente, gestión de equipos, operaciones, documentación y Python aplicado.",
+      "angle": "Mostrar una automatización empresarial real y destacar cinco años de gestión operativa.",
+      "source_url": "https://www.bairesdev.com/join-us/",
+      "careers_url": "https://applicants.bairesdev.com/job/80/297891/apply",
+      "status": "Empresa remote-first; el rol de Application Support visible requiere inglés avanzado"
+    },
+    {
+      "id": "agileengine",
+      "name": "AgileEngine",
+      "order": 4,
+      "scale": "Más de 900 especialistas (declaración corporativa)",
+      "argentina": "Contrata remotamente en Argentina; tiene red de talento en Córdoba y otras ciudades.",
+      "focus": "Data & AI, ingeniería backend, software y procesos",
+      "remote": "Sitio de carreras confirma posiciones remotas para Argentina",
+      "english": "Exige inglés B2 o superior de forma general; aspiracional mientras se entrena speaking",
+      "pay": "Comunica compensación por habilidades; no publica monto comparable para tu puesto",
+      "match": "Python, SQL, ETL, bases de datos, APIs, sistemas y gestión multidisciplinaria.",
+      "angle": "Caso GeoPlatform + Opportunity OS como sistemas terminados con documentación.",
+      "source_url": "https://join.agileengine.com/argentina/",
+      "careers_url": "https://join.agileengine.com/argentina/",
+      "status": "Vigilar vacantes: algunos puestos aparecen con postulaciones pausadas"
+    },
+    {
+      "id": "epam",
+      "name": "EPAM Systems",
+      "order": 5,
+      "scale": "Aproximadamente 62.850 empleados globales al 31/12/2025 (informe SEC)",
+      "argentina": "Portal de carreras con vacantes etiquetadas Remote in Argentina.",
+      "focus": "Datos, soporte e infraestructura, Python/IA, seguridad y automatización",
+      "remote": "Portal oficial muestra avisos remotos elegibles para Argentina; verificar cada aviso",
+      "english": "Gran parte de las búsquedas revisadas pide inglés B2+ y experiencia senior",
+      "pay": "Sin monto de remuneración por rol verificado en Argentina",
+      "match": "Backend Python, QA de datos, geoespacial, automatización y soporte técnico.",
+      "angle": "Orientar candidatura a soporte de plataformas y data pipelines antes que arquitectura senior.",
+      "source_url": "https://careers.epam.com/en/jobs/argentina",
+      "careers_url": "https://careers.epam.com/en/jobs/argentina",
+      "status": "Vía remota confirmada; avisos de ejemplo pueden ser de nivel avanzado"
+    }
+  ],
+  "freelance_services": [
+    {
+      "id": "restaurantes",
+      "label": "Gastronomía",
+      "offer": "Landing + carta digital + formulario de consultas o reservas",
+      "scope": "Sitio adaptable a celular, carta actualizable y enlace para consultas; sin afirmar integración con caja ni pasarela de pago.",
+      "signal": "Negocio con carta solo en fotos o redes; comprobar antes de ofrecer la mejora.",
+      "proof": "Más de cinco años de gestión gastronómica, comprensión de operaciones y experiencia de cliente."
+    },
+    {
+      "id": "mineria",
+      "label": "Proveedores mineros y geociencias",
+      "offer": "Web corporativa + fichas técnicas + mapa de proyectos",
+      "scope": "Landing multisección, catálogo de servicios y mapa simple sobre datos aportados por el cliente.",
+      "signal": "Empresa con catálogo desactualizado o servicios difíciles de encontrar; verificar web, fichas y contactos.",
+      "proof": "Formación en minería y geociencias, más experiencia en GeoPlatform."
+    },
+    {
+      "id": "logistica",
+      "label": "Logística y talleres",
+      "offer": "Formulario de presupuestos + tablero simple de seguimiento",
+      "scope": "Un formulario y un tablero interno básico, sin prometer integración con ERP ni seguimiento en tiempo real.",
+      "signal": "Solicitudes atendidas por canales dispersos o planillas; confirmar con la empresa.",
+      "proof": "Gestión de operaciones, inventarios y construcción de software con Python."
+    },
+    {
+      "id": "agro",
+      "label": "Agro y servicios de campo",
+      "offer": "Landing + catálogo de servicios + mapa de cobertura",
+      "scope": "Presentación clara, datos de contacto y área de servicio geográfica, sin mapas inventados.",
+      "signal": "Oferta comercial poco visible o sin cobertura territorial clara; verificar presencia pública.",
+      "proof": "Datos espaciales, GIS y automatización."
+    },
+    {
+      "id": "turismo",
+      "label": "Turismo y alojamientos",
+      "offer": "Sitio visual + experiencias + solicitud de reserva",
+      "scope": "Página visual y un contacto estructurado, sin prometer reservas integradas a plataformas externas.",
+      "signal": "Dependencia exclusiva de redes, reservas manuales o sitio difícil de usar; comprobar primero.",
+      "proof": "Diseño UI/UX y experiencia en atención al público."
+    }
+  ]
+}
