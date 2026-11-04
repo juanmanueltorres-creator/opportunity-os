@@ -34,6 +34,10 @@ jobs:
         run: |
           node --check site/clarity.js
           node --test tests/test_clarity.mjs
+      - name: Validate unified four-view workspace
+        run: |
+          node --check site/workspace-hub.js
+          node --test tests/test_workspace_hub.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
