@@ -30,6 +30,8 @@ test('Freelance proposals are scoped and need proof of gaps',()=>{
 test('Remote is default; main source feed and private tracker are unchanged',()=>{
   assert.match(html,/href="\/remote-targets\.css"/);
   assert.match(html,/src="\/remote-targets\.js" defer/);
+  assert.match(html,/<select id="mode"><option value="">Todas<\/option><option selected>REMOTE<\/option>/);
+  assert.match(html,/\$\('mode'\)\.value='REMOTE';lane='ALL'/);
   assert.match(js,/mode\.value='REMOTE'/);
   assert.match(js,/mode\.dispatchEvent\(new Event\('input'/);
   assert.match(js,/clear\.addEventListener\('click'/);
