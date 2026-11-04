@@ -38,6 +38,10 @@ jobs:
         run: |
           node --check site/workspace-hub.js
           node --test tests/test_workspace_hub.mjs
+      - name: Verify single search panel and private/public company modes
+        run: |
+          node --check site/workspace-hub.js
+          node --test tests/test_hub_refinement.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
