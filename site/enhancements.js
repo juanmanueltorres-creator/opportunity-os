@@ -276,7 +276,7 @@
     return loader.catch(err => { loader = null; throw err; });
   }
 
-  async function importFile(file) {
+  async function importFile(file, forwardToAtlas = true) {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) throw new Error('Elegí un archivo .xlsx, .xls o .csv.');
     if (file.size > 12 * 1024 * 1024) throw new Error('El archivo supera 12 MB.');
     let snapshot = null;
@@ -302,7 +302,7 @@
     }
     render(snapshot);
     // Reutilizar el mismo Excel en el atlas, sin subirlo ni pedirlo dos veces.
-    window.dispatchEvent(new CustomEvent('opportunity:local-file', { detail: { file } }));
+    if (forwardToAtlas) window.dispatchEvent(new CustomEvent('opportunity:local-file', { detail: { file } }));
   }
 
   $('trackerImport').addEventListener('click', () => $('trackerFile').click());
@@ -314,6 +314,16 @@
     try { await importFile(file); }
     catch (err) { $('trackerStatus').textContent = 'No se pudo importar: ' + (err.message || 'error inesperado'); }
     finally { $('trackerImport').disabled = false; event.target.value = ''; }
+  });
+  // Importing through the atlas also populates tracking once; the origin flag prevents a sync loop.
+  window.addEventListener('opportunity:atlas-file', async event => {
+    const file = event.detail && event.detail.file;
+    if (!file) return;
+    try { await importFile(file, false); }
+    catch (err) {
+      $('trackerStatus').textContent = 'Empresas importadas. El seguimiento de este archivo no se pudo resumir: ' +
+        (err.message || 'faltan columnas de estado');
+    }
   });
   $('trackerClear').addEventListener('click', () => {
     try { localStorage.removeItem(storageKey); } catch {}
