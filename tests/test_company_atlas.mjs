@@ -94,3 +94,28 @@ test('operational Unificado status has greater authority than old company catalo
   assert.ok(parsing.originAuthority('Unificado · EMPRESAS_400') > parsing.originAuthority('EMPRESAS_400'));
   assert.equal(parsing.originAuthority('not_known'), 0);
 });
+
+test('a previous catalog import never overwrites the reconciled master state', () => {
+  const makeMerger = () => new Function(
+    'let records=[];'
+    + pick('  const stateRank=', '  function toHeader')
+    + pick('  function selectWorkbookSheets', '  function persist')
+    + 'return { addRecords, snapshot:()=>records };'
+  )();
+  const master = {
+    key:'empresa demo|argentina',name:'Empresa Demo',type:'Empresa',
+    state:'pending',stateOriginal:'POR INVESTIGAR',origin:'Unificado'
+  };
+  const oldCatalog = {
+    ...master,state:'sent',stateOriginal:'ENVIADO HISTÓRICO',
+    origin:'EMPRESAS_400'
+  };
+  for (const [first,second] of [[master,oldCatalog],[oldCatalog,master]]) {
+    const m=makeMerger();
+    m.addRecords([first]);
+    m.addRecords([second]);
+    assert.equal(m.snapshot().length,1);
+    assert.equal(m.snapshot()[0].state,'pending');
+    assert.equal(m.snapshot()[0].stateOriginal,'POR INVESTIGAR');
+  }
+});
