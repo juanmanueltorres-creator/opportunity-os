@@ -30,6 +30,10 @@ jobs:
         run: |
           node --check site/cep-context.js
           node --test tests/test_cep_context.mjs
+      - name: Verify company discovery UX and sources
+        run: |
+          node --check site/clarity.js
+          node --test tests/test_clarity.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
