@@ -15,6 +15,7 @@
     'Ambiente','Agro','Turismo','Innovación / ciencia','Gestión / operaciones','Otros'];
   const OFFICIAL = [
     ['CEP XXI · Mapa productivo-laboral','https://www.argentina.gob.ar/produccion/cep/tableros-interactivos','Establecimientos, empleo y sectores. Datos agregados: no identifica una contratación.'],
+    ['CEP XXI · Dataset de establecimientos','https://datos.gob.ar/dataset/produccion-distribucion-geografica-establecimientos-productivos','Descarga pública de información territorial de establecimientos y empleo por actividad.'],
     ['OEDE · Empleo y empresas','https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales','Empresas, puestos y tamaño por jurisdicción y actividad.'],
     ['SIACAM · Minería','https://www.argentina.gob.ar/economia/mineria/siacam','Proyectos, cadenas y estadísticas mineras.'],
     ['Agencia I+D+i · Adjudicaciones','https://www.argentina.gob.ar/ciencia/agencia/cecyr-informes-y-publicaciones','Fondos y proyectos financiados; consultar los informes.'],
@@ -128,7 +129,7 @@
       let family='';
       if(head.includes('id global')&&head.includes('empresa'))family='companies';
       else if(head.includes('id original')&&head.includes('empresa / entidad'))family='unified';
-      else if(head.includes('organismo')&&head.includes('provincia')&&head.includes('nivel'))family='federal';
+      else if(head.includes('organismo')&&head.includes('provincia')&&(head.includes('nivel')||head.includes('estado')))family='federal';
       else if(head.includes('empresa')&&head.includes('estado'))family='general';
       if(!family)continue;
       for(let i=k+1;i<Math.min(matrix.length,15000);i++){
@@ -138,8 +139,8 @@
         const location=getField(row,head,['provincia','ubicación','ubicacion','localidad']);
         const country=getField(row,head,['país','pais'])||countryFrom(location);
         const province=country==='Argentina'?provinceFrom(location):'';
-        const area=getField(row,head,['sector / área','hipótesis / rol','área / dependencia','objetivo','sector']);
-        const type=family==='federal'?'Organismo':'Empresa';
+        const area=getField(row,head,['sector / área','hipótesis / rol','área / dependencia','area','objetivo','sector','tema']);
+        const type=(family==='federal'||/secretaria|ministerio|municipalidad|universidad|conicet|instituto nacional|gobierno de|direccion provincial|direccion nacional/.test(norm(name)))?'Organismo':'Empresa';
         const current=getField(row,head,['estado actual / gmail','estado actual','estado']);
         const source=getField(row,head,['sitio / fuente','web fuente','fuente url','fuente']);
         const next=getField(row,head,['próxima acción','accion','acción','objetivo']);
