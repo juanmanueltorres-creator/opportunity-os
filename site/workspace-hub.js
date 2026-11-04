@@ -4,6 +4,8 @@
   'use strict';
   const nav=document.querySelector('.clarity-nav');
   const orientation=document.querySelector('.orientation-guide');
+  const publicChat=document.querySelector('.public-chat');
+  const marketLearning=document.querySelector('.market-learning');
   const quick=document.querySelector('.quick-panel');
   const routes=document.querySelector('.clarity-routes');
   const atlas=document.querySelector('#atlas-empresas');
@@ -15,7 +17,7 @@
   const statrow=document.querySelector('.statrow');
   const territorial=document.querySelector('.territory');
   const sources=document.querySelector('.sources');
-  if(!nav||!orientation||!quick||!routes||!atlas||!discovery||!tracker||!cep||!today||!vacancies) return;
+  if(!nav||!orientation||!publicChat||!marketLearning||!quick||!routes||!atlas||!discovery||!tracker||!cep||!today||!vacancies) return;
   // Show one search surface: specialty + region, not two competing large panels.
   const chips=quick.querySelector('#quickChips');
   if(chips){
@@ -61,11 +63,11 @@
       'Estas fichas tienen fuente pública, pero no confirman vacantes ni se añaden a tu seguimiento.';
   }
   const VIEWS={
-    orientacion:{label:'Orientarme',hint:'Un punto de partida público: elegí un objetivo, un área y tu modalidad. No requiere Excel.',sections:[orientation]},
+    orientacion:{label:'Orientarme',hint:'Un punto de partida público: elegí un objetivo, un área y tu modalidad. No requiere Excel.',sections:[orientation,publicChat]},
     buscar:{label:'Buscar trabajo',hint:'Vacantes verificables y búsquedas directas, priorizando oportunidades en español.',sections:[quick,routes,statrow,today,vacancies]},
-    empresas:{label:'Empresas',hint:'Organizaciones y organismos de tu directorio, más objetivos públicos para investigar.',sections:[companySwitch,atlas,discovery]},
+    empresas:{label:'Empresas',hint:'Empresas nacionales e internacionales con fuentes públicas; podés explorar sin Excel.',sections:[companySwitch,atlas,discovery]},
     seguimiento:{label:'Seguimiento',hint:'Tus postulaciones y contactos, sin duplicar ni publicar el Excel.',sections:[tracker]},
-    datos:{label:'Datos y fuentes',hint:'Indicadores territoriales oficiales y trazabilidad de las fuentes. No son vacantes.',sections:[cep,territorial,sources]}
+    datos:{label:'Datos y fuentes',hint:'Aprendé cómo interpretar el tamaño de los sectores, el empleo y las fuentes sin confundirlos con vacantes.',sections:[marketLearning,cep,territorial,sources]}
   };
   // CEP is rendered by its own module inside atlas. Move the element,
   // retaining all existing event listeners and its pointers to atlas filters.
