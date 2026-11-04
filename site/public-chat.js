@@ -34,7 +34,7 @@
     const article=document.createElement('article');
     article.className='public-chat-turn '+(role==='user'?'user':'assistant');
     const tag=document.createElement('span');tag.className='public-chat-role';
-    tag.textContent=role==='user'?'PREGUNTA':'GEMINI · FUENTES PÚBLICAS';
+    tag.textContent=role==='user'?'PREGUNTA':role==='system'?'ESTADO DEL SERVICIO':'GEMINI · FUENTES PÚBLICAS';
     const body=document.createElement('div');body.className='public-chat-text';
     body.textContent=text;article.append(tag,body);
     if(sources.length){
@@ -58,7 +58,8 @@
   const params=()=>({
     goal:document.getElementById('orientationGoals')?.querySelector('[aria-pressed="true"]')?.textContent?.trim()||'',
     area:document.getElementById('orientationTopic')?.selectedOptions?.[0]?.textContent||'',
-    mode:document.getElementById('orientationModes')?.querySelector('[aria-pressed="true"]')?.textContent?.trim()||''
+    mode:document.getElementById('orientationModes')?.querySelector('[aria-pressed="true"]')?.textContent?.trim()||'',
+    scope:document.getElementById('orientationScope')?.querySelector('[aria-pressed="true"]')?.textContent?.trim()||''
   });
   function setBusy(value){
     busy=value;
@@ -69,7 +70,7 @@
     const message=String(value||'').trim().slice(0,700);
     if(busy||message.length<3)return;
     const chosen=params();
-    const prepared=message+'\nContexto elegido en la brújula (preferencias del visitante, no evidencia): '+[chosen.goal,chosen.area,chosen.mode].filter(Boolean).join(' · ');
+    const prepared=message+'\nContexto elegido en la brújula (preferencias del visitante, no evidencia): '+[chosen.goal,chosen.area,chosen.mode,chosen.scope].filter(Boolean).join(' · ');
     add('user',message);
     input.value='';$('chatFeedback').textContent='Consultando datos públicos y Gemini…';setBusy(true);
     const currentHistory=history.slice(-4);
