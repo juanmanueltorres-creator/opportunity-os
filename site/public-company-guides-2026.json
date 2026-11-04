@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-04",
+  "statement": "Guía editorial de empleadores y portales oficiales. Ser empresa real o tener página de carreras no significa que haya un puesto vigente, remoto o elegible desde Argentina.",
+  "targets": [
+    {
+      "id": "auravant",
+      "name": "Auravant",
+      "region": "Argentina",
+      "sector": "Agro / geoespacial",
+      "search_scope": "GIS · soporte · producto",
+      "careers_url": "https://www.auravant.com/trabaja-con-nosotros/",
+      "source_url": "https://www.auravant.com/trabaja-con-nosotros/",
+      "caution": "El portal corporativo permite conocer búsquedas y candidatura. Remoto y requisitos dependen del rol."
+    },
+    {
+      "id": "aeroterra",
+      "name": "Aeroterra",
+      "region": "Argentina",
+      "sector": "GIS · soporte",
+      "search_scope": "GIS · GeoAI · soporte técnico",
+      "careers_url": "https://www.aeroterra.com/es-ar/trabaja-con-nosotros/busquedas-actuales",
+      "source_url": "https://www.aeroterra.com/es-ar/trabaja-con-nosotros/busquedas-actuales",
+      "caution": "Roles GIS documentados, algunos presenciales en CABA con inglés avanzado: no tratarlos como remoto elegible."
+    },
+    {
+      "id": "tiendanube",
+      "name": "Tiendanube",
+      "region": "Argentina",
+      "sector": "Comercio · tecnología",
+      "search_scope": "E-commerce · soporte · operaciones · datos",
+      "careers_url": "https://www.tiendanube.com/trabaja-en-tiendanube",
+      "source_url": "https://www.tiendanube.com/trabaja-en-tiendanube",
+      "caution": "La empresa declara políticas de trabajo remoto; los requisitos y país permitido se verifican por vacante."
+    },
+    {
+      "id": "globant",
+      "name": "Globant",
+      "region": "Argentina",
+      "sector": "Tecnología · servicios",
+      "search_scope": "Software · operaciones · soporte · datos",
+      "careers_url": "https://career.globant.com/?country=AR",
+      "source_url": "https://career.globant.com/?country=AR",
+      "caution": "Algunos avisos son híbridos o senior y piden inglés alto. Filtrar cada rol."
+    },
+    {
+      "id": "ryz-labs",
+      "name": "RYZ Labs",
+      "region": "Argentina",
+      "sector": "Software · operaciones",
+      "search_scope": "Operaciones · automatización · GIS · datos",
+      "careers_url": "https://www.ryzlabs.com/careers",
+      "source_url": "https://www.ryzlabs.com/careers",
+      "caution": "Hay avisos para Argentina, pero los niveles y el inglés varían ampliamente."
+    },
+    {
+      "id": "epam",
+      "name": "EPAM",
+      "region": "Argentina",
+      "sector": "Software · datos",
+      "search_scope": "Datos · soporte · análisis · calidad",
+      "careers_url": "https://careers.epam.com/en/jobs/argentina",
+      "source_url": "https://careers.epam.com/en/jobs/argentina",
+      "caution": "La bolsa muestra remotos en Argentina para ciertos puestos; revisar seniority e inglés."
+    },
+    {
+      "id": "telus",
+      "name": "TELUS Digital",
+      "region": "Argentina",
+      "sector": "Datos · IA",
+      "search_scope": "Mapas · evaluación de datos",
+      "careers_url": "https://jobs.telusdigital.com/jobs/18301177-online-data-analyst-argentina",
+      "source_url": "https://jobs.telusdigital.com/jobs/18301177-online-data-analyst-argentina",
+      "caution": "Puesto remoto freelance indicado; tareas y mínimo de pago no garantizados. Exige inglés y español."
+    },
+    {
+      "id": "accelone",
+      "name": "AccelOne",
+      "region": "Argentina",
+      "sector": "Software · GIS",
+      "search_scope": "Backend · datos · teledetección",
+      "careers_url": "https://accelone.breezy.hr/",
+      "source_url": "https://accelone.breezy.hr/",
+      "caution": "Verificar vacante, modalidad y experiencia pedida. Interés geoespacial no equivale a nivel junior."
+    },
+    {
+      "id": "raad",
+      "name": "RAAD",
+      "region": "Sudamérica",
+      "sector": "Geoespacial · operaciones",
+      "search_scope": "Teledetección · coordinación · operaciones",
+      "careers_url": "https://raad.com/en/careers/flight-operations-coordinator-south-america",
+      "source_url": "https://raad.com/en/careers/flight-operations-coordinator-south-america",
+      "caution": "El puesto de coordinación declara remoto en Sudamérica; validar si Argentina y nivel de inglés están incluidos."
+    },
+    {
+      "id": "sig",
+      "name": "Spatial Informatics Group",
+      "region": "LATAM",
+      "sector": "Ambiente · GIS · diseño",
+      "search_scope": "Geoespacial · diseño · web · datos ambientales",
+      "careers_url": "https://sig-gis.com/careers/",
+      "source_url": "https://sig-gis.com/careers/",
+      "caution": "La firma declara 100 % remoto y un rol de diseño para Latinoamérica. Validar requisitos específicos."
+    },
+    {
+      "id": "esri-andes",
+      "name": "Esri Colombia · Ecuador · Panamá",
+      "region": "Colombia / Ecuador / Panamá",
+      "sector": "Geoespacial · comercial",
+      "search_scope": "GIS · soporte · ventas · teledetección",
+      "careers_url": "https://empleo.esri.co/",
+      "source_url": "https://empleo.esri.co/",
+      "caution": "Vacantes verificadas principalmente híbridas en países determinados; no asumir elegibilidad remota desde Argentina."
+    },
+    {
+      "id": "esri-global",
+      "name": "Esri Global",
+      "region": "Internacional",
+      "sector": "Geoespacial · software",
+      "search_scope": "GIS · soporte · educación · producto",
+      "careers_url": "https://www.esri.com/es-es/about/careers/overview",
+      "source_url": "https://www.esri.com/es-es/about/careers/overview",
+      "caution": "Portal global, no todos los empleos aceptan residentes de Argentina."
+    },
+    {
+      "id": "bairesdev",
+      "name": "BairesDev",
+      "region": "LATAM",
+      "sector": "Software · operaciones",
+      "search_scope": "Soporte de aplicaciones · datos · automatización",
+      "careers_url": "https://www.bairesdev.com/join-us/",
+      "source_url": "https://www.bairesdev.com/join-us/",
+      "caution": "Equipo internacional remoto; inglés avanzado aparece en varias vacantes."
+    },
+    {
+      "id": "agileengine",
+      "name": "AgileEngine",
+      "region": "Argentina",
+      "sector": "Software · datos",
+      "search_scope": "Backend · datos · QA",
+      "careers_url": "https://join.agileengine.com/argentina/",
+      "source_url": "https://join.agileengine.com/argentina/",
+      "caution": "El empleador declara contratación remota en Argentina; algunas posiciones son senior/B2+."
+    }
+  ]
+}
