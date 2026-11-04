@@ -17,3 +17,24 @@
 .workspace-hub~[hidden],.wrap>[hidden],.company-atlas[hidden],.tracker-panel[hidden],.cep-context[hidden],.quick-panel[hidden],.clarity-routes[hidden],.clarity-nav[hidden],.statrow[hidden],.today[hidden],.layout[hidden],.territory[hidden],.sources[hidden],.discovery-targets[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 @media(max-width:760px){.workspace-hub{padding:14px 13px 0}.hub-heading{flex-direction:column;gap:12px}.hub-action{max-width:none;width:100%;align-items:flex-start}.hub-action span{text-align:left}.hub-tabs{gap:3px;margin-top:14px}.hub-tab{padding:9px 6px;gap:3px;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;min-height:57px}.hub-tab strong{font-size:10px}.hub-tab-num{font-size:9px}}
+
+
+/* Avoid nested card inflation: one search panel and a compact company switch. */
+.quick-panel>.clarity-routes.hub-inline-routes{background:transparent;border:0;border-top:1px solid #385647;border-bottom:1px solid #385647;box-shadow:none;border-radius:0;padding:12px 0;margin:15px 0}
+.hub-inline-routes .clarity-routes-head{display:block}
+.hub-inline-routes .clarity-routes-head h2{font-size:13px;margin:4px 0 5px}
+.hub-inline-routes .clarity-routes-head .note{max-width:unset;font-size:11px}
+.hub-inline-routes .clarity-route-tabs{margin:12px 0}
+.hub-inline-routes .clarity-route-result{display:block;padding-top:10px}
+.hub-inline-routes .clarity-route-links{margin-top:10px;justify-content:flex-start}
+.hub-inline-routes .clarity-destination{font-size:11px}
+.hub-search-shortcut{display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid #354e3d;margin-top:14px;padding-top:14px}
+.hub-search-shortcut>.note{max-width:560px;margin:0;flex:1 1 300px;font-size:11px}
+.hub-search-shortcut button{font-size:12px;white-space:normal}
+.hub-company-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid #334c41;background:#101c1b;border-radius:8px;padding:12px;margin:0 0 10px}
+.hub-company-option{background:#1c2924;color:#c6d4cd;border:1px solid #476454;border-radius:5px;font-size:12px;padding:10px 13px}
+.hub-company-option.active{background:var(--lime);color:#1a2613;border-color:var(--lime);font-weight:740}
+.hub-company-hint{margin:0;flex:1 1 100%;font-size:11px}
+.hub-company-switch[hidden]{display:none!important}
+#atlas-empresas[hidden],#discovery-targets[hidden]{display:none!important}
+@media(max-width:600px){.hub-search-shortcut{display:block}.hub-search-shortcut .note{margin-top:8px}.hub-inline-routes .clarity-route-links{justify-content:flex-start}.hub-company-option{flex:1 1 100%}}
