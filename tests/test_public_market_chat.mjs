@@ -50,6 +50,10 @@ test('the integrated chat has an evidence-only server endpoint and public-first 
   assert.match(hub,/sections:\[marketLearning,cep,territorial,sources\]/);
   assert.match(guide,/Abrir mapa Leaflet/);
   assert.match(guide,/tile\.openstreetmap\.org/);
+  assert.match(guide,/publicMapLayer/);
+  assert.match(guide,/cep-provincial-2022\.json/);
+  assert.match(guide,/drawMapLayer/);
+  assert.match(guide,/reference_year!==2022/);
   const csp=security.headers[0].headers.find(x=>x.key==='Content-Security-Policy').value;
   assert.match(csp,/script-src 'self'/);
   assert.match(csp,/img-src 'self' data: https:\/\/tile\.openstreetmap\.org/);
