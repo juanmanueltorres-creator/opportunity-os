@@ -63,7 +63,6 @@
     if(path.value==='REMOTE')params.set('f_WT','2');
     addLink(routeLinks,'LinkedIn · empleos',jobsBase+params.toString(),'clarity-primary-link');
     const indeedParams=new URLSearchParams({q:path.word,l:path.where});
-    if(path.value==='REMOTE')indeedParams.set('sc','0kf%3Aattr%28DSQF7%29%3B'); // compatibility varies; verify at source
     addLink(routeLinks,'Indeed',indeedBase+indeedParams.toString());
     if(path.value==='REMOTE'){
       addLink(routeLinks,'Workana · proyectos','https://www.workana.com/es/jobs?query='+encodeURIComponent('Python Excel automatización'));
