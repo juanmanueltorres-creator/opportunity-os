@@ -23,6 +23,7 @@ test('countries and provinces are not fabricated from unknown places', () => {
   assert.equal(parsing.countryFrom('Córdoba (domicilio legal)'), 'Argentina');
   assert.equal(parsing.countryFrom('México'), 'México');
   assert.equal(parsing.countryFrom('Uruguay'), 'Uruguay');
+  assert.equal(parsing.countryFrom('Nacional'), 'Argentina');
   assert.equal(parsing.provinceFrom('Argentina (varias provincias)'), '');
   assert.equal(parsing.provinceFrom('Oncativo / Córdoba'), 'Córdoba');
 });
