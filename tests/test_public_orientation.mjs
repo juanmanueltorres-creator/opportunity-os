@@ -31,10 +31,11 @@ test('distinct public outcomes reuse the existing app and no new backend',()=>{
   assert.match(js,/https:\/\/cessi\.org\.ar\/directorio-de-empresas\//);
 });
 
-test('Gemini uses the existing local dialog with an evidence-first prompt',()=>{
-  assert.match(js,/briefDialog/);
-  assert.match(js,/briefText/);
-  assert.match(js,/sin inventar ofertas/);
+test('orientation routes visitors to the embedded Gemini chat without exposing keys',()=>{
+  assert.match(js,/document.getElementById\('chat'\)/);
+  assert.match(js,/Preguntarle al chat de la web/);
+  assert.match(js,/orientationScope/);
+  assert.match(js,/ambito/);
   assert.match(html,/id="openGemini"/);
   assert.match(html,/no se comparte tu Excel ni ninguna clave de API/i);
   assert.ok(!js.includes('generativelanguage.googleapis.com'));
