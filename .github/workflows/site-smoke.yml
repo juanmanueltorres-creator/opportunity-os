@@ -22,18 +22,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate standalone JavaScript
         run: node --check site/enhancements.js
+      - name: Validate company atlas JavaScript and pure parsers
+        run: |
+          node --check site/company-atlas.js
+          node --test tests/test_company_atlas.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
           import pathlib
           h = pathlib.Path("site/index.html").read_text()
           js = pathlib.Path("site/enhancements.js").read_text()
+          atlas = pathlib.Path("site/company-atlas.js").read_text()
           csp = pathlib.Path("site/vercel.json").read_text()
           assert 'href="/enhancements.css"' in h
           assert 'src="/enhancements.js"' in h
           assert "cdn.sheetjs.com/xlsx-0.20.3/" in js
           assert "localStorage.setItem(storageKey" in js
           assert "fetch(" not in js and "XMLHttpRequest" not in js
+          assert "fetch(" not in atlas and "XMLHttpRequest" not in atlas
+          assert 'href="/company-atlas.css"' in h
+          assert 'src="/company-atlas.js"' in h
           assert "script-src 'self'" in csp
           assert "spanishFirst" in h
           print("Site smoke checks passed")

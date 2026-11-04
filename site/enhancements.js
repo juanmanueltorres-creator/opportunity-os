@@ -301,6 +301,8 @@
       $('trackerStatus').textContent = 'Resumen visible, pero el navegador no permitió guardarlo localmente.';
     }
     render(snapshot);
+    // Reutilizar el mismo Excel en el atlas, sin subirlo ni pedirlo dos veces.
+    window.dispatchEvent(new CustomEvent('opportunity:local-file', { detail: { file } }));
   }
 
   $('trackerImport').addEventListener('click', () => $('trackerFile').click());
