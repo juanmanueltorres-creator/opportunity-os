@@ -190,6 +190,17 @@
   // multi-file atlas import available for specialized regional directories.
   atlas.querySelector('#atlasUpload').textContent='Sumar directorio adicional';
 
+  // When a new workbook is imported, show the user's actual directory first.
+  let hadPrivate=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
+  window.addEventListener('opportunity:atlas-change',()=>{
+    const count=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
+    if(count>0&&!hadPrivate){
+      companyMode='private';
+      if(current==='empresas')switchCompanies();
+    }
+    hadPrivate=count;
+  });
+
   top.querySelector('#hubImport').addEventListener('click',()=>{
     // Canonical file path: existing tracker parser triggers atlas parser
     // via opportunity:local-file. This adds no new upload or storage.
