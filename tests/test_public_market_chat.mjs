@@ -41,7 +41,7 @@ test('public market aggregates are sourced, dated and not mislabelled vacancies'
 test('the integrated chat has an evidence-only server endpoint and public-first UI',()=>{
   assert.match(html,/src="\/public-chat\.js" defer/);
   assert.match(html,/src="\/market-explorer\.js" defer/);
-  assert.match(html,/src="\/public-chat\.css"/); // style is loaded in markup
+  assert.match(html,/href="\/public-chat\.css"/); // style is loaded in markup
   assert.match(front,/fetch\('\/api\/chat'/);
   assert.match(front,/textContent=text/);
   assert.match(front,/no se guarda en Opportunity OS/i);
