@@ -1,0 +1,2871 @@
+{
+  "schema_version": 1,
+  "title": "Contexto productivo provincial · CEP XXI",
+  "reference_year": 2022,
+  "extracted_on": "2026-11-04",
+  "source_updated_on": "2023-12-06",
+  "unit": "Puestos de trabajo registrados y establecimientos productivos (agregación departamental por actividad, no empresas únicas ni vacantes)",
+  "source_url": "https://cdn.produccion.gob.ar/cdn-cep/establecimientos-productivos/Datos_por_departamento_y_actividad.csv",
+  "catalog_url": "https://datos.gob.ar/dataset/produccion-distribucion-geografica-establecimientos-productivos",
+  "license": "CC BY 4.0",
+  "source_rows": 98924,
+  "provinces": 24,
+  "rows": [
+    {
+      "province": "Buenos Aires",
+      "code": "A",
+      "jobs": 75736,
+      "establishments": 19357
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "B",
+      "jobs": 7763,
+      "establishments": 328
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "C",
+      "jobs": 540913,
+      "establishments": 29185
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "D",
+      "jobs": 19767,
+      "establishments": 634
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "E",
+      "jobs": 22221,
+      "establishments": 737
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "F",
+      "jobs": 120649,
+      "establishments": 11693
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "G",
+      "jobs": 390364,
+      "establishments": 69756
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "H",
+      "jobs": 175466,
+      "establishments": 13777
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "I",
+      "jobs": 85072,
+      "establishments": 10963
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "J",
+      "jobs": 39681,
+      "establishments": 2888
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "K",
+      "jobs": 33139,
+      "establishments": 4708
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "L",
+      "jobs": 13156,
+      "establishments": 5456
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "M",
+      "jobs": 37626,
+      "establishments": 9789
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "N",
+      "jobs": 140696,
+      "establishments": 11314
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "O",
+      "jobs": 5807,
+      "establishments": 441
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "P",
+      "jobs": 192869,
+      "establishments": 4133
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "Q",
+      "jobs": 96313,
+      "establishments": 9080
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "R",
+      "jobs": 30052,
+      "establishments": 4139
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "S",
+      "jobs": 80741,
+      "establishments": 17245
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "T",
+      "jobs": 9,
+      "establishments": 8
+    },
+    {
+      "province": "Buenos Aires",
+      "code": "U",
+      "jobs": 79,
+      "establishments": 19
+    },
+    {
+      "province": "CABA",
+      "code": "A",
+      "jobs": 16003,
+      "establishments": 3697
+    },
+    {
+      "province": "CABA",
+      "code": "B",
+      "jobs": 13222,
+      "establishments": 315
+    },
+    {
+      "province": "CABA",
+      "code": "C",
+      "jobs": 152697,
+      "establishments": 12357
+    },
+    {
+      "province": "CABA",
+      "code": "D",
+      "jobs": 8691,
+      "establishments": 161
+    },
+    {
+      "province": "CABA",
+      "code": "E",
+      "jobs": 14903,
+      "establishments": 195
+    },
+    {
+      "province": "CABA",
+      "code": "F",
+      "jobs": 85521,
+      "establishments": 7288
+    },
+    {
+      "province": "CABA",
+      "code": "G",
+      "jobs": 207308,
+      "establishments": 32262
+    },
+    {
+      "province": "CABA",
+      "code": "H",
+      "jobs": 130532,
+      "establishments": 8230
+    },
+    {
+      "province": "CABA",
+      "code": "I",
+      "jobs": 82572,
+      "establishments": 8052
+    },
+    {
+      "province": "CABA",
+      "code": "J",
+      "jobs": 146642,
+      "establishments": 6681
+    },
+    {
+      "province": "CABA",
+      "code": "K",
+      "jobs": 118271,
+      "establishments": 3423
+    },
+    {
+      "province": "CABA",
+      "code": "L",
+      "jobs": 22066,
+      "establishments": 11028
+    },
+    {
+      "province": "CABA",
+      "code": "M",
+      "jobs": 90484,
+      "establishments": 11200
+    },
+    {
+      "province": "CABA",
+      "code": "N",
+      "jobs": 191898,
+      "establishments": 8965
+    },
+    {
+      "province": "CABA",
+      "code": "O",
+      "jobs": 3714,
+      "establishments": 199
+    },
+    {
+      "province": "CABA",
+      "code": "P",
+      "jobs": 88289,
+      "establishments": 1928
+    },
+    {
+      "province": "CABA",
+      "code": "Q",
+      "jobs": 96015,
+      "establishments": 5116
+    },
+    {
+      "province": "CABA",
+      "code": "R",
+      "jobs": 23003,
+      "establishments": 1870
+    },
+    {
+      "province": "CABA",
+      "code": "S",
+      "jobs": 103170,
+      "establishments": 33108
+    },
+    {
+      "province": "CABA",
+      "code": "T",
+      "jobs": 17,
+      "establishments": 14
+    },
+    {
+      "province": "CABA",
+      "code": "U",
+      "jobs": 1379,
+      "establishments": 122
+    },
+    {
+      "province": "Catamarca",
+      "code": "A",
+      "jobs": 2137,
+      "establishments": 327
+    },
+    {
+      "province": "Catamarca",
+      "code": "B",
+      "jobs": 1795,
+      "establishments": 44
+    },
+    {
+      "province": "Catamarca",
+      "code": "C",
+      "jobs": 5699,
+      "establishments": 278
+    },
+    {
+      "province": "Catamarca",
+      "code": "D",
+      "jobs": 481,
+      "establishments": 7
+    },
+    {
+      "province": "Catamarca",
+      "code": "E",
+      "jobs": 318,
+      "establishments": 4
+    },
+    {
+      "province": "Catamarca",
+      "code": "F",
+      "jobs": 4944,
+      "establishments": 302
+    },
+    {
+      "province": "Catamarca",
+      "code": "G",
+      "jobs": 6728,
+      "establishments": 1416
+    },
+    {
+      "province": "Catamarca",
+      "code": "H",
+      "jobs": 1355,
+      "establishments": 232
+    },
+    {
+      "province": "Catamarca",
+      "code": "I",
+      "jobs": 1098,
+      "establishments": 230
+    },
+    {
+      "province": "Catamarca",
+      "code": "J",
+      "jobs": 597,
+      "establishments": 63
+    },
+    {
+      "province": "Catamarca",
+      "code": "K",
+      "jobs": 701,
+      "establishments": 104
+    },
+    {
+      "province": "Catamarca",
+      "code": "L",
+      "jobs": 221,
+      "establishments": 51
+    },
+    {
+      "province": "Catamarca",
+      "code": "M",
+      "jobs": 586,
+      "establishments": 139
+    },
+    {
+      "province": "Catamarca",
+      "code": "N",
+      "jobs": 1412,
+      "establishments": 161
+    },
+    {
+      "province": "Catamarca",
+      "code": "O",
+      "jobs": 34,
+      "establishments": 6
+    },
+    {
+      "province": "Catamarca",
+      "code": "P",
+      "jobs": 3522,
+      "establishments": 52
+    },
+    {
+      "province": "Catamarca",
+      "code": "Q",
+      "jobs": 1802,
+      "establishments": 182
+    },
+    {
+      "province": "Catamarca",
+      "code": "R",
+      "jobs": 67,
+      "establishments": 24
+    },
+    {
+      "province": "Catamarca",
+      "code": "S",
+      "jobs": 694,
+      "establishments": 201
+    },
+    {
+      "province": "Chaco",
+      "code": "A",
+      "jobs": 6820,
+      "establishments": 2177
+    },
+    {
+      "province": "Chaco",
+      "code": "B",
+      "jobs": 70,
+      "establishments": 10
+    },
+    {
+      "province": "Chaco",
+      "code": "C",
+      "jobs": 7620,
+      "establishments": 800
+    },
+    {
+      "province": "Chaco",
+      "code": "D",
+      "jobs": 1449,
+      "establishments": 75
+    },
+    {
+      "province": "Chaco",
+      "code": "E",
+      "jobs": 3274,
+      "establishments": 17
+    },
+    {
+      "province": "Chaco",
+      "code": "F",
+      "jobs": 7612,
+      "establishments": 517
+    },
+    {
+      "province": "Chaco",
+      "code": "G",
+      "jobs": 21374,
+      "establishments": 3736
+    },
+    {
+      "province": "Chaco",
+      "code": "H",
+      "jobs": 3663,
+      "establishments": 505
+    },
+    {
+      "province": "Chaco",
+      "code": "I",
+      "jobs": 1271,
+      "establishments": 257
+    },
+    {
+      "province": "Chaco",
+      "code": "J",
+      "jobs": 1801,
+      "establishments": 185
+    },
+    {
+      "province": "Chaco",
+      "code": "K",
+      "jobs": 1959,
+      "establishments": 268
+    },
+    {
+      "province": "Chaco",
+      "code": "L",
+      "jobs": 225,
+      "establishments": 112
+    },
+    {
+      "province": "Chaco",
+      "code": "M",
+      "jobs": 989,
+      "establishments": 356
+    },
+    {
+      "province": "Chaco",
+      "code": "N",
+      "jobs": 13137,
+      "establishments": 296
+    },
+    {
+      "province": "Chaco",
+      "code": "O",
+      "jobs": 276,
+      "establishments": 30
+    },
+    {
+      "province": "Chaco",
+      "code": "P",
+      "jobs": 7130,
+      "establishments": 246
+    },
+    {
+      "province": "Chaco",
+      "code": "Q",
+      "jobs": 3514,
+      "establishments": 460
+    },
+    {
+      "province": "Chaco",
+      "code": "R",
+      "jobs": 924,
+      "establishments": 144
+    },
+    {
+      "province": "Chaco",
+      "code": "S",
+      "jobs": 4560,
+      "establishments": 639
+    },
+    {
+      "province": "Chaco",
+      "code": "U",
+      "jobs": 4,
+      "establishments": 1
+    },
+    {
+      "province": "Chubut",
+      "code": "A",
+      "jobs": 7143,
+      "establishments": 846
+    },
+    {
+      "province": "Chubut",
+      "code": "B",
+      "jobs": 14449,
+      "establishments": 263
+    },
+    {
+      "province": "Chubut",
+      "code": "C",
+      "jobs": 12222,
+      "establishments": 736
+    },
+    {
+      "province": "Chubut",
+      "code": "D",
+      "jobs": 3009,
+      "establishments": 72
+    },
+    {
+      "province": "Chubut",
+      "code": "E",
+      "jobs": 941,
+      "establishments": 29
+    },
+    {
+      "province": "Chubut",
+      "code": "F",
+      "jobs": 8865,
+      "establishments": 552
+    },
+    {
+      "province": "Chubut",
+      "code": "G",
+      "jobs": 20727,
+      "establishments": 3327
+    },
+    {
+      "province": "Chubut",
+      "code": "H",
+      "jobs": 7546,
+      "establishments": 858
+    },
+    {
+      "province": "Chubut",
+      "code": "I",
+      "jobs": 3733,
+      "establishments": 562
+    },
+    {
+      "province": "Chubut",
+      "code": "J",
+      "jobs": 1461,
+      "establishments": 187
+    },
+    {
+      "province": "Chubut",
+      "code": "K",
+      "jobs": 2467,
+      "establishments": 274
+    },
+    {
+      "province": "Chubut",
+      "code": "L",
+      "jobs": 478,
+      "establishments": 220
+    },
+    {
+      "province": "Chubut",
+      "code": "M",
+      "jobs": 1883,
+      "establishments": 572
+    },
+    {
+      "province": "Chubut",
+      "code": "N",
+      "jobs": 3888,
+      "establishments": 454
+    },
+    {
+      "province": "Chubut",
+      "code": "O",
+      "jobs": 483,
+      "establishments": 19
+    },
+    {
+      "province": "Chubut",
+      "code": "P",
+      "jobs": 3167,
+      "establishments": 161
+    },
+    {
+      "province": "Chubut",
+      "code": "Q",
+      "jobs": 3931,
+      "establishments": 448
+    },
+    {
+      "province": "Chubut",
+      "code": "R",
+      "jobs": 1118,
+      "establishments": 154
+    },
+    {
+      "province": "Chubut",
+      "code": "S",
+      "jobs": 2702,
+      "establishments": 603
+    },
+    {
+      "province": "Chubut",
+      "code": "U",
+      "jobs": 4,
+      "establishments": 1
+    },
+    {
+      "province": "Córdoba",
+      "code": "A",
+      "jobs": 30998,
+      "establishments": 9382
+    },
+    {
+      "province": "Córdoba",
+      "code": "B",
+      "jobs": 1882,
+      "establishments": 153
+    },
+    {
+      "province": "Córdoba",
+      "code": "C",
+      "jobs": 111036,
+      "establishments": 6974
+    },
+    {
+      "province": "Córdoba",
+      "code": "D",
+      "jobs": 10090,
+      "establishments": 316
+    },
+    {
+      "province": "Córdoba",
+      "code": "E",
+      "jobs": 2882,
+      "establishments": 141
+    },
+    {
+      "province": "Córdoba",
+      "code": "F",
+      "jobs": 33801,
+      "establishments": 2855
+    },
+    {
+      "province": "Córdoba",
+      "code": "G",
+      "jobs": 109387,
+      "establishments": 18860
+    },
+    {
+      "province": "Córdoba",
+      "code": "H",
+      "jobs": 29571,
+      "establishments": 5765
+    },
+    {
+      "province": "Córdoba",
+      "code": "I",
+      "jobs": 19524,
+      "establishments": 3279
+    },
+    {
+      "province": "Córdoba",
+      "code": "J",
+      "jobs": 18393,
+      "establishments": 1175
+    },
+    {
+      "province": "Córdoba",
+      "code": "K",
+      "jobs": 11952,
+      "establishments": 1461
+    },
+    {
+      "province": "Córdoba",
+      "code": "L",
+      "jobs": 3796,
+      "establishments": 1872
+    },
+    {
+      "province": "Córdoba",
+      "code": "M",
+      "jobs": 8568,
+      "establishments": 2881
+    },
+    {
+      "province": "Córdoba",
+      "code": "N",
+      "jobs": 49882,
+      "establishments": 3252
+    },
+    {
+      "province": "Córdoba",
+      "code": "O",
+      "jobs": 1938,
+      "establishments": 124
+    },
+    {
+      "province": "Córdoba",
+      "code": "P",
+      "jobs": 44062,
+      "establishments": 1125
+    },
+    {
+      "province": "Córdoba",
+      "code": "Q",
+      "jobs": 26862,
+      "establishments": 2308
+    },
+    {
+      "province": "Córdoba",
+      "code": "R",
+      "jobs": 5316,
+      "establishments": 574
+    },
+    {
+      "province": "Córdoba",
+      "code": "S",
+      "jobs": 17578,
+      "establishments": 3889
+    },
+    {
+      "province": "Córdoba",
+      "code": "U",
+      "jobs": 47,
+      "establishments": 8
+    },
+    {
+      "province": "Corrientes",
+      "code": "A",
+      "jobs": 12150,
+      "establishments": 2114
+    },
+    {
+      "province": "Corrientes",
+      "code": "B",
+      "jobs": 342,
+      "establishments": 27
+    },
+    {
+      "province": "Corrientes",
+      "code": "C",
+      "jobs": 11823,
+      "establishments": 682
+    },
+    {
+      "province": "Corrientes",
+      "code": "D",
+      "jobs": 1791,
+      "establishments": 26
+    },
+    {
+      "province": "Corrientes",
+      "code": "E",
+      "jobs": 619,
+      "establishments": 22
+    },
+    {
+      "province": "Corrientes",
+      "code": "F",
+      "jobs": 5878,
+      "establishments": 548
+    },
+    {
+      "province": "Corrientes",
+      "code": "G",
+      "jobs": 19916,
+      "establishments": 3433
+    },
+    {
+      "province": "Corrientes",
+      "code": "H",
+      "jobs": 4928,
+      "establishments": 636
+    },
+    {
+      "province": "Corrientes",
+      "code": "I",
+      "jobs": 3278,
+      "establishments": 409
+    },
+    {
+      "province": "Corrientes",
+      "code": "J",
+      "jobs": 1526,
+      "establishments": 186
+    },
+    {
+      "province": "Corrientes",
+      "code": "K",
+      "jobs": 2005,
+      "establishments": 335
+    },
+    {
+      "province": "Corrientes",
+      "code": "L",
+      "jobs": 358,
+      "establishments": 177
+    },
+    {
+      "province": "Corrientes",
+      "code": "M",
+      "jobs": 1313,
+      "establishments": 410
+    },
+    {
+      "province": "Corrientes",
+      "code": "N",
+      "jobs": 3880,
+      "establishments": 368
+    },
+    {
+      "province": "Corrientes",
+      "code": "O",
+      "jobs": 173,
+      "establishments": 30
+    },
+    {
+      "province": "Corrientes",
+      "code": "P",
+      "jobs": 4309,
+      "establishments": 152
+    },
+    {
+      "province": "Corrientes",
+      "code": "Q",
+      "jobs": 2478,
+      "establishments": 496
+    },
+    {
+      "province": "Corrientes",
+      "code": "R",
+      "jobs": 1076,
+      "establishments": 141
+    },
+    {
+      "province": "Corrientes",
+      "code": "S",
+      "jobs": 3187,
+      "establishments": 631
+    },
+    {
+      "province": "Corrientes",
+      "code": "U",
+      "jobs": 3,
+      "establishments": 1
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "A",
+      "jobs": 16716,
+      "establishments": 3979
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "B",
+      "jobs": 428,
+      "establishments": 56
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "C",
+      "jobs": 31371,
+      "establishments": 1932
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "D",
+      "jobs": 1477,
+      "establishments": 62
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "E",
+      "jobs": 290,
+      "establishments": 66
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "F",
+      "jobs": 8319,
+      "establishments": 748
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "G",
+      "jobs": 29061,
+      "establishments": 6168
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "H",
+      "jobs": 6726,
+      "establishments": 1339
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "I",
+      "jobs": 3933,
+      "establishments": 789
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "J",
+      "jobs": 2444,
+      "establishments": 268
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "K",
+      "jobs": 3552,
+      "establishments": 581
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "L",
+      "jobs": 658,
+      "establishments": 378
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "M",
+      "jobs": 1825,
+      "establishments": 846
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "N",
+      "jobs": 4595,
+      "establishments": 526
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "O",
+      "jobs": 263,
+      "establishments": 44
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "P",
+      "jobs": 16767,
+      "establishments": 495
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "Q",
+      "jobs": 6306,
+      "establishments": 960
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "R",
+      "jobs": 1655,
+      "establishments": 222
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "S",
+      "jobs": 5377,
+      "establishments": 1139
+    },
+    {
+      "province": "Entre Ríos",
+      "code": "U",
+      "jobs": 4,
+      "establishments": 4
+    },
+    {
+      "province": "Formosa",
+      "code": "A",
+      "jobs": 1538,
+      "establishments": 434
+    },
+    {
+      "province": "Formosa",
+      "code": "B",
+      "jobs": 50,
+      "establishments": 8
+    },
+    {
+      "province": "Formosa",
+      "code": "C",
+      "jobs": 1751,
+      "establishments": 162
+    },
+    {
+      "province": "Formosa",
+      "code": "D",
+      "jobs": 569,
+      "establishments": 11
+    },
+    {
+      "province": "Formosa",
+      "code": "E",
+      "jobs": 424,
+      "establishments": 7
+    },
+    {
+      "province": "Formosa",
+      "code": "F",
+      "jobs": 6470,
+      "establishments": 312
+    },
+    {
+      "province": "Formosa",
+      "code": "G",
+      "jobs": 6741,
+      "establishments": 1264
+    },
+    {
+      "province": "Formosa",
+      "code": "H",
+      "jobs": 1045,
+      "establishments": 145
+    },
+    {
+      "province": "Formosa",
+      "code": "I",
+      "jobs": 753,
+      "establishments": 132
+    },
+    {
+      "province": "Formosa",
+      "code": "J",
+      "jobs": 673,
+      "establishments": 61
+    },
+    {
+      "province": "Formosa",
+      "code": "K",
+      "jobs": 1033,
+      "establishments": 101
+    },
+    {
+      "province": "Formosa",
+      "code": "L",
+      "jobs": 128,
+      "establishments": 47
+    },
+    {
+      "province": "Formosa",
+      "code": "M",
+      "jobs": 284,
+      "establishments": 106
+    },
+    {
+      "province": "Formosa",
+      "code": "N",
+      "jobs": 1038,
+      "establishments": 124
+    },
+    {
+      "province": "Formosa",
+      "code": "O",
+      "jobs": 67,
+      "establishments": 10
+    },
+    {
+      "province": "Formosa",
+      "code": "P",
+      "jobs": 1805,
+      "establishments": 54
+    },
+    {
+      "province": "Formosa",
+      "code": "Q",
+      "jobs": 1095,
+      "establishments": 196
+    },
+    {
+      "province": "Formosa",
+      "code": "R",
+      "jobs": 445,
+      "establishments": 50
+    },
+    {
+      "province": "Formosa",
+      "code": "S",
+      "jobs": 1073,
+      "establishments": 204
+    },
+    {
+      "province": "Jujuy",
+      "code": "A",
+      "jobs": 7968,
+      "establishments": 1018
+    },
+    {
+      "province": "Jujuy",
+      "code": "B",
+      "jobs": 2899,
+      "establishments": 56
+    },
+    {
+      "province": "Jujuy",
+      "code": "C",
+      "jobs": 11496,
+      "establishments": 395
+    },
+    {
+      "province": "Jujuy",
+      "code": "D",
+      "jobs": 542,
+      "establishments": 49
+    },
+    {
+      "province": "Jujuy",
+      "code": "E",
+      "jobs": 997,
+      "establishments": 12
+    },
+    {
+      "province": "Jujuy",
+      "code": "F",
+      "jobs": 7472,
+      "establishments": 415
+    },
+    {
+      "province": "Jujuy",
+      "code": "G",
+      "jobs": 9690,
+      "establishments": 1771
+    },
+    {
+      "province": "Jujuy",
+      "code": "H",
+      "jobs": 4254,
+      "establishments": 533
+    },
+    {
+      "province": "Jujuy",
+      "code": "I",
+      "jobs": 1888,
+      "establishments": 388
+    },
+    {
+      "province": "Jujuy",
+      "code": "J",
+      "jobs": 1310,
+      "establishments": 113
+    },
+    {
+      "province": "Jujuy",
+      "code": "K",
+      "jobs": 837,
+      "establishments": 162
+    },
+    {
+      "province": "Jujuy",
+      "code": "L",
+      "jobs": 173,
+      "establishments": 71
+    },
+    {
+      "province": "Jujuy",
+      "code": "M",
+      "jobs": 808,
+      "establishments": 260
+    },
+    {
+      "province": "Jujuy",
+      "code": "N",
+      "jobs": 2344,
+      "establishments": 293
+    },
+    {
+      "province": "Jujuy",
+      "code": "O",
+      "jobs": 73,
+      "establishments": 10
+    },
+    {
+      "province": "Jujuy",
+      "code": "P",
+      "jobs": 3640,
+      "establishments": 89
+    },
+    {
+      "province": "Jujuy",
+      "code": "Q",
+      "jobs": 2590,
+      "establishments": 248
+    },
+    {
+      "province": "Jujuy",
+      "code": "R",
+      "jobs": 410,
+      "establishments": 54
+    },
+    {
+      "province": "Jujuy",
+      "code": "S",
+      "jobs": 3085,
+      "establishments": 385
+    },
+    {
+      "province": "La Pampa",
+      "code": "A",
+      "jobs": 4695,
+      "establishments": 1811
+    },
+    {
+      "province": "La Pampa",
+      "code": "B",
+      "jobs": 606,
+      "establishments": 37
+    },
+    {
+      "province": "La Pampa",
+      "code": "C",
+      "jobs": 5485,
+      "establishments": 483
+    },
+    {
+      "province": "La Pampa",
+      "code": "D",
+      "jobs": 1711,
+      "establishments": 84
+    },
+    {
+      "province": "La Pampa",
+      "code": "E",
+      "jobs": 155,
+      "establishments": 15
+    },
+    {
+      "province": "La Pampa",
+      "code": "F",
+      "jobs": 2904,
+      "establishments": 265
+    },
+    {
+      "province": "La Pampa",
+      "code": "G",
+      "jobs": 10975,
+      "establishments": 2267
+    },
+    {
+      "province": "La Pampa",
+      "code": "H",
+      "jobs": 2089,
+      "establishments": 549
+    },
+    {
+      "province": "La Pampa",
+      "code": "I",
+      "jobs": 1131,
+      "establishments": 248
+    },
+    {
+      "province": "La Pampa",
+      "code": "J",
+      "jobs": 530,
+      "establishments": 95
+    },
+    {
+      "province": "La Pampa",
+      "code": "K",
+      "jobs": 1321,
+      "establishments": 211
+    },
+    {
+      "province": "La Pampa",
+      "code": "L",
+      "jobs": 236,
+      "establishments": 144
+    },
+    {
+      "province": "La Pampa",
+      "code": "M",
+      "jobs": 1025,
+      "establishments": 431
+    },
+    {
+      "province": "La Pampa",
+      "code": "N",
+      "jobs": 2082,
+      "establishments": 376
+    },
+    {
+      "province": "La Pampa",
+      "code": "O",
+      "jobs": 96,
+      "establishments": 15
+    },
+    {
+      "province": "La Pampa",
+      "code": "P",
+      "jobs": 1898,
+      "establishments": 66
+    },
+    {
+      "province": "La Pampa",
+      "code": "Q",
+      "jobs": 1696,
+      "establishments": 315
+    },
+    {
+      "province": "La Pampa",
+      "code": "R",
+      "jobs": 474,
+      "establishments": 99
+    },
+    {
+      "province": "La Pampa",
+      "code": "S",
+      "jobs": 1678,
+      "establishments": 392
+    },
+    {
+      "province": "La Rioja",
+      "code": "A",
+      "jobs": 4803,
+      "establishments": 265
+    },
+    {
+      "province": "La Rioja",
+      "code": "B",
+      "jobs": 154,
+      "establishments": 13
+    },
+    {
+      "province": "La Rioja",
+      "code": "C",
+      "jobs": 8848,
+      "establishments": 249
+    },
+    {
+      "province": "La Rioja",
+      "code": "D",
+      "jobs": 570,
+      "establishments": 20
+    },
+    {
+      "province": "La Rioja",
+      "code": "E",
+      "jobs": 332,
+      "establishments": 15
+    },
+    {
+      "province": "La Rioja",
+      "code": "F",
+      "jobs": 3020,
+      "establishments": 169
+    },
+    {
+      "province": "La Rioja",
+      "code": "G",
+      "jobs": 5783,
+      "establishments": 1218
+    },
+    {
+      "province": "La Rioja",
+      "code": "H",
+      "jobs": 1123,
+      "establishments": 153
+    },
+    {
+      "province": "La Rioja",
+      "code": "I",
+      "jobs": 1053,
+      "establishments": 214
+    },
+    {
+      "province": "La Rioja",
+      "code": "J",
+      "jobs": 355,
+      "establishments": 67
+    },
+    {
+      "province": "La Rioja",
+      "code": "K",
+      "jobs": 767,
+      "establishments": 92
+    },
+    {
+      "province": "La Rioja",
+      "code": "L",
+      "jobs": 54,
+      "establishments": 29
+    },
+    {
+      "province": "La Rioja",
+      "code": "M",
+      "jobs": 363,
+      "establishments": 99
+    },
+    {
+      "province": "La Rioja",
+      "code": "N",
+      "jobs": 1276,
+      "establishments": 168
+    },
+    {
+      "province": "La Rioja",
+      "code": "O",
+      "jobs": 59,
+      "establishments": 14
+    },
+    {
+      "province": "La Rioja",
+      "code": "P",
+      "jobs": 1302,
+      "establishments": 43
+    },
+    {
+      "province": "La Rioja",
+      "code": "Q",
+      "jobs": 1434,
+      "establishments": 154
+    },
+    {
+      "province": "La Rioja",
+      "code": "R",
+      "jobs": 147,
+      "establishments": 32
+    },
+    {
+      "province": "La Rioja",
+      "code": "S",
+      "jobs": 1170,
+      "establishments": 195
+    },
+    {
+      "province": "Mendoza",
+      "code": "A",
+      "jobs": 24089,
+      "establishments": 4953
+    },
+    {
+      "province": "Mendoza",
+      "code": "B",
+      "jobs": 4274,
+      "establishments": 200
+    },
+    {
+      "province": "Mendoza",
+      "code": "C",
+      "jobs": 46219,
+      "establishments": 3435
+    },
+    {
+      "province": "Mendoza",
+      "code": "D",
+      "jobs": 2302,
+      "establishments": 66
+    },
+    {
+      "province": "Mendoza",
+      "code": "E",
+      "jobs": 2012,
+      "establishments": 67
+    },
+    {
+      "province": "Mendoza",
+      "code": "F",
+      "jobs": 16922,
+      "establishments": 1431
+    },
+    {
+      "province": "Mendoza",
+      "code": "G",
+      "jobs": 44522,
+      "establishments": 7173
+    },
+    {
+      "province": "Mendoza",
+      "code": "H",
+      "jobs": 19583,
+      "establishments": 2650
+    },
+    {
+      "province": "Mendoza",
+      "code": "I",
+      "jobs": 12129,
+      "establishments": 1481
+    },
+    {
+      "province": "Mendoza",
+      "code": "J",
+      "jobs": 5201,
+      "establishments": 456
+    },
+    {
+      "province": "Mendoza",
+      "code": "K",
+      "jobs": 4912,
+      "establishments": 700
+    },
+    {
+      "province": "Mendoza",
+      "code": "L",
+      "jobs": 1441,
+      "establishments": 515
+    },
+    {
+      "province": "Mendoza",
+      "code": "M",
+      "jobs": 5055,
+      "establishments": 1215
+    },
+    {
+      "province": "Mendoza",
+      "code": "N",
+      "jobs": 24235,
+      "establishments": 1723
+    },
+    {
+      "province": "Mendoza",
+      "code": "O",
+      "jobs": 409,
+      "establishments": 61
+    },
+    {
+      "province": "Mendoza",
+      "code": "P",
+      "jobs": 18293,
+      "establishments": 383
+    },
+    {
+      "province": "Mendoza",
+      "code": "Q",
+      "jobs": 10565,
+      "establishments": 1280
+    },
+    {
+      "province": "Mendoza",
+      "code": "R",
+      "jobs": 1812,
+      "establishments": 216
+    },
+    {
+      "province": "Mendoza",
+      "code": "S",
+      "jobs": 8187,
+      "establishments": 1666
+    },
+    {
+      "province": "Mendoza",
+      "code": "T",
+      "jobs": 1,
+      "establishments": 1
+    },
+    {
+      "province": "Mendoza",
+      "code": "U",
+      "jobs": 39,
+      "establishments": 11
+    },
+    {
+      "province": "Misiones",
+      "code": "A",
+      "jobs": 10491,
+      "establishments": 1867
+    },
+    {
+      "province": "Misiones",
+      "code": "B",
+      "jobs": 185,
+      "establishments": 31
+    },
+    {
+      "province": "Misiones",
+      "code": "C",
+      "jobs": 22256,
+      "establishments": 1366
+    },
+    {
+      "province": "Misiones",
+      "code": "D",
+      "jobs": 3363,
+      "establishments": 42
+    },
+    {
+      "province": "Misiones",
+      "code": "E",
+      "jobs": 749,
+      "establishments": 73
+    },
+    {
+      "province": "Misiones",
+      "code": "F",
+      "jobs": 9702,
+      "establishments": 738
+    },
+    {
+      "province": "Misiones",
+      "code": "G",
+      "jobs": 21852,
+      "establishments": 3770
+    },
+    {
+      "province": "Misiones",
+      "code": "H",
+      "jobs": 7323,
+      "establishments": 795
+    },
+    {
+      "province": "Misiones",
+      "code": "I",
+      "jobs": 4878,
+      "establishments": 468
+    },
+    {
+      "province": "Misiones",
+      "code": "J",
+      "jobs": 1669,
+      "establishments": 164
+    },
+    {
+      "province": "Misiones",
+      "code": "K",
+      "jobs": 1322,
+      "establishments": 298
+    },
+    {
+      "province": "Misiones",
+      "code": "L",
+      "jobs": 412,
+      "establishments": 153
+    },
+    {
+      "province": "Misiones",
+      "code": "M",
+      "jobs": 1499,
+      "establishments": 527
+    },
+    {
+      "province": "Misiones",
+      "code": "N",
+      "jobs": 5026,
+      "establishments": 429
+    },
+    {
+      "province": "Misiones",
+      "code": "O",
+      "jobs": 522,
+      "establishments": 28
+    },
+    {
+      "province": "Misiones",
+      "code": "P",
+      "jobs": 9581,
+      "establishments": 214
+    },
+    {
+      "province": "Misiones",
+      "code": "Q",
+      "jobs": 3258,
+      "establishments": 478
+    },
+    {
+      "province": "Misiones",
+      "code": "R",
+      "jobs": 1942,
+      "establishments": 120
+    },
+    {
+      "province": "Misiones",
+      "code": "S",
+      "jobs": 5011,
+      "establishments": 658
+    },
+    {
+      "province": "Misiones",
+      "code": "U",
+      "jobs": 64,
+      "establishments": 2
+    },
+    {
+      "province": "Neuquén",
+      "code": "A",
+      "jobs": 5202,
+      "establishments": 394
+    },
+    {
+      "province": "Neuquén",
+      "code": "B",
+      "jobs": 22745,
+      "establishments": 380
+    },
+    {
+      "province": "Neuquén",
+      "code": "C",
+      "jobs": 9091,
+      "establishments": 788
+    },
+    {
+      "province": "Neuquén",
+      "code": "D",
+      "jobs": 1642,
+      "establishments": 36
+    },
+    {
+      "province": "Neuquén",
+      "code": "E",
+      "jobs": 933,
+      "establishments": 38
+    },
+    {
+      "province": "Neuquén",
+      "code": "F",
+      "jobs": 16142,
+      "establishments": 951
+    },
+    {
+      "province": "Neuquén",
+      "code": "G",
+      "jobs": 21846,
+      "establishments": 3737
+    },
+    {
+      "province": "Neuquén",
+      "code": "H",
+      "jobs": 8354,
+      "establishments": 696
+    },
+    {
+      "province": "Neuquén",
+      "code": "I",
+      "jobs": 6974,
+      "establishments": 951
+    },
+    {
+      "province": "Neuquén",
+      "code": "J",
+      "jobs": 1417,
+      "establishments": 217
+    },
+    {
+      "province": "Neuquén",
+      "code": "K",
+      "jobs": 2641,
+      "establishments": 301
+    },
+    {
+      "province": "Neuquén",
+      "code": "L",
+      "jobs": 850,
+      "establishments": 315
+    },
+    {
+      "province": "Neuquén",
+      "code": "M",
+      "jobs": 3458,
+      "establishments": 719
+    },
+    {
+      "province": "Neuquén",
+      "code": "N",
+      "jobs": 9543,
+      "establishments": 868
+    },
+    {
+      "province": "Neuquén",
+      "code": "O",
+      "jobs": 389,
+      "establishments": 27
+    },
+    {
+      "province": "Neuquén",
+      "code": "P",
+      "jobs": 4298,
+      "establishments": 180
+    },
+    {
+      "province": "Neuquén",
+      "code": "Q",
+      "jobs": 5817,
+      "establishments": 552
+    },
+    {
+      "province": "Neuquén",
+      "code": "R",
+      "jobs": 1408,
+      "establishments": 163
+    },
+    {
+      "province": "Neuquén",
+      "code": "S",
+      "jobs": 4075,
+      "establishments": 758
+    },
+    {
+      "province": "Neuquén",
+      "code": "U",
+      "jobs": 12,
+      "establishments": 3
+    },
+    {
+      "province": "Río Negro",
+      "code": "A",
+      "jobs": 18824,
+      "establishments": 1496
+    },
+    {
+      "province": "Río Negro",
+      "code": "B",
+      "jobs": 3311,
+      "establishments": 182
+    },
+    {
+      "province": "Río Negro",
+      "code": "C",
+      "jobs": 14876,
+      "establishments": 909
+    },
+    {
+      "province": "Río Negro",
+      "code": "D",
+      "jobs": 1060,
+      "establishments": 58
+    },
+    {
+      "province": "Río Negro",
+      "code": "E",
+      "jobs": 1074,
+      "establishments": 33
+    },
+    {
+      "province": "Río Negro",
+      "code": "F",
+      "jobs": 7515,
+      "establishments": 761
+    },
+    {
+      "province": "Río Negro",
+      "code": "G",
+      "jobs": 25124,
+      "establishments": 4043
+    },
+    {
+      "province": "Río Negro",
+      "code": "H",
+      "jobs": 6168,
+      "establishments": 752
+    },
+    {
+      "province": "Río Negro",
+      "code": "I",
+      "jobs": 8740,
+      "establishments": 1061
+    },
+    {
+      "province": "Río Negro",
+      "code": "J",
+      "jobs": 1220,
+      "establishments": 176
+    },
+    {
+      "province": "Río Negro",
+      "code": "K",
+      "jobs": 2105,
+      "establishments": 401
+    },
+    {
+      "province": "Río Negro",
+      "code": "L",
+      "jobs": 669,
+      "establishments": 266
+    },
+    {
+      "province": "Río Negro",
+      "code": "M",
+      "jobs": 1920,
+      "establishments": 660
+    },
+    {
+      "province": "Río Negro",
+      "code": "N",
+      "jobs": 4922,
+      "establishments": 703
+    },
+    {
+      "province": "Río Negro",
+      "code": "O",
+      "jobs": 387,
+      "establishments": 23
+    },
+    {
+      "province": "Río Negro",
+      "code": "P",
+      "jobs": 5152,
+      "establishments": 194
+    },
+    {
+      "province": "Río Negro",
+      "code": "Q",
+      "jobs": 5360,
+      "establishments": 530
+    },
+    {
+      "province": "Río Negro",
+      "code": "R",
+      "jobs": 2309,
+      "establishments": 197
+    },
+    {
+      "province": "Río Negro",
+      "code": "S",
+      "jobs": 4627,
+      "establishments": 845
+    },
+    {
+      "province": "Río Negro",
+      "code": "T",
+      "jobs": 2,
+      "establishments": 1
+    },
+    {
+      "province": "Río Negro",
+      "code": "U",
+      "jobs": 7,
+      "establishments": 2
+    },
+    {
+      "province": "Salta",
+      "code": "A",
+      "jobs": 18541,
+      "establishments": 2124
+    },
+    {
+      "province": "Salta",
+      "code": "B",
+      "jobs": 3898,
+      "establishments": 204
+    },
+    {
+      "province": "Salta",
+      "code": "C",
+      "jobs": 14592,
+      "establishments": 799
+    },
+    {
+      "province": "Salta",
+      "code": "D",
+      "jobs": 1000,
+      "establishments": 59
+    },
+    {
+      "province": "Salta",
+      "code": "E",
+      "jobs": 1669,
+      "establishments": 82
+    },
+    {
+      "province": "Salta",
+      "code": "F",
+      "jobs": 12892,
+      "establishments": 771
+    },
+    {
+      "province": "Salta",
+      "code": "G",
+      "jobs": 21130,
+      "establishments": 3569
+    },
+    {
+      "province": "Salta",
+      "code": "H",
+      "jobs": 7317,
+      "establishments": 626
+    },
+    {
+      "province": "Salta",
+      "code": "I",
+      "jobs": 5158,
+      "establishments": 762
+    },
+    {
+      "province": "Salta",
+      "code": "J",
+      "jobs": 1649,
+      "establishments": 199
+    },
+    {
+      "province": "Salta",
+      "code": "K",
+      "jobs": 1959,
+      "establishments": 275
+    },
+    {
+      "province": "Salta",
+      "code": "L",
+      "jobs": 515,
+      "establishments": 181
+    },
+    {
+      "province": "Salta",
+      "code": "M",
+      "jobs": 2101,
+      "establishments": 564
+    },
+    {
+      "province": "Salta",
+      "code": "N",
+      "jobs": 7403,
+      "establishments": 550
+    },
+    {
+      "province": "Salta",
+      "code": "O",
+      "jobs": 144,
+      "establishments": 11
+    },
+    {
+      "province": "Salta",
+      "code": "P",
+      "jobs": 9497,
+      "establishments": 192
+    },
+    {
+      "province": "Salta",
+      "code": "Q",
+      "jobs": 5111,
+      "establishments": 640
+    },
+    {
+      "province": "Salta",
+      "code": "R",
+      "jobs": 972,
+      "establishments": 101
+    },
+    {
+      "province": "Salta",
+      "code": "S",
+      "jobs": 4391,
+      "establishments": 840
+    },
+    {
+      "province": "Salta",
+      "code": "U",
+      "jobs": 5,
+      "establishments": 3
+    },
+    {
+      "province": "San Juan",
+      "code": "A",
+      "jobs": 5436,
+      "establishments": 1286
+    },
+    {
+      "province": "San Juan",
+      "code": "B",
+      "jobs": 4537,
+      "establishments": 138
+    },
+    {
+      "province": "San Juan",
+      "code": "C",
+      "jobs": 13951,
+      "establishments": 942
+    },
+    {
+      "province": "San Juan",
+      "code": "D",
+      "jobs": 520,
+      "establishments": 30
+    },
+    {
+      "province": "San Juan",
+      "code": "E",
+      "jobs": 522,
+      "establishments": 28
+    },
+    {
+      "province": "San Juan",
+      "code": "F",
+      "jobs": 14561,
+      "establishments": 692
+    },
+    {
+      "province": "San Juan",
+      "code": "G",
+      "jobs": 13333,
+      "establishments": 2548
+    },
+    {
+      "province": "San Juan",
+      "code": "H",
+      "jobs": 4849,
+      "establishments": 466
+    },
+    {
+      "province": "San Juan",
+      "code": "I",
+      "jobs": 2880,
+      "establishments": 437
+    },
+    {
+      "province": "San Juan",
+      "code": "J",
+      "jobs": 1212,
+      "establishments": 156
+    },
+    {
+      "province": "San Juan",
+      "code": "K",
+      "jobs": 1493,
+      "establishments": 214
+    },
+    {
+      "province": "San Juan",
+      "code": "L",
+      "jobs": 224,
+      "establishments": 92
+    },
+    {
+      "province": "San Juan",
+      "code": "M",
+      "jobs": 1253,
+      "establishments": 392
+    },
+    {
+      "province": "San Juan",
+      "code": "N",
+      "jobs": 5081,
+      "establishments": 437
+    },
+    {
+      "province": "San Juan",
+      "code": "O",
+      "jobs": 93,
+      "establishments": 18
+    },
+    {
+      "province": "San Juan",
+      "code": "P",
+      "jobs": 6707,
+      "establishments": 134
+    },
+    {
+      "province": "San Juan",
+      "code": "Q",
+      "jobs": 4644,
+      "establishments": 515
+    },
+    {
+      "province": "San Juan",
+      "code": "R",
+      "jobs": 985,
+      "establishments": 83
+    },
+    {
+      "province": "San Juan",
+      "code": "S",
+      "jobs": 4543,
+      "establishments": 471
+    },
+    {
+      "province": "San Luis",
+      "code": "A",
+      "jobs": 2751,
+      "establishments": 702
+    },
+    {
+      "province": "San Luis",
+      "code": "B",
+      "jobs": 271,
+      "establishments": 31
+    },
+    {
+      "province": "San Luis",
+      "code": "C",
+      "jobs": 17821,
+      "establishments": 627
+    },
+    {
+      "province": "San Luis",
+      "code": "D",
+      "jobs": 507,
+      "establishments": 17
+    },
+    {
+      "province": "San Luis",
+      "code": "E",
+      "jobs": 265,
+      "establishments": 28
+    },
+    {
+      "province": "San Luis",
+      "code": "F",
+      "jobs": 4068,
+      "establishments": 377
+    },
+    {
+      "province": "San Luis",
+      "code": "G",
+      "jobs": 9954,
+      "establishments": 1974
+    },
+    {
+      "province": "San Luis",
+      "code": "H",
+      "jobs": 2154,
+      "establishments": 365
+    },
+    {
+      "province": "San Luis",
+      "code": "I",
+      "jobs": 1811,
+      "establishments": 412
+    },
+    {
+      "province": "San Luis",
+      "code": "J",
+      "jobs": 1320,
+      "establishments": 112
+    },
+    {
+      "province": "San Luis",
+      "code": "K",
+      "jobs": 1055,
+      "establishments": 203
+    },
+    {
+      "province": "San Luis",
+      "code": "L",
+      "jobs": 273,
+      "establishments": 142
+    },
+    {
+      "province": "San Luis",
+      "code": "M",
+      "jobs": 635,
+      "establishments": 264
+    },
+    {
+      "province": "San Luis",
+      "code": "N",
+      "jobs": 4311,
+      "establishments": 402
+    },
+    {
+      "province": "San Luis",
+      "code": "O",
+      "jobs": 460,
+      "establishments": 17
+    },
+    {
+      "province": "San Luis",
+      "code": "P",
+      "jobs": 4737,
+      "establishments": 94
+    },
+    {
+      "province": "San Luis",
+      "code": "Q",
+      "jobs": 2350,
+      "establishments": 327
+    },
+    {
+      "province": "San Luis",
+      "code": "R",
+      "jobs": 1019,
+      "establishments": 82
+    },
+    {
+      "province": "San Luis",
+      "code": "S",
+      "jobs": 1407,
+      "establishments": 306
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "A",
+      "jobs": 3992,
+      "establishments": 323
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "B",
+      "jobs": 16201,
+      "establishments": 193
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "C",
+      "jobs": 3186,
+      "establishments": 335
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "D",
+      "jobs": 335,
+      "establishments": 16
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "E",
+      "jobs": 83,
+      "establishments": 12
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "F",
+      "jobs": 6899,
+      "establishments": 290
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "G",
+      "jobs": 8550,
+      "establishments": 1574
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "H",
+      "jobs": 4438,
+      "establishments": 401
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "I",
+      "jobs": 4365,
+      "establishments": 485
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "J",
+      "jobs": 780,
+      "establishments": 86
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "K",
+      "jobs": 967,
+      "establishments": 188
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "L",
+      "jobs": 121,
+      "establishments": 67
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "M",
+      "jobs": 1076,
+      "establishments": 267
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "N",
+      "jobs": 3430,
+      "establishments": 320
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "O",
+      "jobs": 79,
+      "establishments": 15
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "P",
+      "jobs": 2186,
+      "establishments": 42
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "Q",
+      "jobs": 1402,
+      "establishments": 188
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "R",
+      "jobs": 419,
+      "establishments": 54
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "S",
+      "jobs": 1496,
+      "establishments": 216
+    },
+    {
+      "province": "Santa Cruz",
+      "code": "U",
+      "jobs": 4,
+      "establishments": 1
+    },
+    {
+      "province": "Santa Fe",
+      "code": "A",
+      "jobs": 25826,
+      "establishments": 8294
+    },
+    {
+      "province": "Santa Fe",
+      "code": "B",
+      "jobs": 1413,
+      "establishments": 58
+    },
+    {
+      "province": "Santa Fe",
+      "code": "C",
+      "jobs": 137263,
+      "establishments": 7284
+    },
+    {
+      "province": "Santa Fe",
+      "code": "D",
+      "jobs": 3063,
+      "establishments": 115
+    },
+    {
+      "province": "Santa Fe",
+      "code": "E",
+      "jobs": 4761,
+      "establishments": 196
+    },
+    {
+      "province": "Santa Fe",
+      "code": "F",
+      "jobs": 38556,
+      "establishments": 2853
+    },
+    {
+      "province": "Santa Fe",
+      "code": "G",
+      "jobs": 103695,
+      "establishments": 18721
+    },
+    {
+      "province": "Santa Fe",
+      "code": "H",
+      "jobs": 34494,
+      "establishments": 6612
+    },
+    {
+      "province": "Santa Fe",
+      "code": "I",
+      "jobs": 14891,
+      "establishments": 2253
+    },
+    {
+      "province": "Santa Fe",
+      "code": "J",
+      "jobs": 16692,
+      "establishments": 1072
+    },
+    {
+      "province": "Santa Fe",
+      "code": "K",
+      "jobs": 16637,
+      "establishments": 1478
+    },
+    {
+      "province": "Santa Fe",
+      "code": "L",
+      "jobs": 3367,
+      "establishments": 1350
+    },
+    {
+      "province": "Santa Fe",
+      "code": "M",
+      "jobs": 9784,
+      "establishments": 2676
+    },
+    {
+      "province": "Santa Fe",
+      "code": "N",
+      "jobs": 34685,
+      "establishments": 2633
+    },
+    {
+      "province": "Santa Fe",
+      "code": "O",
+      "jobs": 855,
+      "establishments": 112
+    },
+    {
+      "province": "Santa Fe",
+      "code": "P",
+      "jobs": 42008,
+      "establishments": 1104
+    },
+    {
+      "province": "Santa Fe",
+      "code": "Q",
+      "jobs": 23972,
+      "establishments": 2469
+    },
+    {
+      "province": "Santa Fe",
+      "code": "R",
+      "jobs": 6655,
+      "establishments": 829
+    },
+    {
+      "province": "Santa Fe",
+      "code": "S",
+      "jobs": 24712,
+      "establishments": 3965
+    },
+    {
+      "province": "Santa Fe",
+      "code": "T",
+      "jobs": 2,
+      "establishments": 2
+    },
+    {
+      "province": "Santa Fe",
+      "code": "U",
+      "jobs": 27,
+      "establishments": 7
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "A",
+      "jobs": 3458,
+      "establishments": 889
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "B",
+      "jobs": 317,
+      "establishments": 28
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "C",
+      "jobs": 5310,
+      "establishments": 432
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "D",
+      "jobs": 525,
+      "establishments": 24
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "E",
+      "jobs": 376,
+      "establishments": 27
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "F",
+      "jobs": 9785,
+      "establishments": 550
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "G",
+      "jobs": 13721,
+      "establishments": 2780
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "H",
+      "jobs": 2717,
+      "establishments": 361
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "I",
+      "jobs": 2214,
+      "establishments": 352
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "J",
+      "jobs": 923,
+      "establishments": 73
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "K",
+      "jobs": 1410,
+      "establishments": 187
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "L",
+      "jobs": 183,
+      "establishments": 87
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "M",
+      "jobs": 818,
+      "establishments": 224
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "N",
+      "jobs": 2179,
+      "establishments": 270
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "O",
+      "jobs": 236,
+      "establishments": 22
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "P",
+      "jobs": 6316,
+      "establishments": 107
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "Q",
+      "jobs": 2245,
+      "establishments": 366
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "R",
+      "jobs": 442,
+      "establishments": 49
+    },
+    {
+      "province": "Santiago Del Estero",
+      "code": "S",
+      "jobs": 2769,
+      "establishments": 368
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "A",
+      "jobs": 1021,
+      "establishments": 79
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "B",
+      "jobs": 765,
+      "establishments": 32
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "C",
+      "jobs": 12512,
+      "establishments": 229
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "D",
+      "jobs": 203,
+      "establishments": 7
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "E",
+      "jobs": 667,
+      "establishments": 28
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "F",
+      "jobs": 2362,
+      "establishments": 281
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "G",
+      "jobs": 6002,
+      "establishments": 972
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "H",
+      "jobs": 3299,
+      "establishments": 366
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "I",
+      "jobs": 3066,
+      "establishments": 286
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "J",
+      "jobs": 438,
+      "establishments": 77
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "K",
+      "jobs": 540,
+      "establishments": 96
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "L",
+      "jobs": 126,
+      "establishments": 50
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "M",
+      "jobs": 806,
+      "establishments": 160
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "N",
+      "jobs": 1946,
+      "establishments": 234
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "O",
+      "jobs": 67,
+      "establishments": 7
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "P",
+      "jobs": 2121,
+      "establishments": 56
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "Q",
+      "jobs": 1034,
+      "establishments": 115
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "R",
+      "jobs": 445,
+      "establishments": 36
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "S",
+      "jobs": 577,
+      "establishments": 182
+    },
+    {
+      "province": "Tierra del Fuego",
+      "code": "U",
+      "jobs": 6,
+      "establishments": 2
+    },
+    {
+      "province": "Tucumán",
+      "code": "A",
+      "jobs": 37835,
+      "establishments": 1594
+    },
+    {
+      "province": "Tucumán",
+      "code": "B",
+      "jobs": 255,
+      "establishments": 20
+    },
+    {
+      "province": "Tucumán",
+      "code": "C",
+      "jobs": 25605,
+      "establishments": 1065
+    },
+    {
+      "province": "Tucumán",
+      "code": "D",
+      "jobs": 1072,
+      "establishments": 42
+    },
+    {
+      "province": "Tucumán",
+      "code": "E",
+      "jobs": 1429,
+      "establishments": 17
+    },
+    {
+      "province": "Tucumán",
+      "code": "F",
+      "jobs": 9894,
+      "establishments": 874
+    },
+    {
+      "province": "Tucumán",
+      "code": "G",
+      "jobs": 30648,
+      "establishments": 4689
+    },
+    {
+      "province": "Tucumán",
+      "code": "H",
+      "jobs": 11373,
+      "establishments": 1136
+    },
+    {
+      "province": "Tucumán",
+      "code": "I",
+      "jobs": 4765,
+      "establishments": 797
+    },
+    {
+      "province": "Tucumán",
+      "code": "J",
+      "jobs": 2590,
+      "establishments": 212
+    },
+    {
+      "province": "Tucumán",
+      "code": "K",
+      "jobs": 3492,
+      "establishments": 320
+    },
+    {
+      "province": "Tucumán",
+      "code": "L",
+      "jobs": 872,
+      "establishments": 261
+    },
+    {
+      "province": "Tucumán",
+      "code": "M",
+      "jobs": 2315,
+      "establishments": 592
+    },
+    {
+      "province": "Tucumán",
+      "code": "N",
+      "jobs": 18376,
+      "establishments": 674
+    },
+    {
+      "province": "Tucumán",
+      "code": "O",
+      "jobs": 148,
+      "establishments": 25
+    },
+    {
+      "province": "Tucumán",
+      "code": "P",
+      "jobs": 13658,
+      "establishments": 363
+    },
+    {
+      "province": "Tucumán",
+      "code": "Q",
+      "jobs": 8075,
+      "establishments": 759
+    },
+    {
+      "province": "Tucumán",
+      "code": "R",
+      "jobs": 1273,
+      "establishments": 184
+    },
+    {
+      "province": "Tucumán",
+      "code": "S",
+      "jobs": 5188,
+      "establishments": 1187
+    }
+  ]
+}

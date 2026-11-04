@@ -26,6 +26,10 @@ jobs:
         run: |
           node --check site/company-atlas.js
           node --test tests/test_company_atlas.mjs
+      - name: Validate official productive context
+        run: |
+          node --check site/cep-context.js
+          node --test tests/test_cep_context.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
