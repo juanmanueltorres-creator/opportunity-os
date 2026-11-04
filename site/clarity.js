@@ -42,7 +42,7 @@
   const routeTabs=territoryBox.querySelector('#routeTabs');
   const routeLinks=territoryBox.querySelector('#routeLinks');
   const routeText=territoryBox.querySelector('#routeDescription');
-  let active=0;
+  let active=paths.findIndex(path=>path.value==='REMOTE');
   const addLink=(root,label,url,cls)=>{
     const a=document.createElement('a');a.href=url;a.textContent=label+' ↗';
     a.target='_blank';a.rel='noopener noreferrer';
@@ -63,7 +63,7 @@
     const params=new URLSearchParams({keywords:path.word,location:path.where});
     if(path.value==='REMOTE')params.set('f_WT','2');
     addLink(routeLinks,'LinkedIn · empleos',jobsBase+params.toString(),'clarity-primary-link');
-    const indeedParams=new URLSearchParams({q:path.word,l:path.where});
+    const indeedParams=new URLSearchParams({q:path.value==='REMOTE'?path.word+' remoto':path.word,l:path.where});
     addLink(routeLinks,'Indeed',indeedBase+indeedParams.toString());
     if(path.value==='REMOTE'){
       addLink(routeLinks,'Workana · proyectos','https://www.workana.com/es/jobs?query='+encodeURIComponent('Python Excel automatización'));

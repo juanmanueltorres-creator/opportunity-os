@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-04",
+  "methodology": "Solo se priorizan vacantes que dicen Remote/100% remoto y aceptan Argentina; el filtro no sustituye la verificación individual de requisitos, idioma y remuneración. Las valoraciones sobre cultura laboral no están verificadas para un equipo concreto.",
+  "targets": [
+    {
+      "rank": 1,
+      "name": "Globant",
+      "kind": "career",
+      "pitch": "Analítica geoespacial · QA y soporte de aplicaciones · soluciones IA · operaciones digitales",
+      "remote": "Sí, ciertos avisos dicen «anywhere in Argentina»; otros son híbridos.",
+      "english": "Variable; algunos piden inglés intermedio y muchos roles especializados.",
+      "pay": "Sueldo exacto sin publicar. Beneficios según oferta y políticas, no garantizados.",
+      "scope": "Argentina; la selección de provincia no debe descartar las posiciones Anywhere.",
+      "difficulty": "Media-alta; apuntar a posiciones que acepten experiencia práctica.",
+      "rolesUrl": "https://career.globant.com/?country=AR",
+      "evidenceUrl": "https://career.globant.com/job/Caba-Senior-QC-Analyst-%28Anywhere%29-Buen/573886117",
+      "headcountArgentina": null,
+      "recommendedAction": "Consultar equipos de QA, soporte de productos y datos; usar GeoPlatform como caso de estudio. Validar modalidad en el aviso concreto."
+    },
+    {
+      "rank": 2,
+      "name": "BairesDev",
+      "kind": "career",
+      "pitch": "Integración de APIs · backend · datos · soporte/operaciones y coordinación con clientes",
+      "remote": "Empresa remote-first, anuncios 100% remotos.",
+      "english": "Importante obstáculo actual: varias vacantes piden inglés avanzado.",
+      "pay": "Declara pago en USD o moneda local en algunos avisos, sin cifra pública comparable.",
+      "scope": "Latinoamérica/Argentina; requisitos variables por vacante.",
+      "difficulty": "Alta para desarrollo formal si piden 3+ años e inglés avanzado.",
+      "rolesUrl": "https://www.bairesdev.com/join-us/",
+      "evidenceUrl": "https://applicants.bairesdev.com/job/111/286785/apply?lang=es",
+      "headcountArgentina": null,
+      "recommendedAction": "Usar candidatura abierta o roles donde experiencia de operaciones/automatización tenga peso; no afirmar inglés avanzado."
+    },
+    {
+      "rank": 3,
+      "name": "EPAM",
+      "kind": "career",
+      "pitch": "Soporte de aplicaciones · analítica · integración de datos · Python/IA para productos técnicos",
+      "remote": "La página de Argentina muestra roles «Remote in Argentina».",
+      "english": "En muchas búsquedas publicadas el requisito es inglés B2 o superior.",
+      "pay": "Sin sueldo publicado de forma general para Argentina.",
+      "scope": "Argentina; remoto en vacantes identificadas.",
+      "difficulty": "Alta; parte importante de las ofertas son senior.",
+      "rolesUrl": "https://careers.epam.com/en/jobs/argentina",
+      "evidenceUrl": "https://careers.epam.com/en/jobs/argentina",
+      "headcountArgentina": null,
+      "recommendedAction": "Buscar junior, soporte, coordinación e implementación, sin aplicar a roles senior de AI sin cumplir requisitos."
+    },
+    {
+      "rank": 4,
+      "name": "RWS / TrainAI",
+      "kind": "contract",
+      "pitch": "Evaluación de información y buscadores · control de calidad · datos e IA",
+      "remote": "Aviso de Search Engine Evaluator: Argentina, trabajo desde casa.",
+      "english": "Requiere dominio de español e inglés; evaluar prueba de ingreso.",
+      "pay": "Hasta USD 8/h; 5-20 horas por semana, según aviso. No es sueldo garantizado.",
+      "scope": "Argentina (incluye Córdoba).",
+      "difficulty": "Baja-media; la vacante indica que no exige experiencia previa, pero requiere evaluación.",
+      "rolesUrl": "https://jobs.lever.co/rws/71b45d5b-c17f-49f6-b523-9eab28324667",
+      "evidenceUrl": "https://jobs.lever.co/rws/71b45d5b-c17f-49f6-b523-9eab28324667",
+      "headcountArgentina": null,
+      "recommendedAction": "Evaluar como ingreso temporal; verificar tarifa real, tareas disponibles y condiciones antes de registrarse."
+    },
+    {
+      "rank": 5,
+      "name": "Welo Data / Welocalize",
+      "kind": "contract",
+      "pitch": "Control de anuncios · anotación de datos · evaluación de respuestas de IA en español argentino",
+      "remote": "Ads Quality Rater Argentina: remoto e independent contractor.",
+      "english": "Se requiere español fluido y buena comprensión de inglés.",
+      "pay": "Aproximadamente USD 4/h según tareas en la vacante; remuneración baja frente al objetivo principal.",
+      "scope": "Argentina; residente local requerido.",
+      "difficulty": "Baja-media; proceso autoevaluado y pago condicionado a tareas disponibles.",
+      "rolesUrl": "https://jobs.lever.co/weloglobal?location=Argentina",
+      "evidenceUrl": "https://jobs.lever.co/weloglobal/d9a91e49-8052-4ce6-836d-9ee264214b7d",
+      "headcountArgentina": null,
+      "recommendedAction": "Opción secundaria de ingresos, no sustituye búsqueda de empleo técnico o clientes."
+    }
+  ],
+  "services": [
+    {
+      "id": "landing",
+      "label": "Landing comercial",
+      "target": "Restaurantes, alojamientos, servicios técnicos, consultoras chicas",
+      "deliverable": "Sitio rápido para presentar servicios, menú/catálogo, contacto y reservas externas; SEO técnico básico y analítica.",
+      "evidence": "Comprobar antes si el negocio NO tiene web propia útil o presenta un problema concreto de conversión.",
+      "next": "Mostrar una muestra de un único negocio; pedir reunión breve y presupuestar alcance cerrado."
+    },
+    {
+      "id": "operations",
+      "label": "Sistema operativo simple",
+      "target": "Locales gastronómicos, distribuidores, comercio con stock",
+      "deliverable": "Registro de pedidos, compras, stock o turnos; importación CSV y dashboard básico sin despliegue complejo.",
+      "evidence": "Confirmar que la operación usa planillas manuales o hay un cuello de botella medible.",
+      "next": "Primero auditoría de 15 minutos; luego propuesta de una sola función con demo y costo fijo."
+    },
+    {
+      "id": "automation",
+      "label": "Automatización y datos",
+      "target": "Estudios técnicos, agencias, consultoras, proveedores industriales",
+      "deliverable": "Conectar APIs, normalizar planillas, enviar reportes o visualizar indicadores; seguridad y validaciones simples.",
+      "evidence": "Detectar tareas repetitivas comprobables, volumen/errores y quién decide el presupuesto.",
+      "next": "Ofrecer una demo pequeña sobre datos de ejemplo, sin pedir credenciales ni acceso previo."
+    },
+    {
+      "id": "geo",
+      "label": "Mapa interactivo y geodatos",
+      "target": "Turismo, logística, inmobiliarias, consultoras ambientales y mineras",
+      "deliverable": "Mapa con ubicaciones, capas públicas e indicadores trazables, usando una parte de GeoPlatform como prueba.",
+      "evidence": "Confirmar que existe necesidad de mostrar territorio y que las fuentes y permisos están claros.",
+      "next": "Enviar una captura/mini-demo de 1 AOI y un beneficio comercial concreto."
+    }
+  ]
+}

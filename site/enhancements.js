@@ -45,9 +45,9 @@
     const compact = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return [
-      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina'],
-      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value) + '&l=Argentina'],
-      ['Computrabajo', 'https://ar.computrabajo.com/trabajo-de-' + (compact || 'gis')],
+      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2'],
+      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina'],
+      ['Computrabajo · remoto', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
       ['Workana · Freelance', 'https://www.workana.com/es/jobs?query=' + encodeURIComponent(value)]
     ];
   }
