@@ -1,0 +1,59 @@
+/* Atlas productivo federal: no publicación de datos privados */
+.company-atlas{margin:20px 0 30px;padding:24px;background:linear-gradient(145deg,#141b1e,#101719 72%);border:1px solid #38515a;border-radius:10px}
+.atlas-top{display:flex;justify-content:space-between;align-items:start;gap:24px}
+.atlas-top h2{font-size:clamp(23px,2.9vw,36px);letter-spacing:-.055em;margin:7px 0}
+.atlas-top .note{max-width:790px;margin:0}
+.atlas-import{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.atlas-status{margin-top:17px;color:#abbbba;font-size:11px}
+.atlas-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:17px 0;border:1px solid #3c5050;border-radius:8px;background:#0a1113;overflow:hidden}
+.atlas-stats>div{padding:15px 18px;display:flex;flex-direction:column;gap:4px;border-right:1px solid #3c5050}
+.atlas-stats>div:last-child{border-right:0}
+.atlas-stats strong{font-size:27px;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.atlas-stats span{font:10px ui-monospace,Consolas,monospace;color:#9caea9}
+.atlas-controls{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(3,minmax(105px,.75fr));gap:10px;margin-bottom:19px;align-items:end}
+.atlas-controls label{font-size:10px;color:#a8bcb6;display:block}
+.atlas-controls input,.atlas-controls select{display:block;width:100%;margin-top:6px;padding:10px 9px;background:#0b1213;border:1px solid #395152;border-radius:5px;min-height:42px;color:#e9f1ef;font-size:12px}
+.atlas-geo{padding:17px 19px;background:#0a1214;border:1px solid #32474e;border-radius:8px;margin-bottom:17px}
+.atlas-geo h3,.atlas-subhead h3{font-size:13px;margin:0 0 5px;letter-spacing:.02em}
+.atlas-geo .note{margin:0 0 13px;max-width:800px}
+.atlas-territory{display:grid;grid-template-columns:repeat(6,minmax(100px,1fr));gap:7px}
+.atlas-province{display:flex;justify-content:space-between;align-items:center;gap:5px;min-height:36px;padding:8px 9px;background:linear-gradient(90deg,#1d443e var(--province-share),#101c1b var(--province-share));color:#d4e4da;border:1px solid #36514b;border-radius:5px;font-size:10px;text-align:left}
+.atlas-province strong{font-variant-numeric:tabular-nums;font-size:12px;color:#e8ffde}
+.atlas-province.active{border-color:var(--lime);outline:1px solid var(--lime)}
+.atlas-province:hover:not(:disabled){border-color:#abc993}
+.atlas-province:disabled{opacity:.38;cursor:default}
+.atlas-workspace{display:grid;grid-template-columns:minmax(300px,.95fr) minmax(320px,1.05fr);gap:13px}
+.atlas-listpane,.atlas-detailpane{min-width:0;border:1px solid #33474a;border-radius:8px;background:#0a1214;padding:15px}
+.atlas-subhead{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid #2b4143;padding-bottom:12px;margin-bottom:10px}
+.atlas-subhead h3{margin:0}
+.atlas-rows{display:grid;gap:7px;max-height:660px;overflow:auto;padding-right:4px}
+.atlas-row{display:block;width:100%;border:1px solid #354c48;background:#101b1b;color:#eff8ed;padding:11px;text-align:left;border-radius:6px}
+.atlas-row.active{background:#1b2b26;border-color:#bddf80}
+.atlas-row:hover{border-color:#93b77d}
+.atlas-row strong{display:block;font-size:12px;line-height:1.35;margin-bottom:5px}
+.atlas-row small{display:block;font-size:10px;color:#9aafa9;line-height:1.5}
+.atlas-row-foot{display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px;color:#d9dcb9}
+#atlasMore{margin-top:12px}
+#atlasDetail h4{font-size:23px;letter-spacing:-.035em;line-height:1.2;margin:10px 0 17px}
+.atlas-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:15px}
+.atlas-fact{padding:11px;border:1px solid #334746;border-radius:5px;background:#132021}
+.atlas-fact small{display:block;color:#94aaa5;font-size:10px;margin-bottom:4px}
+.atlas-fact strong{display:block;font-size:12px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.atlas-detail-text{font-size:12px;color:#c3d4cc;line-height:1.65}
+.atlas-source-link{display:inline-block;color:var(--lime);font-size:12px;margin-bottom:11px}
+.atlas-external{display:flex;gap:12px;flex-wrap:wrap;margin:9px 0 15px}
+.atlas-external a{font-size:11px;color:#9bdadd}
+.atlas-rating{border-top:1px solid #344549;padding-top:13px;margin-top:12px}
+.atlas-stars{display:flex;gap:3px;margin:7px 0 14px}
+.atlas-stars button{background:none;border:0;color:var(--lime);font-size:23px;padding:2px 7px}
+.atlas-rating label{color:#a8bbb5;display:block;font-size:11px}
+.atlas-rating textarea{display:block;width:100%;margin-top:7px;background:#0a1112;border:1px solid #405350;border-radius:5px;color:#ecf5eb;padding:10px;font:12px/1.5 system-ui;resize:vertical}
+.atlas-sources{margin-top:16px;padding:14px 16px;border:1px solid #3a4e48;background:#101b1a;border-radius:7px}
+.atlas-sources summary{cursor:pointer;font-size:12px;color:#d3e9db}
+.atlas-source-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:15px}
+.atlas-public-source{border:1px solid #334b44;padding:10px 12px;border-radius:5px}
+.atlas-public-source a{font-size:12px;color:#c3efb0}
+.atlas-public-source .note{margin:5px 0 0}
+.atlas-sources>.note{margin:13px 0 0}
+@media(max-width:1140px){.atlas-territory{grid-template-columns:repeat(4,minmax(90px,1fr))}.atlas-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.atlas-workspace{grid-template-columns:1fr}}
+@media(max-width:760px){.company-atlas{padding:15px}.atlas-top{display:block}.atlas-import{margin-top:12px;justify-content:flex-start}.atlas-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-stats>div:nth-child(2){border-right:0}.atlas-stats>div:nth-child(-n+2){border-bottom:1px solid #3c5050}.atlas-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-controls label:first-child{grid-column:1/-1}.atlas-geo{padding:12px}.atlas-territory{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-workspace{grid-template-columns:1fr}.atlas-source-list{grid-template-columns:1fr}.atlas-facts{grid-template-columns:1fr 1fr}}
