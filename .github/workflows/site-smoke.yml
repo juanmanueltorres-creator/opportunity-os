@@ -5,11 +5,13 @@ on:
     paths:
       - "site/**"
       - ".github/workflows/site-smoke.yml"
+      - "tests/test_hub_refinement.mjs"
   push:
     branches: [main]
     paths:
       - "site/**"
       - ".github/workflows/site-smoke.yml"
+      - "tests/test_hub_refinement.mjs"
 
 permissions:
   contents: read
