@@ -34,6 +34,10 @@ jobs:
         run: |
           node --check site/clarity.js
           node --test tests/test_clarity.mjs
+      - name: Validate unified workspace and one-Excel sync
+        run: |
+          node --check site/unified-workspace.js
+          node --test tests/test_unified_workspace.mjs
       - name: Check that new assets and privacy boundaries are wired
         run: |
           python - <<'PY'
