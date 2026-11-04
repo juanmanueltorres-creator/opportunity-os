@@ -88,7 +88,7 @@
     if(/\becuador\b/.test(s))return 'Ecuador';
     if(/\bespana\b/.test(s))return 'España';
     if(/\bestados unidos\b|\busa\b/.test(s))return 'Estados Unidos';
-    if(/\bargentina\b/.test(s)||provinceFrom(s))return 'Argentina';
+    if(s==='nacional'||/\bargentina\b/.test(s)||provinceFrom(s))return 'Argentina';
     return 'No informado';
   }
   function provinceFrom(raw) {
