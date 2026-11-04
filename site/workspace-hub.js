@@ -200,7 +200,8 @@
       const q=document.getElementById('q'),track=document.getElementById('track'),
         mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage'),
         sourceCheck=document.getElementById('sourceCheck');
-      if(q)q.value=String(detail.query||'');
+      // A full category must not be accidentally narrowed by one keyword.
+      if(q)q.value=detail.track?'':String(detail.query||'');
       if(track)track.value=String(detail.track||'');
       if(mode)mode.value=detail.mode==='REMOTE'?'REMOTE':'';
       if(listing)listing.value='';
