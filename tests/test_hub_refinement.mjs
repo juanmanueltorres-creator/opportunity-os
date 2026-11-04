@@ -40,5 +40,5 @@ test('preserve original hub privacy and one canonical import',()=>{
   assert.doesNotMatch(hub,/localStorage\.setItem/);
   assert.doesNotMatch(hub,/sendBeacon|sendEmail|mailto:|fetch\(/);
   assert.match(hub,/Fuente de verdad: tu Excel/);
-  assert.match(hub,/no se fusionan automáticamente con tus contactos/);
+  assert.match(hub,/ni se fusionan automáticamente con tus contactos/);
 });
