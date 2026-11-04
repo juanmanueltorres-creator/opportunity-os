@@ -15,9 +15,53 @@
   const territorial=document.querySelector('.territory');
   const sources=document.querySelector('.sources');
   if(!nav||!quick||!routes||!atlas||!discovery||!tracker||!cep||!today||!vacancies) return;
+  // Show one search surface: specialty + region, not two competing large panels.
+  const chips=quick.querySelector('#quickChips');
+  if(chips){
+    routes.classList.add('hub-inline-routes');
+    chips.insertAdjacentElement('afterend',routes);
+  }
+  const companySwitch=document.createElement('div');
+  companySwitch.className='hub-company-switch';
+  companySwitch.setAttribute('role','group');
+  companySwitch.setAttribute('aria-label','Elegir qué empresas explorar');
+  const companyChoices=[
+    ['private','Mi directorio · Excel'],
+    ['discovery','Descubrir empresas · fuentes públicas']
+  ];
+  const companyHint=document.createElement('p');
+  companyHint.className='note hub-company-hint';
+  let companyMode='discovery';
+  try{
+    const stored=JSON.parse(localStorage.getItem('opportunity-os-company-atlas-v1')||'null');
+    if(Array.isArray(stored?.records)&&stored.records.length)companyMode='private';
+  }catch{}
+  if(location.hash==='#discovery-targets')companyMode='discovery';
+  if(location.hash==='#atlas-empresas')companyMode='private';
+  companyChoices.forEach(([key,label])=>{
+    const button=document.createElement('button');button.type='button';
+    button.dataset.companyView=key;button.className='hub-company-option';button.textContent=label;
+    button.addEventListener('click',()=>{companyMode=key;switchCompanies();});
+    companySwitch.append(button);
+  });
+  companySwitch.append(companyHint);
+  atlas.insertAdjacentElement('beforebegin',companySwitch);
+  function switchCompanies(){
+    if(current!=='empresas')return;
+    atlas.hidden=companyMode!=='private';
+    discovery.hidden=companyMode!=='discovery';
+    companySwitch.querySelectorAll('button').forEach(button=>{
+      const selected=button.dataset.companyView===companyMode;
+      button.classList.toggle('active',selected);
+      button.setAttribute('aria-pressed',String(selected));
+    });
+    companyHint.textContent=companyMode==='private'?
+      'Estos registros vienen de tu Excel, no del directorio público. Importá cuando necesites actualizar.':
+      'Estas fichas tienen fuente pública, pero no confirman vacantes ni se añaden a tu seguimiento.';
+  }
   const VIEWS={
     buscar:{label:'Buscar trabajo',hint:'Vacantes verificables y búsquedas directas, priorizando oportunidades en español.',sections:[quick,routes,statrow,today,vacancies]},
-    empresas:{label:'Empresas',hint:'Organizaciones y organismos de tu directorio, más objetivos públicos para investigar.',sections:[atlas,discovery]},
+    empresas:{label:'Empresas',hint:'Organizaciones y organismos de tu directorio, más objetivos públicos para investigar.',sections:[companySwitch,atlas,discovery]},
     seguimiento:{label:'Seguimiento',hint:'Tus postulaciones y contactos, sin duplicar ni publicar el Excel.',sections:[tracker]},
     datos:{label:'Datos y fuentes',hint:'Indicadores territoriales oficiales y trazabilidad de las fuentes. No son vacantes.',sections:[cep,territorial,sources]}
   };
@@ -55,6 +99,7 @@
     for(const [id,config] of Object.entries(VIEWS)){
       for(const section of config.sections)if(section)section.hidden=id!==view;
     }
+    if(view==='empresas')switchCompanies();
     hint.textContent=VIEWS[view].hint+(view==='seguimiento'?' '+statusMessage():'');
     tabs.querySelectorAll('[data-view]').forEach(button=>{
       const selected=button.dataset.view===view;
@@ -89,6 +134,73 @@
     });
     tabs.append(button);
   }
+
+  // Keep quick portal links and one explicit location choice synchronized.
+  const locationNames={
+    'Todo el país':'Argentina',
+    'Buenos Aires':'Provincia de Buenos Aires, Argentina',
+    'CABA':'Ciudad Autónoma de Buenos Aires, Argentina',
+    'Córdoba':'Córdoba, Argentina',
+    'Remoto':'Argentina'
+  };
+  const quickLinks=quick.querySelector('#quickPortalLinks');
+  const regionTabs=routes.querySelector('#routeTabs');
+  const chosenArea=()=>[...(regionTabs?.querySelectorAll('button')||[])].find(x=>x.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'Todo el país';
+  function updatePortalRegion(){
+    const choice=chosenArea();
+    quickLinks?.querySelectorAll('a[href]').forEach(link=>{
+      let u;try{u=new URL(link.href);}catch{return;}
+      if(u.hostname==='www.linkedin.com'&&u.pathname.startsWith('/jobs/search')){
+        u.searchParams.set('location',locationNames[choice]||'Argentina');
+        if(choice==='Remoto')u.searchParams.set('f_WT','2');
+        else u.searchParams.delete('f_WT');
+        link.href=u.toString();
+      }else if(u.hostname==='ar.indeed.com'){
+        u.searchParams.set('l',locationNames[choice]||'Argentina');
+        link.href=u.toString();
+      }
+    });
+  }
+  regionTabs?.addEventListener('click',()=>queueMicrotask(updatePortalRegion));
+  if(quickLinks)new MutationObserver(updatePortalRegion).observe(quickLinks,{childList:true});
+  updatePortalRegion();
+  const shortcut=document.createElement('div');shortcut.className='hub-search-shortcut';
+  const lead=document.createElement('p');lead.className='note';
+  lead.textContent='Usá estos portales para búsquedas nuevas o trasladá el tema al radar de avisos ya recopilados.';
+  const toRadar=document.createElement('button');toRadar.type='button';toRadar.className='control primary';
+  toRadar.id='hubToRadar';toRadar.textContent='Ver esta búsqueda en el radar';
+  shortcut.append(toRadar,lead);quick.append(shortcut);
+  toRadar.addEventListener('click',()=>{
+    const input=quick.querySelector('#quickQuery');
+    const typed=String(input?.value||'').trim().slice(0,120);
+    const short=typed.match(/GIS|SIG|geolog|miner|python|datos|soporte|operacion|ventas|gastronom|automatiz/i)?.[0]||typed;
+    const query=document.getElementById('q'),where=document.getElementById('location'),
+      mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage');
+    const area=chosenArea();
+    if(query)query.value=short;
+    if(where)where.value=({CABA:'CABA','Buenos Aires':'Buenos Aires',Córdoba:'Córdoba'}[area]||'');
+    if(mode)mode.value=area==='Remoto'?'REMOTE':'';
+    if(listing)listing.value='ES'; // Spanish listing is not proof of Spanish job requirements.
+    for(const control of [query,where,mode,listing].filter(Boolean)){
+      control.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    vacancies.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  // The main import button already shares the same Excel with the atlas; keep extra
+  // multi-file atlas import available for specialized regional directories.
+  atlas.querySelector('#atlasUpload').textContent='Sumar directorio adicional';
+
+  // When a new workbook is imported, show the user's actual directory first.
+  let hadPrivate=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
+  window.addEventListener('opportunity:atlas-change',()=>{
+    const count=Number(atlas.querySelector('#atlasCount')?.textContent)||0;
+    if(count>0&&!hadPrivate){
+      companyMode='private';
+      if(current==='empresas')switchCompanies();
+    }
+    hadPrivate=count;
+  });
+
   top.querySelector('#hubImport').addEventListener('click',()=>{
     // Canonical file path: existing tracker parser triggers atlas parser
     // via opportunity:local-file. This adds no new upload or storage.

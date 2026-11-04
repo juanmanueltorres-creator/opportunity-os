@@ -9,6 +9,7 @@
   const jobsBase='https://www.linkedin.com/jobs/search/?';
   const indeedBase='https://ar.indeed.com/jobs?';
   const paths=[
+    {name:'Todo el país',where:'Argentina',word:'GIS OR Python OR soporte técnico',value:'ALL',desc:'Sin provincia preseleccionada. Primero evaluá puesto, idioma, modalidad y elegibilidad.'},
     {name:'Buenos Aires',where:'Buenos Aires, Provincia de Buenos Aires, Argentina',word:'GIS OR soporte técnico OR analista de datos',value:'BA',desc:'Provincia de Buenos Aires (no incluye CABA).'},
     {name:'CABA',where:'Ciudad Autónoma de Buenos Aires, Argentina',word:'soporte de aplicaciones OR Python OR GIS',value:'CABA',desc:'Ciudad Autónoma de Buenos Aires; se analiza aparte de PBA.'},
     {name:'Remoto',where:'Argentina',word:'Python OR soporte técnico OR SIG',value:'REMOTE',desc:'Remoto es una modalidad de aviso, no un domicilio de empresa. Verificá elegibilidad desde Argentina e idioma laboral.'},
