@@ -1,0 +1,40 @@
+name: site-smoke
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - ".github/workflows/site-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/site-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate standalone JavaScript
+        run: node --check site/enhancements.js
+      - name: Check that new assets and privacy boundaries are wired
+        run: |
+          python - <<'PY'
+          import pathlib
+          h = pathlib.Path("site/index.html").read_text()
+          js = pathlib.Path("site/enhancements.js").read_text()
+          csp = pathlib.Path("site/vercel.json").read_text()
+          assert 'href="/enhancements.css"' in h
+          assert 'src="/enhancements.js"' in h
+          assert "cdn.sheetjs.com/xlsx-0.20.3/" in js
+          assert "localStorage.setItem(storageKey" in js
+          assert "fetch(" not in js and "XMLHttpRequest" not in js
+          assert "script-src 'self'" in csp
+          assert "spanishFirst" in h
+          print("Site smoke checks passed")
+          PY
