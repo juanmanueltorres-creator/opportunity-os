@@ -28,7 +28,8 @@
     '<div class="quick-chips" id="quickChips" role="group" aria-label="Búsquedas frecuentes"></div>',
     '<div class="quick-form"><label for="quickQuery">Palabras clave</label><input type="search" id="quickQuery" autocomplete="off" value="GIS" placeholder="Ej.: soporte de aplicaciones, QGIS, encargado"/>',
     '<div id="quickPortalLinks" class="quick-portals" aria-label="Abrir búsqueda en un portal"></div></div>',
-    '<div class="quick-utility"><a href="https://oportunidades.ypf.com/search/" target="_blank" rel="noopener noreferrer">YPF · Oportunidades ↗</a>',
+    '<div class="quick-utility"><button id="quickSpanish" class="quick-internal" type="button">Ver avisos en español del radar ↓</button>',
+    '<a href="https://oportunidades.ypf.com/search/" target="_blank" rel="noopener noreferrer">YPF · Oportunidades ↗</a>',
     '<a href="https://trabajomineria.salta.gob.ar/trabajos/" target="_blank" rel="noopener noreferrer">Minería Salta ↗</a>',
     '<a href="https://www.getonbrd.com/jobs/technical-support" target="_blank" rel="noopener noreferrer">Soporte LATAM ↗</a>',
     '<a href="https://www.bumeran.com.ar/empleos.html" target="_blank" rel="noopener noreferrer">Bumeran ↗</a></div>'
@@ -90,6 +91,13 @@
   q.value = categories[0].term;
   drawChips();
   drawLinks();
+  quick.querySelector('#quickSpanish').addEventListener('click', () => {
+    const filter = document.getElementById('listingLanguage');
+    if (!filter) return;
+    filter.value = 'ES';
+    filter.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('cards')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   const tracker = document.createElement('section');
   tracker.className = 'tracker-panel';
