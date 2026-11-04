@@ -18,7 +18,8 @@
     ['CEP XXI · Dataset de establecimientos','https://datos.gob.ar/dataset/produccion-distribucion-geografica-establecimientos-productivos','Descarga pública de información territorial de establecimientos y empleo por actividad.'],
     ['OEDE · Empleo y empresas','https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales','Empresas, puestos y tamaño por jurisdicción y actividad.'],
     ['SIACAM · Minería','https://www.argentina.gob.ar/economia/mineria/siacam','Proyectos, cadenas y estadísticas mineras.'],
-    ['Agencia I+D+i · Adjudicaciones','https://www.argentina.gob.ar/ciencia/agencia/cecyr-informes-y-publicaciones','Fondos y proyectos financiados; consultar los informes.'],
+    ['Agencia I+D+i · Adjudicaciones por provincia','https://www.argentina.gob.ar/ciencia/agencia/ueac-informes-y-publicaciones/informes-provinciales','Montos y proyectos adjudicados por provincia; no implica inversión ejecutada ni contratación.'],
+    ['Fundar · Monitor de Empresas','https://empresas.fund.ar/','Empresas empleadoras según SRT; gráficos públicos por sector, provincia y tamaño.'],
     ['Registro Nacional de Sociedades','https://www.argentina.gob.ar/node/143590','Datos societarios por consulta puntual; no equivale a vacante.'],
     ['Georef · Provincias oficiales','https://www.argentina.gob.ar/georef/descarga-de-la-base-completa','Nomenclador de jurisdicciones; no geocodifica empresas automáticamente.']
   ];
@@ -80,7 +81,14 @@
     if(/\bperu\b/.test(s))return 'Perú';
     if(/\bcolombia\b/.test(s))return 'Colombia';
     if(/\bmexico\b/.test(s))return 'México';
-    return 'Argentina';
+    if(/\buruguay\b/.test(s))return 'Uruguay';
+    if(/\bbrasil\b|\bbrazil\b/.test(s))return 'Brasil';
+    if(/\bbolivia\b/.test(s))return 'Bolivia';
+    if(/\becuador\b/.test(s))return 'Ecuador';
+    if(/\bespana\b/.test(s))return 'España';
+    if(/\bestados unidos\b|\busa\b/.test(s))return 'Estados Unidos';
+    if(/\bargentina\b/.test(s)||provinceFrom(s))return 'Argentina';
+    return 'No informado';
   }
   function provinceFrom(raw) {
     const s=norm(raw);
