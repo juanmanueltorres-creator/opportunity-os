@@ -11,7 +11,7 @@ HTML = ROOT / "site/index.html"
 def test_public_gemini_briefing_has_no_private_password_or_api_call():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="todayJobs"' in html
-    assert "Preparar selección para Gemini" in html
+    assert "Consultar selección con Gemini" in html
     assert "function relevance(j)" in html
     assert "function renderToday()" in html
     assert "function preparePrompt(selected)" in html
@@ -33,7 +33,8 @@ def test_public_gemini_briefing_has_no_private_password_or_api_call():
     assert "https://gemini.google.com/app" in html
     assert "navigator.clipboard.writeText" in html
     assert "function launchGemini(selected)" in html
-    assert "window.open('https://gemini.google.com/app'" in html
+    assert "document.getElementById('chatMessage')" in html
+    assert "window.open('https://gemini.google.com/app'" not in html
     assert 'id="briefText" readonly' in html
     assert "geminiToken" not in html
     assert "geminiDialog" not in html
