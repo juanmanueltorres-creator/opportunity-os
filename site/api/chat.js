@@ -92,6 +92,7 @@ async function retrieve(query){
   const figures=Array.isArray(market?.figures)?market.figures:[];
   // Selected vacancies receive source links before general market context.
   const sourceRows=[
+    ...(allJobs?[{label:'Radar público · snapshot generado por GitHub Actions',url:FEED}]:[]),
     ...jobs.map(j=>({label:j.empresa+' · '+j.puesto,url:j.url})),
     ...companies.slice(0,4).map(c=>({label:c.empresa+' · ficha o portal',url:c.url})),
     ...figures.map(f=>({label:f.source_name+' · '+f.label,url:url(f.source_url)})),

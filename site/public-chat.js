@@ -93,7 +93,10 @@
       history=history.slice(-4);
       const stamp=data.generated_at&&data.generated_at!=='No disponible'?
         'Captura del radar: '+String(data.generated_at).slice(0,22):'Sin fecha verificable del radar.';
-      $('chatFeedback').textContent=(data.feed_available?'Radar público consultado. ':'Radar no disponible. ')+stamp;
+      const counts=data.radar_summary;
+      const measured=Number.isInteger(counts?.coincidencias_filtro)&&Number.isInteger(counts?.avisos_en_captura)?
+        'Filtro calculado: '+counts.coincidencias_filtro+' de '+counts.avisos_en_captura+' avisos de la captura. ':'';
+      $('chatFeedback').textContent=measured+(data.feed_available?'Radar público consultado. ':'Radar no disponible. ')+stamp;
     }catch(error){
       if(requestId!==revision)return;
       add('system',String(error.message||'No se pudo completar la consulta.').slice(0,270));
