@@ -58,3 +58,30 @@ test('without a valid snapshot timestamp the time window never returns all-time 
   assert.equal(r.summary.coincidencias_filtro,0);
   assert.match(r.summary.cautelas.join(' '),/Sin timestamp válido/);
 });
+
+test('explicit Python queries never count generic Java backend roles',()=>{
+  const sample=[
+    row('python','Python developer','2026-11-05T16:00:00Z'),
+    row('java','Backend Java developer','2026-11-05T15:00:00Z')
+  ];
+  const r=analyzePublicRadar(sample,'¿Cuántas vacantes de Python hay?',at);
+  assert.equal(r.summary.coincidencias_filtro,1);
+  assert.equal(r.selectedJobs[0].id,'python');
+});
+
+test('unsupported explicit roles do not count the entire snapshot',()=>{
+  const r=analyzePublicRadar(jobs,'¿Cuántas vacantes de soldador hay?',at);
+  assert.equal(r.plan.unsupported_topic,'soldador');
+  assert.equal(r.summary.coincidencias_filtro,0);
+  assert.match(r.summary.cautelas.join(' '),/no tiene filtro determinista soportado/);
+});
+
+test('JavaScript is recognized as a supported technology rather than the entire snapshot',()=>{
+  const sample=[
+    row('js','JavaScript developer','2026-11-05T16:00:00Z'),
+    row('py','Python developer','2026-11-05T16:00:00Z')
+  ];
+  const r=analyzePublicRadar(sample,'¿Cuántas vacantes de JavaScript hay?',at);
+  assert.equal(r.summary.coincidencias_filtro,1);
+  assert.equal(r.selectedJobs[0].id,'js');
+});
