@@ -1,0 +1,87 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {analyzePublicRadar,planPublicRadarQuery} from '../site/api/radar-query.js';
+
+const at='2026-11-05T20:00:00Z';
+const row=(id,title,published_at,rest={})=>({
+  id,company:'Compañía '+id,title,published_at,
+  source_url:'https://example.org/jobs/'+id,score:80,
+  remote_mode:'REMOTE',argentina_eligible:'YES',
+  work_language:'UNKNOWN',listing_language:'ES',topics:[],...rest
+});
+const jobs=[
+  row('uno','Analista GIS','2026-11-05T18:00:00Z',{company:'Geo A',work_language:'ES'}),
+  row('dos','GIS support','2026-11-05T12:00:00Z',{company:'Geo A',argentina_eligible:'UNKNOWN'}),
+  row('tres','ArcGIS specialist','2026-11-04T12:00:00Z',{company:'Geo B'}),
+  row('cuatro','QGIS analyst','2026-10-27T12:00:00Z',{company:'Geo B'}),
+  row('cinco','Python developer','2026-11-05T16:00:00Z',{company:'Tech'}),
+  row('seis','GIS engineer',null,{company:'Geo C'}),
+  row('siete','GIS architect','2026-11-05T16:00:00Z',{company:'Geo C',argentina_eligible:'NO'}),
+  row('ocho','GIS engineer','2026-11-05T16:00:00Z',{company:'Geo D',remote_mode:'ONSITE'}),
+  row('nueve','Backend Python','2026-11-05T17:00:00Z',{company:'Tech',work_language:'EN'}),
+];
+test('strict count of recent remotely eligible GIS positions uses published_at only',()=>{
+  const r=analyzePublicRadar(jobs,'¿Cuántas vacantes remotas de GIS aceptan Argentina en las últimas 24 horas?',at);
+  assert.equal(r.summary.coincidencias_filtro,1);
+  assert.equal(r.selectedJobs[0].id,'uno');
+  assert.equal(r.summary.cobertura_fecha_de_candidatos.sin_fecha_publicacion,1);
+  assert.equal(r.summary.periodo_inicio,'2026-11-04T20:00:00.000Z');
+  assert.match(r.summary.cautelas.join(' '),/No prueba qué avisos fueron detectados por primera vez/);
+});
+test('week company counts are deterministic, using only documented publication dates',()=>{
+  const r=analyzePublicRadar(jobs,'¿Qué empresas publicaron puestos GIS esta semana?',at);
+  assert.equal(r.plan.publication_window_hours,168);
+  assert.equal(r.summary.coincidencias_filtro,5);
+  assert.deepEqual(r.summary.empresas_en_resultados.map(x=>[x.empresa,x.avisos_en_captura]),[
+    ['Geo A',2],['Geo B',1],['Geo C',1],['Geo D',1]
+  ]);
+});
+test('language filters never infer language requirements from listing text',()=>{
+  let r=analyzePublicRadar(jobs,'¿Hay trabajo en español de GIS?',at);
+  assert.deepEqual(r.selectedJobs.map(j=>j.id),['uno']);
+  r=analyzePublicRadar(jobs,'¿Hay avisos en español de Python?',at);
+  assert.equal(r.summary.coincidencias_filtro,2);
+});
+test('compass appended text is never interpreted as a hard requirement',()=>{
+  const plan=planPublicRadarQuery('¿Qué empresas publicaron GIS?\nContexto elegido en la brújula (preferencias del visitante, no evidencia): 100 % remoto · Argentina');
+  assert.equal(plan.remote_only,false);
+  assert.equal(plan.confirmed_argentina_only,false);
+});
+test('empty temporal results are honestly empty, and count is not invented',()=>{
+  const r=analyzePublicRadar([row('x','GIS Analyst',null)],'¿Cuántos avisos de GIS desde ayer?',at);
+  assert.equal(r.summary.coincidencias_filtro,0);
+  assert.equal(r.summary.cobertura_fecha_de_candidatos.sin_fecha_publicacion,1);
+  assert.equal(r.selectedJobs.length,0);
+});
+test('without a valid snapshot timestamp the time window never returns all-time jobs',()=>{
+  const r=analyzePublicRadar(jobs,'¿Cuántos puestos GIS desde ayer?','malformed');
+  assert.equal(r.summary.coincidencias_filtro,0);
+  assert.match(r.summary.cautelas.join(' '),/Sin timestamp válido/);
+});
+
+test('explicit Python queries never count generic Java backend roles',()=>{
+  const sample=[
+    row('python','Python developer','2026-11-05T16:00:00Z'),
+    row('java','Backend Java developer','2026-11-05T15:00:00Z')
+  ];
+  const r=analyzePublicRadar(sample,'¿Cuántas vacantes de Python hay?',at);
+  assert.equal(r.summary.coincidencias_filtro,1);
+  assert.equal(r.selectedJobs[0].id,'python');
+});
+
+test('unsupported explicit roles do not count the entire snapshot',()=>{
+  const r=analyzePublicRadar(jobs,'¿Cuántas vacantes de soldador hay?',at);
+  assert.equal(r.plan.unsupported_topic,'soldador');
+  assert.equal(r.summary.coincidencias_filtro,0);
+  assert.match(r.summary.cautelas.join(' '),/no tiene filtro determinista soportado/);
+});
+
+test('JavaScript is recognized as a supported technology rather than the entire snapshot',()=>{
+  const sample=[
+    row('js','JavaScript developer','2026-11-05T16:00:00Z'),
+    row('py','Python developer','2026-11-05T16:00:00Z')
+  ];
+  const r=analyzePublicRadar(sample,'¿Cuántas vacantes de JavaScript hay?',at);
+  assert.equal(r.summary.coincidencias_filtro,1);
+  assert.equal(r.selectedJobs[0].id,'js');
+});

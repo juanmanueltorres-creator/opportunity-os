@@ -38,6 +38,21 @@ El chat no sube archivos ni accede a Supabase privado, Gmail, seguimiento local 
 
 Las respuestas del modelo se muestran como **texto**, sin renderizar HTML remoto. Los links se construyen únicamente desde el listado de evidencias del servidor. La clave Gemini no aparece en HTML, JavaScript público ni URLs.
 
+## Recuperación estructurada del radar (2026-11-05)
+
+El servicio lee `radar-public/jobs.json` generado por GitHub Actions, **no consulta el historial de ejecuciones**. Un módulo determinista `site/api/radar-query.js` interpreta filtros explícitos de la pregunta y calcula sobre el snapshot completo antes de enviar contexto a Gemini:
+
+- Temas/rol: coincidencia con título, tópicos declarados y sector (sin equiparar cualquier software con Python).
+- Modalidad remota: únicamente `remote_mode=REMOTE`.
+- Elegibilidad desde Argentina cuando el usuario pide confirmación: únicamente `argentina_eligible=YES`. `UNKNOWN` queda fuera del conteo confirmado.
+- Requisitos de idioma laboral en español: únicamente `work_language=ES`. Un anuncio escrito en español no prueba el idioma exigido.
+- Últimas 24 horas / 7 días: solo `published_at` válido dentro de una ventana respecto de `generated_at` del snapshot. Se informa cuántos candidatos no tienen fecha.
+- Resumen de empresas y cantidad de avisos en la **muestra filtrada**. No equivale a firmas contratando actualmente.
+
+Si preguntan qué vacantes «aparecieron desde ayer», el sistema no afirma nuevos descubrimientos: el snapshot no permite saber qué registros faltaban en la captura anterior. Esa funcionalidad requeriría snapshots históricos comparables con identificadores estables. Si un filtro produce cero resultados, el servicio devuelve cero, no rellena el listado. Gemini explica los conteos calculados pero no debe inventar su propia aritmética. Se enlazan primero las vacantes seleccionadas; la selección sigue limitada a ocho ejemplos y las referencias a catorce HTTPS.
+
+El chat continúa sin acceso a perfil privado, Supabase, correo ni almacenamiento de conversaciones. Los filtros del RAG se basan en la **pregunta explícita**, no convierten preferencias agregadas automáticamente por la brújula en restricciones obligatorias.
+
 ## Variables de entorno
 
 Configurar **solo del lado de Vercel**, nunca prefijadas con `NEXT_PUBLIC_` o expuestas en el frontend:

@@ -45,6 +45,7 @@ test('the integrated chat has an evidence-only server endpoint and public-first 
   assert.match(front,/fetch\('\/api\/chat'/);
   assert.match(front,/textContent=text/);
   assert.match(front,/activeRequest\?\.abort\(\)/);
+  assert.match(front,/Filtro calculado:/);
   assert.match(front,/requestId!==revision/);
   assert.match(hub,/selectedScope==='ar'\?'YES':''/);
   assert.match(hub,/detail\.scope==='ar'\?'arg':detail\.scope/);
@@ -112,6 +113,9 @@ test('server calls Gemini only with selected public evidence and bounded text',a
     const payload=JSON.stringify(sent);
     assert.match(payload,/CONTEXTO_JSON/);
     assert.match(payload,/argentina_elegible/);
+    assert.match(payload,/radar_analysis/);
+    assert.equal(res.body.radar_summary.avisos_en_captura,1);
+    assert.match(res.body.sources[0].url,/radar-public\/jobs\.json/);
     assert.match(payload,/UNKNOWN/);
     assert.ok(payload.includes('Demostración'));
     assert.ok(!payload.includes('GEMINI_API_KEY'));
