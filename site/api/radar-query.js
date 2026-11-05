@@ -11,7 +11,10 @@ const https = value => {
 };
 const domainRules=[
   {name:'GIS/geoespacial',ask:/\b(gis|sig|qgis|arcgis|geoespacial|geospatial|teledeteccion|cartografia)\b/,match:/\b(gis|sig|qgis|arcgis|geoespacial|geospatial|geospatial|teledeteccion|cartograf\w*|geomatic\w*|remote sensing)\b/},
-  {name:'Python',ask:/\b(python|fastapi|django|backend)\b/,match:/\b(python|fastapi|django|backend|back.end)\b/},
+  {name:'Python',ask:/\b(python|fastapi|django)\b/,match:/\b(python|fastapi|django)\b/},
+  {name:'backend',ask:/\b(backend|back.end)\b/,match:/\b(backend|back.end|server.side)\b/},
+  {name:'JavaScript/TypeScript',ask:/\b(javascript|typescript|node\.?js|react)\b/,match:/\b(javascript|typescript|node\.?js|react)\b/},
+  {name:'Java',ask:/\b(java)\b/,match:/\b(java|spring boot|springboot)\b/},
   {name:'soporte técnico',ask:/\b(soporte|helpdesk|support)\b/,match:/\b(soporte|support|helpdesk|service desk)\b/},
   {name:'minería/geología',ask:/\b(mineria|minero|geologia|geologo|hidrogeologia)\b/,match:/\b(mineria|minero|mining|geolog\w*|hidrogeolog\w*|hydrogeolog\w*)\b/},
   {name:'datos',ask:/\b(datos|data|analista de datos|data engineer)\b/,match:/\b(datos|data|analytics|analitica|analista de datos|analyst)\b/},
@@ -27,6 +30,9 @@ export function planPublicRadarQuery(input){
     /\b(esta semana|ultima semana|ultimos? 7 dias|7 dias)\b/.test(question)?168:null;
   const confirmedArgentina=/\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b.{0,45}\bargentina\b|\bargentina\b.{0,45}\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b/.test(question);
   const requestedDomains=domainRules.filter(d=>d.ask.test(question));
+  // Unknown explicit technologies must not silently become an all-market count.
+  const technologies=question.match(/\b(?:de|con|para|en)\s+(?:empleo\s+de\s+|vacantes?\s+de\s+)?(kotlin|rust|golang|go|cobol|php|ruby|flutter|swift|scala|angular|dotnet|\.net|c\+\+|c#)\b/);
+  const unsupportedTopic=requestedDomains.length===0&&technologies?technologies[1]:null;
   return {
     publication_window_hours:windowHours,
     remote_only:/\b(remoto|remota|remotos|remotas|remote)\b/.test(question),
@@ -34,6 +40,7 @@ export function planPublicRadarQuery(input){
     spanish_requirement:/\b(trabajo en espanol|idioma laboral en espanol|idioma de trabajo en espanol|sin ingles|solo espanol)\b/.test(question),
     listing_spanish_only:/\b(avisos? en espanol|publicaciones? en espanol)\b/.test(question),
     topics:requestedDomains.map(d=>d.name),
+    unsupported_topic:unsupportedTopic,
     kind:/\b(cuantas|cuantos|cantidad|numero|total)\b/.test(question)?'count':
       /\b(empresas|empleadores)\b/.test(question)?'companies':'opportunities'
   };
@@ -45,6 +52,7 @@ export function analyzePublicRadar(availableJobs,query,snapshotAt){
     .filter(j=>j && typeof j==='object' && https(j.source_url));
   const rules=domainRules.filter(d=>plan.topics.includes(d.name));
   const matchingTopics=candidates.filter(j=>{
+    if(plan.unsupported_topic)return false;
     if(!rules.length)return true;
     // Match actual occupational evidence; a broad classification alone is
     // not evidence that a position specifically requires Python or GIS.
@@ -92,6 +100,7 @@ export function analyzePublicRadar(availableJobs,query,snapshotAt){
   if(plan.publication_window_hours && periodStart===null)cautions.push('Sin timestamp válido del snapshot no es posible calcular el período: conteo temporal no comprobable.');
   if(plan.remote_only && !plan.confirmed_argentina_only)cautions.push('REMOTO no demuestra que se pueda trabajar desde Argentina.');
   if(plan.spanish_requirement)cautions.push('Se incluyen solo requisitos work_language=ES explícitos; avisos en español sin requisito declarado no son suficientes.');
+  if(plan.unsupported_topic)cautions.push('El tema '+plan.unsupported_topic+' no tiene filtro determinista soportado. La consulta no representa un conteo de vacantes para esa tecnología.');
   if(selected.length===0)cautions.push('Ninguna vacante satisface los filtros observables. No agregar puestos ajenos para completar una lista.');
   return {
     plan,
