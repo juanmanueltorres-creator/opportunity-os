@@ -32,7 +32,9 @@ export function planPublicRadarQuery(input){
   const requestedDomains=domainRules.filter(d=>d.ask.test(question));
   // Unknown explicit technologies must not silently become an all-market count.
   const technologies=question.match(/\b(?:de|con|para|en)\s+(?:empleo\s+de\s+|vacantes?\s+de\s+)?(kotlin|rust|golang|go|cobol|php|ruby|flutter|swift|scala|angular|dotnet|\.net|c\+\+|c#)\b/);
-  const unsupportedTopic=requestedDomains.length===0&&technologies?technologies[1]:null;
+  const explicitRole=question.match(/\b(?:vacantes?|empleos?|puestos?|trabajos?)\s+(?:de|para|con)\s+([a-z0-9+#.]+)/);
+  const ignored=new Set(['trabajo','empleo','empresa','empresas','argentina','remoto','remotos','remota','remotas','esta','este','hoy','ayer','los','las']);
+  const unsupportedTopic=requestedDomains.length===0?(technologies?.[1]||(!ignored.has(explicitRole?.[1])?explicitRole?.[1]:null)):null;
   return {
     publication_window_hours:windowHours,
     remote_only:/\b(remoto|remota|remotos|remotas|remote)\b/.test(question),
