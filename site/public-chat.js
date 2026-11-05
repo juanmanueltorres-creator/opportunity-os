@@ -29,7 +29,7 @@
   compass.insertAdjacentElement('afterend',root);
   const $=id=>root.querySelector('#'+id);
   const stream=$('chatStream'),input=$('chatMessage'),form=$('chatForm');
-  let busy=false,history=[];
+  let busy=false,history=[],revision=0,activeRequest=null;
   const add=(role,text,sources=[])=>{
     const article=document.createElement('article');
     article.className='public-chat-turn '+(role==='user'?'user':'assistant');
@@ -69,6 +69,9 @@
   async function send(value){
     const message=String(value||'').trim().slice(0,700);
     if(busy||message.length<3)return;
+    const requestId=++revision;
+    const controller=new AbortController();
+    activeRequest=controller;
     const chosen=params();
     const prepared=message+'\nContexto elegido en la brújula (preferencias del visitante, no evidencia): '+[chosen.goal,chosen.area,chosen.mode,chosen.scope].filter(Boolean).join(' · ');
     add('user',message);
@@ -78,9 +81,11 @@
       const r=await fetch('/api/chat',{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({message:prepared.slice(0,700),history:currentHistory})
+        body:JSON.stringify({message:prepared.slice(0,700),history:currentHistory}),
+        signal:controller.signal
       });
       const data=await r.json().catch(()=>({}));
+      if(requestId!==revision)return;
       if(!r.ok)throw Error(typeof data.error==='string'?data.error:'Error HTTP '+r.status);
       if(typeof data.answer!=='string'||!data.answer.trim())throw Error('La respuesta llegó vacía.');
       add('model',data.answer,Array.isArray(data.sources)?data.sources:[]);
@@ -90,13 +95,18 @@
         'Captura del radar: '+String(data.generated_at).slice(0,22):'Sin fecha verificable del radar.';
       $('chatFeedback').textContent=(data.feed_available?'Radar público consultado. ':'Radar no disponible. ')+stamp;
     }catch(error){
+      if(requestId!==revision)return;
       add('system',String(error.message||'No se pudo completar la consulta.').slice(0,270));
       $('chatFeedback').textContent='La consulta no se completó. No mostramos respuestas inventadas.';
-    }finally{setBusy(false);input.focus();}
+    }finally{
+      if(requestId===revision){activeRequest=null;setBusy(false);input.focus();}
+    }
   }
   form.addEventListener('submit',event=>{event.preventDefault();send(input.value);});
   root.querySelectorAll('[data-question]').forEach(b=>b.addEventListener('click',()=>send(b.dataset.question)));
   $('chatClear').addEventListener('click',()=>{
+    revision++;
+    activeRequest?.abort();activeRequest=null;setBusy(false);
     history=[];stream.replaceChildren();
     add('system','Conversación borrada de esta página. Los mensajes anteriores no se enviarán en nuevas consultas.');
     $('chatFeedback').textContent='';
