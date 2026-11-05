@@ -150,23 +150,26 @@
   };
   const quickLinks=quick.querySelector('#quickPortalLinks');
   const regionTabs=routes.querySelector('#routeTabs');
+  let selectedScope=null;
   const chosenArea=()=>[...(regionTabs?.querySelectorAll('button')||[])].find(x=>x.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'Todo el país';
   function updatePortalRegion(){
     const choice=chosenArea();
+    const targetLocation=selectedScope?({ar:'Argentina',latam:'Latin America',global:'Worldwide'}[selectedScope]):(locationNames[choice]||'Argentina');
+    const remoteOnly=selectedScope?document.getElementById('mode')?.value==='REMOTE':choice==='Remoto';
     quickLinks?.querySelectorAll('a[href]').forEach(link=>{
       let u;try{u=new URL(link.href);}catch{return;}
       if(u.hostname==='www.linkedin.com'&&u.pathname.startsWith('/jobs/search')){
-        u.searchParams.set('location',locationNames[choice]||'Argentina');
-        if(choice==='Remoto')u.searchParams.set('f_WT','2');
+        u.searchParams.set('location',targetLocation);
+        if(remoteOnly)u.searchParams.set('f_WT','2');
         else u.searchParams.delete('f_WT');
         link.href=u.toString();
       }else if(u.hostname==='ar.indeed.com'){
-        u.searchParams.set('l',locationNames[choice]||'Argentina');
+        u.searchParams.set('l',targetLocation);
         link.href=u.toString();
       }
     });
   }
-  regionTabs?.addEventListener('click',()=>queueMicrotask(updatePortalRegion));
+  regionTabs?.addEventListener('click',()=>{selectedScope=null;queueMicrotask(updatePortalRegion);});
   if(quickLinks)new MutationObserver(updatePortalRegion).observe(quickLinks,{childList:true});
   updatePortalRegion();
   const shortcut=document.createElement('div');shortcut.className='hub-search-shortcut';
@@ -174,7 +177,8 @@
   lead.textContent='Usá estos portales para búsquedas nuevas o trasladá el tema al radar de avisos ya recopilados.';
   const toRadar=document.createElement('button');toRadar.type='button';toRadar.className='control primary';
   toRadar.id='hubToRadar';toRadar.textContent='Ver esta búsqueda en el radar';
-  shortcut.append(toRadar,lead);quick.append(shortcut);
+  const scopeNotice=document.createElement('p');scopeNotice.className='note';scopeNotice.id='hubScopeNotice';
+  shortcut.append(toRadar,lead,scopeNotice);quick.append(shortcut);
   toRadar.addEventListener('click',()=>{
     const input=quick.querySelector('#quickQuery');
     const typed=String(input?.value||'').trim().slice(0,120);
@@ -196,19 +200,21 @@
   document.addEventListener('opportunity:workspace-go',event=>{
     const detail=event.detail||{};
     if(detail.view==='buscar'){
+      selectedScope=['ar','latam','global'].includes(detail.scope)?detail.scope:'ar';
       choose('buscar');
       // Fresh orientation starts with a clean view, not stale previous filters.
       document.getElementById('clear')?.click();
       const q=document.getElementById('q'),track=document.getElementById('track'),
         mode=document.getElementById('mode'),listing=document.getElementById('listingLanguage'),
-        sourceCheck=document.getElementById('sourceCheck');
+        sourceCheck=document.getElementById('sourceCheck'),eligible=document.getElementById('eligible');
       // A full category must not be accidentally narrowed by one keyword.
       if(q)q.value=detail.track?'':String(detail.query||'');
       if(track)track.value=String(detail.track||'');
       if(mode)mode.value=detail.mode==='REMOTE'?'REMOTE':'';
       if(listing)listing.value='';
       if(sourceCheck)sourceCheck.value='';
-      for(const input of [q,track,mode,listing,sourceCheck].filter(Boolean)){
+      if(eligible)eligible.value=selectedScope==='ar'?'YES':'';
+      for(const input of [q,track,mode,listing,sourceCheck,eligible].filter(Boolean)){
         input.dispatchEvent(new Event('input',{bubbles:true}));
       }
       const quickQuery=quick.querySelector('#quickQuery');
@@ -216,6 +222,12 @@
         quickQuery.value=String(detail.query||'empleo');
         quickQuery.dispatchEvent(new Event('input',{bubbles:true}));
       }
+      scopeNotice.textContent=selectedScope==='ar'
+        ?'Argentina: se muestran avisos con elegibilidad confirmada. Para revisar los no confirmados, cambiá el filtro «Desde Argentina».'
+        :selectedScope==='latam'
+          ?'Latinoamérica: portales externos orientados a la región; el radar muestra toda su muestra porque no confirma elegibilidad para cada país.'
+          :'Internacional: exploración global; verificá país admitido, idioma y modalidad antes de postular.';
+      updatePortalRegion();
       vacancies.scrollIntoView({behavior:'auto',block:'start'});
       return;
     }
@@ -223,8 +235,9 @@
       companyMode='discovery';
       choose('empresas');
       const region=document.getElementById('publicCompanyRegion');
-      if(region&&['arg','latam','global'].includes(detail.scope)){
-        region.value=detail.scope;
+      const normalizedScope=detail.scope==='ar'?'arg':detail.scope;
+      if(region&&['arg','latam','global'].includes(normalizedScope)){
+        region.value=normalizedScope;
         region.dispatchEvent(new Event('change',{bubbles:true}));
       }
       if(detail.goal==='freelance'){

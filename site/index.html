@@ -100,7 +100,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <section class="today" aria-label="Vacantes para revisar hoy">
 <div class="today-head">
 <div><div class="micro">TRIAGE / ESPAÑOL PRIMERO</div><h2>Para revisar hoy</h2><p class="note">Búsqueda laboral actual en español: exige idioma laboral español explícito o, de forma provisoria, aviso en español sin idioma laboral confirmado. Excluye inglés avanzado y bilingüe. El idioma del aviso NO garantiza el idioma de trabajo. Si no hay coincidencias, muestra menos de cinco.</p></div>
-<button class="gemini-brief" id="briefFive" type="button">Preparar selección para Gemini</button>
+<button class="gemini-brief" id="briefFive" type="button">Consultar selección con Gemini</button>
 </div>
 <div class="today-list" id="todayJobs"><span class="note">Cargando ofertas…</span></div>
 <p id="briefStatus" role="status" aria-live="polite" class="gemini-note"></p>
@@ -233,7 +233,7 @@ function card(j){
   const b=el('button',label,'smallbtn');b.type='button';b.setAttribute('aria-pressed',status(j)===value?'true':'false');
   b.addEventListener('click',()=>setStatus(j,status(j)===value?'new':value));tools.append(b);
  }
- const btnGemini=el('button','Preparar consulta para Gemini','smallbtn');
+ const btnGemini=el('button','Consultar en chat','smallbtn');
  btnGemini.type='button';btnGemini.addEventListener('click',()=>launchGemini([j]));
  tools.append(btnGemini);
  foot.append(tools);const link=safeUrl(j.source_url);
@@ -341,19 +341,19 @@ $('copyBrief').addEventListener('click',copyBriefing);
 $('closeBrief').addEventListener('click',()=>$('briefDialog').close());
 async function launchGemini(selected){
  if(!selected.length)return;
- const prompt=preparePrompt(selected);
- // The new window must be opened synchronously from the user's click.
- // Google Gemini web does not natively support authenticated prompt-prefill URLs.
- const copyAction=navigator.clipboard?.writeText?
-  navigator.clipboard.writeText(prompt):Promise.reject(new Error('clipboard unavailable'));
- window.open('https://gemini.google.com/app','_blank','noopener,noreferrer');
- try{
-  await copyAction;
-  $('briefStatus').textContent='Consulta copiada al portapapeles. Pegala en Gemini con Ctrl+V.';
- }catch{
-  prepareBrief(selected);
-  $('copyBriefStatus').textContent='No se pudo copiar automáticamente. Copiá el texto con Ctrl+C y pegalo en Gemini.';
+ const input=document.getElementById('chatMessage');
+ if(input){
+  const examples=selected.slice(0,3).map((j,i)=>String(i+1)+'. '+(j.company||'Empresa')+' — '+(j.title||'Puesto')+'; '+(j.source_url||'Sin URL')+'; Argentina: '+(j.argentina_eligible||'UNKNOWN')).join('\n');
+  const question='Ayudame a evaluar estas vacantes del radar usando solamente fuentes públicas comprobables. Verificá elegibilidad desde Argentina, idioma, fecha y requisitos. No inventes vacantes ni supongas que siguen abiertas.\n'+examples;
+  document.querySelector('[data-view="orientacion"]')?.click();
+  input.value=question.slice(0,700);
+  document.getElementById('chat')?.scrollIntoView({behavior:'smooth',block:'start'});
+  input.focus({preventScroll:true});
+  $('briefStatus').textContent='Consulta preparada en el chat integrado. Revisá la pregunta antes de enviarla.';
+  return;
  }
+ // Fallback for environments that have not loaded the embedded chat.
+ prepareBrief(selected);
 }
 $('briefFive').addEventListener('click',()=>launchGemini(todaySelected));
 function renderToday(){
