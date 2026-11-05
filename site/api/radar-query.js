@@ -1,0 +1,115 @@
+/* Deterministic query layer for the public daily radar snapshot.
+   It never infers an open vacancy, newly discovered vacancy, or hiring eligibility. */
+const plain = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const validTime = value => {
+  if(typeof value!=='string' || !/^\d{4}-\d{2}-\d{2}T/.test(value))return null;
+  const n=Date.parse(value);return Number.isFinite(n)?n:null;
+};
+const https = value => {
+  try {const u=new URL(value);return u.protocol==='https:'?u.href:null;}
+  catch{return null;}
+};
+const domainRules=[
+  {name:'GIS/geoespacial',ask:/\b(gis|sig|qgis|arcgis|geoespacial|geospatial|teledeteccion|cartografia)\b/,match:/\b(gis|sig|qgis|arcgis|geoespacial|geospatial|geospatial|teledeteccion|cartograf\w*|geomatic\w*|remote sensing)\b/},
+  {name:'Python',ask:/\b(python|fastapi|django|backend)\b/,match:/\b(python|fastapi|django|backend|back.end)\b/},
+  {name:'soporte técnico',ask:/\b(soporte|helpdesk|support)\b/,match:/\b(soporte|support|helpdesk|service desk)\b/},
+  {name:'minería/geología',ask:/\b(mineria|minero|geologia|geologo|hidrogeologia)\b/,match:/\b(mineria|minero|mining|geolog\w*|hidrogeolog\w*|hydrogeolog\w*)\b/},
+  {name:'datos',ask:/\b(datos|data|analista de datos|data engineer)\b/,match:/\b(datos|data|analytics|analitica|analista de datos|analyst)\b/},
+  {name:'operaciones',ask:/\b(operaciones|logistica|gestion)\b/,match:/\b(operaciones|operations|logistica|gestion|inventory|supply chain)\b/},
+  {name:'gastronomía',ask:/\b(gastronomia|restaurante|cocina)\b/,match:/\b(gastronomia|restaurante|restaurant|cocina|chef|hospitality)\b/},
+  {name:'agro/ambiente',ask:/\b(agro|agtech|ambiental|ambiente)\b/,match:/\b(agro|agtech|ambiental|ambiente|environmental|agriculture)\b/}
+];
+export function planPublicRadarQuery(input){
+  // The compass appends optional browsing preferences; only the explicit
+  // question is authorized to turn into hard inclusion/exclusion filters.
+  const question=plain(String(input??'').split(/\nContexto elegido en la brújula/i)[0]).slice(0,700);
+  const windowHours=/\b(ayer|hoy|ultimas? 24 horas?|ultimas? 24 h|desde ayer)\b/.test(question)?24:
+    /\b(esta semana|ultima semana|ultimos? 7 dias|7 dias)\b/.test(question)?168:null;
+  const confirmedArgentina=/\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b.{0,45}\bargentina\b|\bargentina\b.{0,45}\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b/.test(question);
+  const requestedDomains=domainRules.filter(d=>d.ask.test(question));
+  return {
+    publication_window_hours:windowHours,
+    remote_only:/\b(remoto|remota|remotos|remotas|remote)\b/.test(question),
+    confirmed_argentina_only:confirmedArgentina,
+    spanish_requirement:/\b(trabajo en espanol|idioma laboral en espanol|idioma de trabajo en espanol|sin ingles|solo espanol)\b/.test(question),
+    listing_spanish_only:/\b(avisos? en espanol|publicaciones? en espanol)\b/.test(question),
+    topics:requestedDomains.map(d=>d.name),
+    kind:/\b(cuantas|cuantos|cantidad|numero|total)\b/.test(question)?'count':
+      /\b(empresas|empleadores)\b/.test(question)?'companies':'opportunities'
+  };
+}
+export function analyzePublicRadar(availableJobs,query,snapshotAt){
+  const plan=planPublicRadarQuery(query);
+  const clock=validTime(snapshotAt);
+  const candidates=(Array.isArray(availableJobs)?availableJobs:[]).slice(0,6500)
+    .filter(j=>j && typeof j==='object' && https(j.source_url));
+  const rules=domainRules.filter(d=>plan.topics.includes(d.name));
+  const matchingTopics=candidates.filter(j=>{
+    if(!rules.length)return true;
+    // Match actual occupational evidence; a broad classification alone is
+    // not evidence that a position specifically requires Python or GIS.
+    const hay=plain([j.title,j.company_industry,(j.topics||[]).join(' '),j.search_scope,j.sector].join(' '));
+    return rules.some(d=>d.match.test(hay));
+  });
+  const filteredBeforeDate=matchingTopics.filter(j=>
+    (!plan.remote_only||j.remote_mode==='REMOTE')&&
+    (!plan.confirmed_argentina_only||j.argentina_eligible==='YES')&&
+    (!plan.spanish_requirement||j.work_language==='ES')&&
+    (!plan.listing_spanish_only||j.listing_language==='ES')
+  );
+  const dateCoverage={
+    con_fecha_publicacion:filteredBeforeDate.filter(j=>validTime(j.published_at)!==null).length,
+    sin_fecha_publicacion:filteredBeforeDate.filter(j=>validTime(j.published_at)===null).length
+  };
+  const periodStart=clock&&plan.publication_window_hours?clock-plan.publication_window_hours*3600000:null;
+  const selected=filteredBeforeDate.filter(j=>{
+    if(!plan.publication_window_hours)return true;
+    const p=validTime(j.published_at);
+    return p!==null && periodStart!==null && p>=periodStart && p<=clock;
+  });
+  const ranked=selected.map(j=>{
+    const published=validTime(j.published_at);
+    const quality=Number.isFinite(Number(j.score))?Math.max(0,Math.min(100,Number(j.score))):0;
+    const score=quality+(j.argentina_eligible==='YES'?12:0)+(j.remote_mode==='REMOTE'?5:0)+
+      (published!==null && clock!==null && published<=clock && published>=clock-7*86400000?3:0);
+    return {j,score};
+  }).sort((a,b)=>b.score-a.score||String(a.j.source_url).localeCompare(String(b.j.source_url)));
+  const byCompany=new Map();
+  for(const j of selected){
+    const name=String(j.company||'Empresa no informada').slice(0,100);
+    byCompany.set(name,(byCompany.get(name)||0)+1);
+  }
+  const companies=[...byCompany].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))
+    .slice(0,10).map(([empresa,avisos_en_captura])=>({empresa,avisos_en_captura}));
+  const cautions=[
+    'Los conteos corresponden al snapshot público consultado, no al total de vacantes del mercado ni a vacantes necesariamente abiertas.',
+    'Solo argentina_eligible=YES confirma elegibilidad en el registro; UNKNOWN no se debe convertir en YES.',
+    'Idioma del aviso y requisito de idioma laboral son campos diferentes.'
+  ];
+  if(plan.publication_window_hours)cautions.push(
+    'El período se calcula desde generated_at del snapshot y por fecha published_at. No prueba qué avisos fueron detectados por primera vez; las publicaciones sin fecha quedan excluidas.'
+  );
+  if(plan.publication_window_hours && periodStart===null)cautions.push('Sin timestamp válido del snapshot no es posible calcular el período: conteo temporal no comprobable.');
+  if(plan.remote_only && !plan.confirmed_argentina_only)cautions.push('REMOTO no demuestra que se pueda trabajar desde Argentina.');
+  if(plan.spanish_requirement)cautions.push('Se incluyen solo requisitos work_language=ES explícitos; avisos en español sin requisito declarado no son suficientes.');
+  if(selected.length===0)cautions.push('Ninguna vacante satisface los filtros observables. No agregar puestos ajenos para completar una lista.');
+  return {
+    plan,
+    summary:{
+      snapshot_generado:clock!==null?new Date(clock).toISOString():'No disponible',
+      total_avisos_con_url_en_captura:candidates.length,
+      coincidencias_tematicas:matchingTopics.length,
+      candidatos_antes_de_fecha:filteredBeforeDate.length,
+      cobertura_fecha_de_candidatos:dateCoverage,
+      periodo_inicio:periodStart!==null?new Date(periodStart).toISOString():null,
+      coincidencias_filtro:selected.length,
+      remotos_en_resultados:selected.filter(j=>j.remote_mode==='REMOTE').length,
+      elegibilidad_argentina_confirmada_en_resultados:selected.filter(j=>j.argentina_eligible==='YES').length,
+      trabajo_espanol_explicito_en_resultados:selected.filter(j=>j.work_language==='ES').length,
+      empresas_en_resultados:companies,
+      resultados_mostrados:Math.min(8,ranked.length),
+      cautelas:cautions
+    },
+    selectedJobs:ranked.slice(0,8).map(x=>x.j)
+  };
+}

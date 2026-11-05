@@ -2,6 +2,7 @@
    Only public sources enter context. The key remains server-side in Vercel.
    This endpoint does not accept raw documents, CVs, attachments or custom URLs. */
 import {readFileSync} from 'node:fs';
+import {analyzePublicRadar} from './radar-query.js';
 
 const FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
 const DATA_BASE='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/main/site/';
@@ -71,8 +72,8 @@ async function retrieve(query){
   const featured=(Array.isArray(curated?.targets)?curated.targets:[])
      .concat(Array.isArray(cessi?.companies)?cessi.companies:[]);
   // Never present source count as a population estimate.
-  const jobs=(allJobs||[]).map(j=>({j,p:matchScore(j,tokens)+(j.remote_mode==='REMOTE'?0.5:0)+(j.argentina_eligible==='YES'?0.7:0)}))
-    .sort((a,b)=>b.p-a.p).slice(0,8).map(x=>jobView(x.j));
+  const radar=allJobs?analyzePublicRadar(allJobs,query,feed?.generated_at):null;
+  const jobs=(radar?.selectedJobs||[]).map(jobView);
   const companies=featured.map(c=>({c,p:matchScore(c,tokens)}))
     .sort((a,b)=>b.p-a.p).slice(0,8).map(x=>safeCompany(x.c));
   const remoteOptions=(Array.isArray(remote?.targets)?remote.targets:[])
@@ -89,11 +90,12 @@ async function retrieve(query){
     (codes.size===0||codes.has(x.code))
   ).slice(0,12).map(x=>({provincia:x.province,letra_clae:x.code,puestos_2022:x.jobs,establecimientos_2022:x.establishments})):[];
   const figures=Array.isArray(market?.figures)?market.figures:[];
+  // Selected vacancies receive source links before general market context.
   const sourceRows=[
+    ...jobs.map(j=>({label:j.empresa+' · '+j.puesto,url:j.url})),
+    ...companies.slice(0,4).map(c=>({label:c.empresa+' · ficha o portal',url:c.url})),
     ...figures.map(f=>({label:f.source_name+' · '+f.label,url:url(f.source_url)})),
-    ...(provincialRows.length?[{label:'CEP XXI · establecimientos y empleos territoriales 2022',url:url(cep?.catalog_url)}]:[]),
-    ...companies.slice(0,5).map(c=>({label:c.empresa+' · ficha o portal',url:c.url})),
-    ...jobs.slice(0,4).map(j=>({label:j.empresa+' · '+j.puesto,url:j.url}))
+    ...(provincialRows.length?[{label:'CEP XXI · establecimientos y empleos territoriales 2022',url:url(cep?.catalog_url)}]:[])
   ];
   const sources=sourceList(sourceRows);
   const totals=allJobs?{
@@ -102,7 +104,7 @@ async function retrieve(query){
     remoto_y_argentina_confirmada:allJobs.filter(j=>j.remote_mode==='REMOTE'&&j.argentina_eligible==='YES').length,
     por_area_de_clasificacion:Object.fromEntries([...new Set(allJobs.map(j=>String(j.track||'UNKNOWN')))].map(k=>[k,allJobs.filter(j=>(j.track||'UNKNOWN')===k).length]))
   }:null;
-  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],
+  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',radar_analysis:radar?.summary||null,query_plan:radar?.plan||null,totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],
     provincial_historico_2022:provincialRows,
     cep_2022_scope:provincialRows.length?'Son puestos registrados y establecimientos productivos históricos por provincia y actividad: NO son vacantes ni empresas únicas.':null,
     remote_company_paths:remoteOptions,jobs,companies,sources};
@@ -142,6 +144,10 @@ export default async function handler(req,res){
     'Cuando el feed no esté disponible, decilo y basate solamente en fuentes estadísticas y el directorio, sin inventar puestos.',
     'Para preguntas sobre sectores, compará las diferencias de alcance y períodos en las cifras.',
     'La lista de vacantes es una muestra de fuentes consultadas, NO un censo del mercado.',
+    'Para conteos, preguntas de esta semana/ayer, remotos, elegibilidad y empresas usá SOLO radar_analysis y query_plan calculados por el servidor; NO calcules números nuevos ni infieras requisitos.',
+    'Si la consulta es sobre nuevas vacantes desde ayer, explicá que solo conocemos fecha de publicación respecto del snapshot, NO la primera detección: faltan snapshots históricos comparados.',
+    'Cuando radar_analysis.coincidencias_filtro=0 no recomiendes avisos que no cumplan la consulta ni rellenes la lista. Recomendá ampliar un criterio de búsqueda.',
+    'El ranking de jobs usa el score público más señales explícitas. Es una ayuda de exploración, NO una probabilidad de contratación.',
     'Si usás CEP XXI 2022, aclarás que sus cifras históricas por provincia no son ofertas vigentes.',
     'Elegí 2 o 3 acciones concretas. No inventes sueldos, vacantes, salarios, tasas de éxito, correos o disponibilidad.',
     'Cuando uses una fuente, citá su ID [S1], [S2] según la lista fuentes del contexto. No agregues links externos no suministrados.',
@@ -163,7 +169,7 @@ export default async function handler(req,res){
     const data=await response.json();
     const answer=bounded((data.candidates?.[0]?.content?.parts||[]).map(p=>typeof p.text==='string'?p.text:'').join('\n'),5000);
     if(!answer)return respond(res,502,{error:'Gemini no devolvió texto. Probá reformular la pregunta.'});
-    return respond(res,200,{answer,model:MODEL,sources:context.sources,generated_at:context.generated_at,feed_available:context.dataset_status==='disponible',scope:'Fuentes públicas · no incluye Excel, contactos ni historial privado'});
+    return respond(res,200,{answer,model:MODEL,sources:context.sources,generated_at:context.generated_at,feed_available:context.dataset_status==='disponible',radar_summary:context.radar_analysis?{coincidencias_filtro:context.radar_analysis.coincidencias_filtro,avisos_en_captura:context.radar_analysis.total_avisos_con_url_en_captura}:null,scope:'Fuentes públicas · no incluye Excel, contactos ni historial privado'});
   }catch{
     return respond(res,503,{error:'No fue posible completar la consulta a Gemini. No se generan respuestas simuladas.'});
   }finally{clearTimeout(timer);}

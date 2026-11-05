@@ -50,7 +50,7 @@ jobs:
           node --check site/public-chat.js
           node --check site/market-explorer.js
           node --check site/api/chat.js
-          node --test tests/test_public_orientation.mjs tests/test_public_market_chat.mjs
+          node --test tests/test_public_orientation.mjs tests/test_public_market_chat.mjs tests/test_public_radar_query.mjs
       - name: Validate remote employer targets and freelance service proof gates
         run: |
           node --check site/remote-targets.js

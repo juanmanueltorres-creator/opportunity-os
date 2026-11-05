@@ -112,6 +112,8 @@ test('server calls Gemini only with selected public evidence and bounded text',a
     const payload=JSON.stringify(sent);
     assert.match(payload,/CONTEXTO_JSON/);
     assert.match(payload,/argentina_elegible/);
+    assert.match(payload,/radar_analysis/);
+    assert.equal(res.body.radar_summary.avisos_en_captura,1);
     assert.match(payload,/UNKNOWN/);
     assert.ok(payload.includes('Demostración'));
     assert.ok(!payload.includes('GEMINI_API_KEY'));
