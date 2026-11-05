@@ -44,6 +44,11 @@ test('the integrated chat has an evidence-only server endpoint and public-first 
   assert.match(html,/href="\/public-chat\.css"/); // style is loaded in markup
   assert.match(front,/fetch\('\/api\/chat'/);
   assert.match(front,/textContent=text/);
+  assert.match(front,/activeRequest\?\.abort\(\)/);
+  assert.match(front,/requestId!==revision/);
+  assert.match(hub,/selectedScope==='ar'\?'YES':''/);
+  assert.match(hub,/detail\.scope==='ar'\?'arg':detail\.scope/);
+  assert.match(html,/document\.getElementById\('chatMessage'\)/);
   assert.match(front,/no se guarda en Opportunity OS/i);
   assert.doesNotMatch(front,/GEMINI_API_KEY|generativelanguage\.googleapis\.com/);
   assert.match(hub,/sections:\[orientation,publicChat\]/);
