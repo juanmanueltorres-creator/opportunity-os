@@ -127,3 +127,52 @@ test('server calls Gemini only with selected public evidence and bounded text',a
     delete process.env.GEMINI_FREE_TIER_CONFIRMED;
   }
 });
+
+
+test('server grounds change queries in the published delta instead of invented counts',async()=>{
+  const original=globalThis.fetch;
+  process.env.GEMINI_API_KEY='test-not-a-real-key';
+  process.env.OPPORTUNITY_GEMINI_ENABLED='true';
+  process.env.GEMINI_FREE_TIER_CONFIRMED='true';
+  const generated='2026-11-05T20:00:00Z';
+  const job={id:'verified:new',company:'Geo Example',title:'GIS Technician',
+    source_url:'https://example.org/jobs/new',remote_mode:'REMOTE',
+    argentina_eligible:'YES',work_language:'ES',listing_language:'ES',
+    published_at:'2026-10-01T09:00:00Z',topics:['gis']};
+  let modelPayload;
+  globalThis.fetch=async(input,opts)=>{
+    const href=String(input);
+    if(href.includes('radar-public/changes.json'))return {
+      ok:true,headers:{get:()=>null},json:async()=>({
+        schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+        current_generated_at:generated,previous_generated_at:'2026-11-04T20:00:00Z',
+        current_count:1,previous_count:1,newly_observed_count:1,
+        no_longer_observed_count:1,continuing_count:0,
+        new_jobs:[job],no_longer_observed_jobs:[{...job,id:'old',source_url:'https://example.org/jobs/old'}]
+      })
+    };
+    if(href.includes('radar-public/jobs.json'))return {
+      ok:true,headers:{get:()=>null},json:async()=>({generated_at:generated,atlas:[job]})
+    };
+    if(href.includes('generativelanguage.googleapis.com')){
+      modelPayload=JSON.parse(opts.body);
+      return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Observación basada en las dos capturas [S2].'}]}}]})};
+    }
+    throw Error('Unexpected request '+href);
+  };
+  try{
+    const res=await run('POST',{message:'¿Qué vacantes nuevas de GIS aparecieron desde ayer?'});
+    assert.equal(res.statusCode,200);
+    assert.equal(res.body.change_summary.available,true);
+    assert.equal(res.body.change_summary.coincidencias,1);
+    assert.equal(res.body.radar_summary,null);
+    assert.match(JSON.stringify(modelPayload),/change_analysis/);
+    assert.match(JSON.stringify(modelPayload),/Geo Example/);
+    assert.ok(res.body.sources.some(x=>x.url.includes('changes.json')));
+  }finally{
+    globalThis.fetch=original;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.OPPORTUNITY_GEMINI_ENABLED;
+    delete process.env.GEMINI_FREE_TIER_CONFIRMED;
+  }
+});

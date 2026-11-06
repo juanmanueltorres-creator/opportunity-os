@@ -83,3 +83,16 @@ El código aplica una cuota de mejor esfuerzo por instancia (6 solicitudes/5 min
 - Si el chat no puede acceder al radar público, debe decirlo y apoyarse solo en estadísticas y empresas verificadas.
 
 La prueba de éxito es una decisión mejor respaldada: qué empresas investigar, qué puestos descartar y cuál es el siguiente paso, no el número de componentes en la página.
+
+## Comparación entre capturas públicas consecutivas
+
+El workflow del radar lee el `jobs.json` anterior **antes** de publicar el siguiente. Genera `radar-public/changes.json` con `scripts/compare_public_snapshots.py`, usando únicamente identificadores y atributos de avisos ya exportados públicamente.
+
+- `newly_observed_count`: aparece en la captura nueva pero no en la anterior. Puede ser una reaparición, no necesariamente una publicación reciente.
+- `no_longer_observed_count`: figuraba antes y no figura ahora. **No prueba cierre**: puede cambiar por cobertura de fuentes, límites de ranking o fallas temporales.
+- `continuing_count`: se observa en las dos capturas consecutivas.
+- `available=false`: no existe una captura anterior válida o la comparación no coincide con la fecha exacta del feed actual. El chat debe decirlo expresamente.
+
+El endpoint `/api/chat` sólo recupera el archivo de diferencias para preguntas comparativas. Valida fechas, conteos e identificadores y luego aplica filtros por rol, modalidad y elegibilidad. Gemini recibe el resumen computado y evidencia con enlaces, pero no calcula diferencias por su cuenta.
+
+El alcance es **un par de capturas consecutivas**, no una serie histórica de 7 o 30 días. Ninguna diferencia prueba vigencia, elegibilidad ni cierre definitivo. No se agregan servicios pagos, infraestructura nueva ni acceso a datos privados.
