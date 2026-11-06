@@ -26,10 +26,11 @@ export function planPublicRadarQuery(input){
   // The compass appends optional browsing preferences; only the explicit
   // question is authorized to turn into hard inclusion/exclusion filters.
   const question=plain(String(input??'').split(/\nContexto elegido en la brújula/i)[0]).slice(0,700);
+  const explicitSnapshot=/\b(captura\w*|snapshots?|radar|ayer|anterior|previa|dia anterior|semana pasada)\b/.test(question);
   const comparisonIntent=/\b(desaparec\w*|dejaron de (?:figurar|aparecer)|ya no (?:figuran|aparecen))\b/.test(question)?'no_longer_observed':
     /\b(siguen apareciendo|siguen figurando|presentes en ambas)\b/.test(question)?'continuing':
     /\b(nuevas?|nuevos?|aparecieron|aparecio|incorporad\w*|recien detectad\w*|empezaron a publicar|comenzaron a publicar|reaparecieron)\b/.test(question)?'newly_observed':
-    /\b(cambio|cambiaron|cambios|compar\w*|diferencia\w*|entre capturas|respecto de ayer)\b/.test(question)?'summary':null;
+    /\b(cambio|cambiaron|cambios|entre capturas|respecto de ayer)\b/.test(question)||(explicitSnapshot&&/\b(compar\w*|diferencia\w*)\b/.test(question))?'summary':null;
   const windowHours=comparisonIntent?null:/\b(ayer|hoy|ultimas? 24 horas?|ultimas? 24 h|desde ayer)\b/.test(question)?24:
     /\b(esta semana|ultima semana|ultimos? 7 dias|7 dias)\b/.test(question)?168:null;
   const confirmedArgentina=/\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b.{0,45}\bargentina\b|\bargentina\b.{0,45}\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b/.test(question);
@@ -165,9 +166,17 @@ export function analyzePublicRadarChanges(delta,currentJobs,query,currentGenerat
      newly.some(x=>!allIds.has(x.id))||missing.some(x=>allIds.has(x.id)))
     return unavailable('Inconsistencia entre identificadores de avisos');
   const kind=plan.comparison_intent;
-  const group=kind==='no_longer_observed'?missing:
-    kind==='continuing'?all.filter(x=>!newIds.has(x.id)):newly;
-  const analysis=analyzePublicRadar(group,query,currentGeneratedAt);
+  const additions=analyzePublicRadar(newly,query,currentGeneratedAt);
+  const departures=analyzePublicRadar(missing,query,currentGeneratedAt);
+  const continuing=kind==='continuing'?analyzePublicRadar(all.filter(x=>!newIds.has(x.id)),query,currentGeneratedAt):null;
+  const primary=kind==='no_longer_observed'?departures:kind==='continuing'?continuing:additions;
+  const additionMatches=additions.summary.coincidencias_filtro;
+  const departureMatches=departures.summary.coincidencias_filtro;
+  const chosen=kind==='summary'
+    ? [...additions.selectedJobs.slice(0,departureMatches?4:8).map(x=>({...x,observation_change:'NUEVO_EN_CAPTURA'})),
+       ...departures.selectedJobs.slice(0,additionMatches?4:8).map(x=>({...x,observation_change:'YA_NO_OBSERVADO'}))]
+    : primary.selectedJobs.map(x=>({...x,observation_change:kind==='no_longer_observed'?'YA_NO_OBSERVADO':
+        kind==='continuing'?'PRESENTE_EN_AMBAS':'NUEVO_EN_CAPTURA'}));
   return {
     available:true,comparison_intent:kind,
     previous_generated_at:delta.previous_generated_at,
@@ -176,15 +185,19 @@ export function analyzePublicRadarChanges(delta,currentJobs,query,currentGenerat
     nuevos_observados:delta.newly_observed_count,
     ya_no_observados:delta.no_longer_observed_count,
     presentes_en_ambas:delta.continuing_count,
-    coincidencias_con_filtros:analysis.summary.coincidencias_filtro,
-    empresas_en_resultados:analysis.summary.empresas_en_resultados,
+    nuevos_filtrados:additionMatches,
+    ausentes_filtrados:departureMatches,
+    coincidencias_con_filtros:kind==='summary'?additionMatches+departureMatches:primary.summary.coincidencias_filtro,
+    empresas_en_resultados:primary.summary.empresas_en_resultados,
+    empresas_con_nuevos: additions.summary.empresas_en_resultados,
+    empresas_con_ausentes: departures.summary.empresas_en_resultados,
     cautelas:[
       'Se comparan sólo dos capturas consecutivas, no una serie histórica completa.',
       'Nuevo en la captura no prueba primera publicación; pudo reaparecer.',
       'Ausente de la última captura NO significa vacante cerrada.',
       'Cambios en cobertura de fuentes, ranking o identificadores pueden modificar la muestra.',
-      ...analysis.summary.cautelas.filter(x=>!x.includes('período')&&!x.includes('published_at'))
+      ...primary.summary.cautelas.filter(x=>!x.includes('período')&&!x.includes('published_at')&&!x.includes('Ninguna vacante satisface'))
     ],
-    selectedJobs:analysis.selectedJobs
+    selectedJobs:chosen
   };
 }

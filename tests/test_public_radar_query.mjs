@@ -139,3 +139,36 @@ test('companies that started posting are classified as a capture comparison',()=
   assert.equal(plan.comparison_intent,'newly_observed');
   assert.equal(plan.publication_window_hours,null);
 });
+
+
+test('ordinary comparison between skills is not redirected into capture changes',()=>{
+  const plan=planPublicRadarQuery('Compará ofertas de Python y GIS');
+  assert.equal(plan.comparison_intent,null);
+  assert.equal(plan.topics.length,2);
+  assert.equal(planPublicRadarQuery('Compará capturas de ayer y hoy').comparison_intent,'summary');
+});
+test('summary includes both additions and disappearances for requested role',()=>{
+  const current=[row('python','Python developer',at)];
+  const gone=row('geo','GIS Technician','2026-11-04T15:00:00Z');
+  const delta={schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+    current_generated_at:at,previous_generated_at:'2026-11-04T20:00:00Z',
+    current_count:1,previous_count:1,newly_observed_count:1,no_longer_observed_count:1,continuing_count:0,
+    new_jobs:current,no_longer_observed_jobs:[gone]};
+  const summary=analyzePublicRadarChanges(delta,current,'¿Qué cambios hubo de GIS desde la captura anterior?',at);
+  assert.equal(summary.available,true);
+  assert.equal(summary.nuevos_filtrados,0);
+  assert.equal(summary.ausentes_filtrados,1);
+  assert.equal(summary.coincidencias_con_filtros,1);
+  assert.equal(summary.selectedJobs[0].id,'geo');
+  assert.equal(summary.selectedJobs[0].observation_change,'YA_NO_OBSERVADO');
+});
+test('public industry classification remains available in the new-observation filter',()=>{
+  const current=[row('agzen','Product Designer',at,{company:'AgZen',company_industry:'agtech'})];
+  const delta={schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+    current_generated_at:at,previous_generated_at:'2026-11-04T20:00:00Z',
+    current_count:1,previous_count:0,newly_observed_count:1,no_longer_observed_count:0,continuing_count:0,
+    new_jobs:current,no_longer_observed_jobs:[]};
+  const results=analyzePublicRadarChanges(delta,current,'¿Qué vacantes nuevas de agro aparecieron?',at);
+  assert.equal(results.coincidencias_con_filtros,1);
+  assert.equal(results.selectedJobs[0].id,'agzen');
+});

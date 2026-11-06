@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 FIELDS = ("id", "company", "title", "source_url", "source", "published_at",
           "remote_mode", "argentina_eligible", "work_language", "listing_language",
-          "location", "track", "score", "topics")
+          "location", "track", "score", "topics", "company_industry")
 
 def _timestamp(value: object) -> datetime | None:
     if not isinstance(value, str):

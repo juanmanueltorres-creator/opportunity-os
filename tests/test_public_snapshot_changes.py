@@ -51,3 +51,8 @@ def test_unsafe_rows_and_duplicates_cannot_change_counts():
     current = snap(AT_NEW, [a, a, job("x", source_url="http://example.org/x"), {"id": "bad"}])
     diff = compare_public_snapshots(snap(AT_OLD, []), current)
     assert diff["current_count"] == diff["newly_observed_count"] == 1
+
+
+def test_public_agtech_classification_survives_diff():
+    output = compare_public_snapshots(snap(AT_OLD, []), snap(AT_NEW, [job("ag", company_industry="agtech")]))
+    assert output["new_jobs"][0]["company_industry"] == "agtech"

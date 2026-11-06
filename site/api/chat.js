@@ -50,7 +50,7 @@ function matchScore(item,queryTokens){
   return queryTokens.reduce((n,t)=>n+(head.includes(t)?5:0)+(rest.includes(t)?2:0),0);
 }
 function jobView(j){
-  return {empresa:bounded(j.company,100),puesto:bounded(j.title,140),modalidad:bounded(j.remote_mode,35),argentina_elegible:bounded(j.argentina_eligible,15),idioma_laboral:bounded(j.work_language,30),idioma_aviso:bounded(j.listing_language,20),fecha_publicacion:bounded(j.published_at,35),ubicacion:bounded(j.location,90),url:url(j.source_url),nivel:bounded(j.seniority,35),fuente:bounded(j.source,35)};
+  return {empresa:bounded(j.company,100),puesto:bounded(j.title,140),modalidad:bounded(j.remote_mode,35),argentina_elegible:bounded(j.argentina_eligible,15),idioma_laboral:bounded(j.work_language,30),idioma_aviso:bounded(j.listing_language,20),fecha_publicacion:bounded(j.published_at,35),ubicacion:bounded(j.location,90),url:url(j.source_url),nivel:bounded(j.seniority,35),fuente:bounded(j.source,35),estado_en_comparacion:bounded(j.observation_change,35)||null};
 }
 function safeCompany(c){
   return {empresa:bounded(c.name,95),sector:bounded(c.sector||c.activity,110),region:bounded(c.region||c.province,55),modalidad:'No inferible de la sede',nota:bounded(c.caution,250),url:url(c.careers_url||c.source_url)};
