@@ -1,54 +1,32 @@
 # Opportunity OS
 
-> **Run a job search like an investigation instead of a spam campaign.**
+> **Menos pestañas abiertas. Más decisiones respaldadas por evidencia.**
 
-Opportunity OS is a local-first system for deciding what is worth pursuing — and for keeping the evidence behind that decision visible.
+Buscar trabajo suele repartir la información entre portales, empresas, CV, correos y contactos. Opportunity OS conecta esas piezas para que una persona pueda descubrir oportunidades, evaluar si son reales y relevantes, preparar una candidatura y conservar el contexto de lo que pasó. No promete conseguir empleo ni automatiza decisiones que requieren autorización humana.
 
-It can find and assess real job postings, track companies worth researching, prepare recruiter-ready CVs from verified facts, remember professional relationship context, inspect selected hiring-process email evidence, and follow bounded public contribution opportunities. It can also receive versioned research handoffs from other systems without turning a weak signal into a vacancy, hiring interest, or permission to contact someone.
+El producto tiene **dos formas de uso**, con alcances distintos:
 
-> **The system prepares. You decide. External action still requires explicit human intent.**
+- **Web pública** (`site/`): explora ofertas capturadas, empresas, sectores y alternativas freelance; ofrece una brújula, filtros, un mapa opcional y consultas a Gemini apoyadas en datos públicos. Las respuestas dependen de fuentes y configuración disponibles; una oferta observada no garantiza vigencia.
+- **Herramientas locales y privadas** (Python 3.12+): normalizan y evalúan avisos, preparan CV basados en hechos comprobados, conservan contexto profesional y permiten revisar evidencia de correos o contribuciones antes de importarla. Los datos privados no se publican en el repositorio.
 
-Current package line: `0.2.0c1` · Python 3.12+ · open source · local/private state stays outside the repository.
+**Recorrido útil:** encontrá una oferta → comprobá su fuente y requisitos → prepará un CV fiel a tu experiencia → decidí si postularte → registrá el resultado. Si no hay una vacante comprobada, una empresa puede quedar como objetivo de investigación, pero nunca se presenta como oferta activa.
 
----
+**Límite de autonomía:** el sistema prepara y verifica; enviar mensajes, postularse, importar datos privados o ejecutar otras acciones externas requiere intención humana explícita.
 
-## Why this exists
+### Por dónde empezar
 
-A real job search fragments quickly: job boards, company pages, CV versions, recruiter messages, old conversations, GitHub issues, follow-ups and notes about why something looked interesting in the first place.
+| Si querés… | Leé… |
+| --- | --- |
+| Entender la experiencia pública y sus límites | [Web pública y Gemini](docs/WEB_ORIENTACION_PUBLICA_RAG.md) |
+| Preparar un CV con el flujo local | [Runbook de operación](docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md) |
+| Ver capacidades y próximos pasos del núcleo local | [Roadmap](ROADMAP.md) |
+| Ver qué se ejecuta realmente | [Código de la web](site/) y pruebas del repositorio |
 
-The hard part is not generating more activity. It is keeping four questions answerable:
-
-1. **What did I actually observe?**
-2. **What is still only a hypothesis or useful signal?**
-3. **What can I truthfully support with evidence?**
-4. **What, if anything, deserves a next step?**
-
-Opportunity OS keeps those layers separate so automation can remove repetition without manufacturing certainty.
-
-A company worth watching is not automatically a vacancy. A useful GitHub issue is not automatically employment interest. A research hypothesis is not automatically a customer. A reply is not permission to send another message.
+**Para futuras revisiones:** este README es una guía de entrada, no un historial de despliegues. Contrastá la descripción con los PR mergeados, el código y las pruebas de `main`; verificá por separado el despliegue activo. Un PR abierto o un ejemplo antiguo no acredita una funcionalidad en producción.
 
 ---
 
-## What it looks like in practice
-
-```text
-something interesting
-        ↓
-is it real and relevant?
-        ↓
-what evidence do I actually have?
-        ↓
-┌────────────────┬──────────────────┬────────────────────┬────────────────────┐
-│ job posting    │ target company   │ public GitHub task │ research handoff   │
-│ assess / CV    │ research/context │ contribution path  │ actor / need review│
-└────────────────┴──────────────────┴────────────────────┴────────────────────┘
-        ↓
-prepare a defensible next step
-        ↓
-human decides what happens outside the system
-```
-
-The system does **not** treat every company as a vacancy and does **not** treat every useful contact, contribution or research signal as permission to act.
+## Capabilities in more detail
 
 ### Today it can
 
