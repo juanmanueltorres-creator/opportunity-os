@@ -1,5 +1,9 @@
 # Opportunity OS
 
+![Opportunity OS — descubrir, verificar, preparar y decidir](docs/assets/product-journey.svg)
+
+*Recorrido conceptual del producto; no es una captura de pantalla.*
+
 > **Menos pestañas abiertas. Más decisiones respaldadas por evidencia.**
 
 Buscar trabajo suele repartir la información entre portales, empresas, CV, correos y contactos. Opportunity OS conecta esas piezas para que una persona pueda descubrir oportunidades, evaluar si son reales y relevantes, preparar una candidatura y conservar el contexto de lo que pasó. No promete conseguir empleo ni automatiza decisiones que requieren autorización humana.
