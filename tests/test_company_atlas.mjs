@@ -15,7 +15,7 @@ const parsing = new Function(
   pick('  const PROVINCES =', '  const SECTION =')
   + pick('  const $ =', '  let records=')
   + pick('  function countryFrom', '  function addRecords')
-  + 'return { asRows, countryFrom, provinceFrom, stateFrom, sectorFrom };'
+  + 'return { asRows, countryFrom, provinceFrom, stateFrom, sectorFrom, selectWorkbookSheets, originAuthority };'
 )();
 
 test('countries and provinces are not fabricated from unknown places', () => {
@@ -75,4 +75,47 @@ test('does not accept unsafe source links', () => {
     [1,'Organización de ejemplo','PENDIENTE','javascript:alert(1)']
   ],'Unificado');
   assert.equal(data[0].source,null);
+});
+
+test('Unificado overrides EMPRESAS_400 within the same workbook', () => {
+  assert.deepEqual(
+    parsing.selectWorkbookSheets(['Resumen', 'EMPRESAS_400', 'Unificado', 'Directorio']),
+    ['Unificado', 'Directorio']
+  );
+  assert.deepEqual(
+    parsing.selectWorkbookSheets(['EMPRESAS_400', 'Directorio']),
+    ['EMPRESAS_400', 'Directorio']
+  );
+  assert.deepEqual(parsing.selectWorkbookSheets(['Resumen', 'LATAM_TOP50']), []);
+});
+
+test('operational Unificado status has greater authority than old company catalog', () => {
+  assert.ok(parsing.originAuthority('Unificado') > parsing.originAuthority('EMPRESAS_400'));
+  assert.ok(parsing.originAuthority('Unificado · EMPRESAS_400') > parsing.originAuthority('EMPRESAS_400'));
+  assert.equal(parsing.originAuthority('not_known'), 0);
+});
+
+test('a previous catalog import never overwrites the reconciled master state', () => {
+  const makeMerger = () => new Function(
+    'let records=[];'
+    + pick('  const stateRank=', '  function toHeader')
+    + pick('  function selectWorkbookSheets', '  function persist')
+    + 'return { addRecords, snapshot:()=>records };'
+  )();
+  const master = {
+    key:'empresa demo|argentina',name:'Empresa Demo',type:'Empresa',
+    state:'pending',stateOriginal:'POR INVESTIGAR',origin:'Unificado'
+  };
+  const oldCatalog = {
+    ...master,state:'sent',stateOriginal:'ENVIADO HISTÓRICO',
+    origin:'EMPRESAS_400'
+  };
+  for (const [first,second] of [[master,oldCatalog],[oldCatalog,master]]) {
+    const m=makeMerger();
+    m.addRecords([first]);
+    m.addRecords([second]);
+    assert.equal(m.snapshot().length,1);
+    assert.equal(m.snapshot()[0].state,'pending');
+    assert.equal(m.snapshot()[0].stateOriginal,'POR INVESTIGAR');
+  }
 });
