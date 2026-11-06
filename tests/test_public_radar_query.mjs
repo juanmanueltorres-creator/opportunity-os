@@ -132,3 +132,10 @@ test('inconsistent counts or foreign IDs reject the comparison',()=>{
   assert.equal(r.available,false);
   assert.equal(r.coincidencias_con_filtros,undefined);
 });
+
+
+test('companies that started posting are classified as a capture comparison',()=>{
+  const plan=planPublicRadarQuery('¿Qué empresas comenzaron a publicar avisos desde la última captura?');
+  assert.equal(plan.comparison_intent,'newly_observed');
+  assert.equal(plan.publication_window_hours,null);
+});

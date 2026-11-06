@@ -28,7 +28,7 @@ export function planPublicRadarQuery(input){
   const question=plain(String(input??'').split(/\nContexto elegido en la brújula/i)[0]).slice(0,700);
   const comparisonIntent=/\b(desaparec\w*|dejaron de (?:figurar|aparecer)|ya no (?:figuran|aparecen))\b/.test(question)?'no_longer_observed':
     /\b(siguen apareciendo|siguen figurando|presentes en ambas)\b/.test(question)?'continuing':
-    /\b(nuevas?|nuevos?|aparecieron|aparecio|incorporad\w*|recien detectad\w*)\b/.test(question)?'newly_observed':
+    /\b(nuevas?|nuevos?|aparecieron|aparecio|incorporad\w*|recien detectad\w*|empezaron a publicar|comenzaron a publicar|reaparecieron)\b/.test(question)?'newly_observed':
     /\b(cambio|cambiaron|cambios|compar\w*|diferencia\w*|entre capturas|respecto de ayer)\b/.test(question)?'summary':null;
   const windowHours=comparisonIntent?null:/\b(ayer|hoy|ultimas? 24 horas?|ultimas? 24 h|desde ayer)\b/.test(question)?24:
     /\b(esta semana|ultima semana|ultimos? 7 dias|7 dias)\b/.test(question)?168:null;
