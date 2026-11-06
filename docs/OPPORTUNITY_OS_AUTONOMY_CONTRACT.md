@@ -1,8 +1,8 @@
 # Opportunity OS — Contrato operativo del agente de mejora continua
 
-**Estado:** propuesta versionada, en revisión. Este archivo es una especificación y **no** habilita una ejecución desatendida dentro de GitHub, un despliegue ni acciones externas.  
-**Ámbito:** `juanmanueltorres-creator/opportunity-os`; la rama `main` es la referencia única del estado implementado.  
-**Supervisión:** el operador autoriza fusiones, despliegues, efectos externos y cambios sensibles.  
+**Estado:** propuesta versionada, en revisión. Este archivo es una especificación y **no** habilita una ejecución desatendida dentro de GitHub, un despliegue ni acciones externas.
+**Ámbito:** `juanmanueltorres-creator/opportunity-os`; la rama `main` es la referencia única del estado implementado.
+**Supervisión:** el operador autoriza fusiones, despliegues, efectos externos y cambios sensibles.
 **Complementa:** `README.md`, `ROADMAP.md`, `docs/OPPORTUNITY_OS_AGENT_RUNBOOK.md` y políticas existentes de preparación y outreach.
 
 ## Norte de producto
