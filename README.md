@@ -18,14 +18,7 @@ No promete conseguir empleo ni enviar postulaciones sin tu decisión: **te ayuda
 
 ## Cómo se usa
 
-```mermaid
-flowchart LR
-  A["Encontrar"] --> B["Comprobar"]
-  B --> C["Priorizar"]
-  C --> D["Preparar CV"]
-  D --> E["Decidir y postular"]
-  E --> F["Registrar resultado"]
-```
+![Recorrido de Opportunity OS: descubrir oportunidades, verificar evidencia, preparar una candidatura y decidir](docs/assets/product-journey.svg)
 
 **[Explorar el código de la web](site/)** · **[Cómo funciona el radar y Gemini](docs/WEB_ORIENTACION_PUBLICA_RAG.md)**
 
