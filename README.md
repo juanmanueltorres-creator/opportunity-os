@@ -65,6 +65,10 @@ The system does **not** treat every company as a vacancy and does **not** treat 
 | **Cross-repo Handoffs** | review versioned research handoffs as read-only evidence without automatic import or external action |
 | **Outreach Core** | separate contact resolution, draft identity, approval, send request and send authorization |
 | **Search Health** | project local discovery, qualification, outreach and outcome evidence into coverage-aware counts and conversion cohorts |
+| **Public web orientation** | explore public vacancies, sectors, companies and freelance pathways via the browser compass, regional filters, and an opt-in Leaflet map |
+| **Public Gemini chat + radar comparison** | ask evidence-grounded questions over the public radar and compare two consecutive snapshots when available; missing listings do not prove vacancies closed |
+
+The **public web experience** (`site/`) is separate from the **local/private operator core**. Its Gemini endpoint uses public evidence only, and snapshot comparisons require a valid consecutive pair. Web access does not grant permission to import private data, contact recruiters, apply or send messages. See [`docs/WEB_ORIENTACION_PUBLICA_RAG.md`](docs/WEB_ORIENTACION_PUBLICA_RAG.md) for its exact data and security boundaries.
 
 See [`ROADMAP.md`](ROADMAP.md) for the detailed version history and future work.
 
