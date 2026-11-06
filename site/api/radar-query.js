@@ -26,7 +26,11 @@ export function planPublicRadarQuery(input){
   // The compass appends optional browsing preferences; only the explicit
   // question is authorized to turn into hard inclusion/exclusion filters.
   const question=plain(String(input??'').split(/\nContexto elegido en la brújula/i)[0]).slice(0,700);
-  const windowHours=/\b(ayer|hoy|ultimas? 24 horas?|ultimas? 24 h|desde ayer)\b/.test(question)?24:
+  const comparisonIntent=/\b(desaparec\w*|dejaron de (?:figurar|aparecer)|ya no (?:figuran|aparecen))\b/.test(question)?'no_longer_observed':
+    /\b(siguen apareciendo|siguen figurando|presentes en ambas)\b/.test(question)?'continuing':
+    /\b(nuevas?|nuevos?|aparecieron|aparecio|incorporad\w*|recien detectad\w*)\b/.test(question)?'newly_observed':
+    /\b(cambio|cambiaron|cambios|compar\w*|diferencia\w*|entre capturas|respecto de ayer)\b/.test(question)?'summary':null;
+  const windowHours=comparisonIntent?null:/\b(ayer|hoy|ultimas? 24 horas?|ultimas? 24 h|desde ayer)\b/.test(question)?24:
     /\b(esta semana|ultima semana|ultimos? 7 dias|7 dias)\b/.test(question)?168:null;
   const confirmedArgentina=/\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b.{0,45}\bargentina\b|\bargentina\b.{0,45}\b(aceptan?|contratan?|elegib\w*|confirmad\w*)\b/.test(question);
   const requestedDomains=domainRules.filter(d=>d.ask.test(question));
@@ -37,6 +41,7 @@ export function planPublicRadarQuery(input){
   const unsupportedTopic=requestedDomains.length===0?(technologies?.[1]||(!ignored.has(explicitRole?.[1])?explicitRole?.[1]:null)):null;
   return {
     publication_window_hours:windowHours,
+    comparison_intent:comparisonIntent,
     remote_only:/\b(remoto|remota|remotos|remotas|remote)\b/.test(question),
     confirmed_argentina_only:confirmedArgentina,
     spanish_requirement:/\b(trabajo en espanol|idioma laboral en espanol|idioma de trabajo en espanol|sin ingles|solo espanol)\b/.test(question),
@@ -122,5 +127,64 @@ export function analyzePublicRadar(availableJobs,query,snapshotAt){
       cautelas:cautions
     },
     selectedJobs:ranked.slice(0,8).map(x=>x.j)
+  };
+}
+
+
+/* Query a verified pair of PUBLIC snapshots. Absence does not establish closure. */
+export function analyzePublicRadarChanges(delta,currentJobs,query,currentGeneratedAt){
+  const plan=planPublicRadarQuery(query);
+  if(!plan.comparison_intent)return null;
+  const unavailable=reason=>({
+    available:false,comparison_intent:plan.comparison_intent,
+    unavailable_reason:reason,
+    caution:'No hay dos capturas públicas comparables; no inferir vacantes nuevas o cerradas.',
+    selectedJobs:[]
+  });
+  if(!delta||delta.schema_version!==1||delta.comparison_type!=='consecutive_public_snapshots')
+    return unavailable('Comparación entre capturas todavía no publicada');
+  if(delta.current_generated_at!==currentGeneratedAt)
+    return unavailable('La comparación no corresponde a la última captura publicada');
+  if(delta.available!==true)
+    return unavailable(String(delta.unavailable_reason||'Captura anterior no disponible').slice(0,140));
+  const previous=Date.parse(delta.previous_generated_at),current=Date.parse(delta.current_generated_at);
+  if(!Number.isFinite(previous)||!Number.isFinite(current)||previous>=current)
+    return unavailable('Fechas de captura inválidas');
+  const all=Array.isArray(currentJobs)?currentJobs:[];
+  const newly=Array.isArray(delta.new_jobs)?delta.new_jobs:null;
+  const missing=Array.isArray(delta.no_longer_observed_jobs)?delta.no_longer_observed_jobs:null;
+  const counts=[delta.current_count,delta.previous_count,delta.newly_observed_count,delta.no_longer_observed_count,delta.continuing_count];
+  if(!newly||!missing||counts.some(n=>!Number.isInteger(n)||n<0)||
+     delta.current_count!==all.length||
+     delta.newly_observed_count+delta.continuing_count!==delta.current_count||
+     delta.no_longer_observed_count+delta.continuing_count!==delta.previous_count||
+     newly.length!==delta.newly_observed_count||missing.length!==delta.no_longer_observed_count)
+    return unavailable('Los conteos de ambas capturas no son coherentes');
+  const allIds=new Set(all.map(x=>x.id)),newIds=new Set(newly.map(x=>x.id)),goneIds=new Set(missing.map(x=>x.id));
+  if(allIds.size!==all.length||newIds.size!==newly.length||goneIds.size!==missing.length||
+     newly.some(x=>!allIds.has(x.id))||missing.some(x=>allIds.has(x.id)))
+    return unavailable('Inconsistencia entre identificadores de avisos');
+  const kind=plan.comparison_intent;
+  const group=kind==='no_longer_observed'?missing:
+    kind==='continuing'?all.filter(x=>!newIds.has(x.id)):newly;
+  const analysis=analyzePublicRadar(group,query,currentGeneratedAt);
+  return {
+    available:true,comparison_intent:kind,
+    previous_generated_at:delta.previous_generated_at,
+    current_generated_at:delta.current_generated_at,
+    prev_total:delta.previous_count,current_total:delta.current_count,
+    nuevos_observados:delta.newly_observed_count,
+    ya_no_observados:delta.no_longer_observed_count,
+    presentes_en_ambas:delta.continuing_count,
+    coincidencias_con_filtros:analysis.summary.coincidencias_filtro,
+    empresas_en_resultados:analysis.summary.empresas_en_resultados,
+    cautelas:[
+      'Se comparan sólo dos capturas consecutivas, no una serie histórica completa.',
+      'Nuevo en la captura no prueba primera publicación; pudo reaparecer.',
+      'Ausente de la última captura NO significa vacante cerrada.',
+      'Cambios en cobertura de fuentes, ranking o identificadores pueden modificar la muestra.',
+      ...analysis.summary.cautelas.filter(x=>!x.includes('período')&&!x.includes('published_at'))
+    ],
+    selectedJobs:analysis.selectedJobs
   };
 }

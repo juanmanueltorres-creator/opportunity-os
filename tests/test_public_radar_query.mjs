@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {analyzePublicRadar,planPublicRadarQuery} from '../site/api/radar-query.js';
+import {analyzePublicRadar,analyzePublicRadarChanges,planPublicRadarQuery} from '../site/api/radar-query.js';
 
 const at='2026-11-05T20:00:00Z';
 const row=(id,title,published_at,rest={})=>({
@@ -84,4 +84,51 @@ test('JavaScript is recognized as a supported technology rather than the entire 
   const r=analyzePublicRadar(sample,'¿Cuántas vacantes de JavaScript hay?',at);
   assert.equal(r.summary.coincidencias_filtro,1);
   assert.equal(r.selectedJobs[0].id,'js');
+});
+
+
+test('new in previous comparison is not inferred from the posting date',()=>{
+  const current=[row('new','GIS Analyst','2026-10-20T16:00:00Z'),row('old','Python developer','2026-11-05T16:00:00Z')];
+  const delta={schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+    current_generated_at:at,previous_generated_at:'2026-11-04T20:00:00Z',
+    current_count:2,previous_count:2,newly_observed_count:1,no_longer_observed_count:1,continuing_count:1,
+    new_jobs:[current[0]],no_longer_observed_jobs:[row('gone','GIS Support',null)]};
+  const r=analyzePublicRadarChanges(delta,current,'¿Qué vacantes nuevas de GIS aparecieron desde ayer?',at);
+  assert.equal(r.available,true);
+  assert.equal(r.coincidencias_con_filtros,1);
+  assert.equal(r.nuevos_observados,1);
+  assert.equal(r.selectedJobs[0].id,'new');
+  assert.equal(planPublicRadarQuery('¿Qué vacantes nuevas de GIS aparecieron desde ayer?').publication_window_hours,null);
+});
+test('missing or stale delta cannot invent changed jobs',()=>{
+  const current=[row('one','GIS Analyst',null)];
+  const invalid=[null,{schema_version:1,comparison_type:'consecutive_public_snapshots',
+    available:true,current_generated_at:'2020-01-01T00:00:00Z'}];
+  for(const delta of invalid){
+    const r=analyzePublicRadarChanges(delta,current,'¿Qué avisos nuevos hay?',at);
+    assert.equal(r.available,false);
+    assert.equal(r.selectedJobs.length,0);
+  }
+});
+test('absence is observable but never a closed vacancy',()=>{
+  const current=[row('present','GIS Analyst',null)],gone=row('gone','GIS Technician',null);
+  const delta={schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+    current_generated_at:at,previous_generated_at:'2026-11-04T20:00:00Z',
+    current_count:1,previous_count:1,newly_observed_count:1,no_longer_observed_count:1,continuing_count:0,
+    new_jobs:current,no_longer_observed_jobs:[gone]};
+  const r=analyzePublicRadarChanges(delta,current,'¿Qué avisos GIS desaparecieron?',at);
+  assert.equal(r.available,true);
+  assert.equal(r.coincidencias_con_filtros,1);
+  assert.equal(r.selectedJobs[0].id,'gone');
+  assert.match(r.cautelas.join(' '),/NO significa vacante cerrada/);
+});
+test('inconsistent counts or foreign IDs reject the comparison',()=>{
+  const current=[row('present','GIS Analyst',null)];
+  const delta={schema_version:1,comparison_type:'consecutive_public_snapshots',available:true,
+    current_generated_at:at,previous_generated_at:'2026-11-04T20:00:00Z',
+    current_count:1,previous_count:1,newly_observed_count:1,no_longer_observed_count:1,continuing_count:0,
+    new_jobs:[row('outsider','GIS Analyst',null)],no_longer_observed_jobs:[row('gone','GIS Tech',null)]};
+  const r=analyzePublicRadarChanges(delta,current,'¿Qué avisos nuevos GIS hay?',at);
+  assert.equal(r.available,false);
+  assert.equal(r.coincidencias_con_filtros,undefined);
 });

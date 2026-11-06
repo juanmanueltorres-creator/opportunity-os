@@ -9,6 +9,7 @@ on:
       - "scripts/daily_job_radar.py"
       - "scripts/render_global_radar.py"
       - "scripts/publish_public_snapshot.py"
+      - "scripts/compare_public_snapshots.py"
       - ".github/workflows/daily-opportunity-radar.yml"
   schedule:
     # 09:23 in Cordoba/Argentina (UTC-3), avoiding peak of the hour.
@@ -50,9 +51,15 @@ jobs:
           set -euo pipefail
           cp artifacts/daily-radar/public.json "${RUNNER_TEMP}/radar-public.json"
           git fetch origin radar-public
+          # Run the tested comparator from main before checking out the data-only branch.
+          if ! git show origin/radar-public:jobs.json > "${RUNNER_TEMP}/radar-previous.json"; then
+            rm -f "${RUNNER_TEMP}/radar-previous.json"
+          fi
+          python scripts/compare_public_snapshots.py "${RUNNER_TEMP}/radar-previous.json" "${RUNNER_TEMP}/radar-public.json" "${RUNNER_TEMP}/radar-changes.json"
           git checkout -B radar-public origin/radar-public
           cp "${RUNNER_TEMP}/radar-public.json" jobs.json
-          git add jobs.json
+          cp "${RUNNER_TEMP}/radar-changes.json" changes.json
+          git add jobs.json changes.json
           if ! git diff --cached --quiet; then
             git -c user.name="opportunity-os-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "data: daily public vacancy snapshot"
             git push origin HEAD:radar-public

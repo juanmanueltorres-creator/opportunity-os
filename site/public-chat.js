@@ -15,6 +15,7 @@
     '<div class="public-chat-suggestions" role="group" aria-label="Consultas sugeridas">',
     '<button type="button" data-question="¿Conviene buscar empleo en comercio y servicios o en minería? Explicame qué miden las cifras y qué no.">¿Comercio o minería?</button>',
     '<button type="button" data-question="¿Qué tipos de roles remotos podría investigar desde Argentina si sé Python, GIS y operaciones? No inventes ofertas.">Remoto + GIS + datos</button>',
+    '<button type="button" data-question="¿Qué cambios hubo en el radar desde la captura anterior? Marcá qué es observación y qué requiere verificación.">Cambios del radar</button>',
     '<button type="button" data-question="¿Cómo distinguir empresas con vacantes reales de empresas para contactar con una propuesta freelance?">¿Empleo o freelance?</button></div>',
     '<div class="public-chat-stream" id="chatStream" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversación">',
     '<div class="public-chat-welcome">Soy una guía de orientación, no un reclutador. Podés preguntarme qué sectores investigar o pedirme que compare ofertas del radar. Las fuentes aparecen junto a la respuesta.</div></div>',
@@ -96,7 +97,10 @@
       const counts=data.radar_summary;
       const measured=Number.isInteger(counts?.coincidencias_filtro)&&Number.isInteger(counts?.avisos_en_captura)?
         'Filtro calculado: '+counts.coincidencias_filtro+' de '+counts.avisos_en_captura+' avisos de la captura. ':'';
-      $('chatFeedback').textContent=measured+(data.feed_available?'Radar público consultado. ':'Radar no disponible. ')+stamp;
+      const change=data.change_summary;
+      const changeText=change?.available===true?'Comparación: '+change.coincidencias+' avisos coinciden con el filtro de cambios. '
+        :change&&change.available===false?'Comparación no disponible: '+String(change.reason||'sin datos anteriores').slice(0,100)+'. ':'';
+      $('chatFeedback').textContent=changeText+measured+(data.feed_available?'Radar público consultado. ':'Radar no disponible. ')+stamp;
     }catch(error){
       if(requestId!==revision)return;
       add('system',String(error.message||'No se pudo completar la consulta.').slice(0,270));

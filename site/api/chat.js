@@ -2,9 +2,10 @@
    Only public sources enter context. The key remains server-side in Vercel.
    This endpoint does not accept raw documents, CVs, attachments or custom URLs. */
 import {readFileSync} from 'node:fs';
-import {analyzePublicRadar} from './radar-query.js';
+import {analyzePublicRadar,analyzePublicRadarChanges,planPublicRadarQuery} from './radar-query.js';
 
 const FEED='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/jobs.json';
+const CHANGES='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/radar-public/changes.json';
 const DATA_BASE='https://raw.githubusercontent.com/juanmanueltorres-creator/opportunity-os/main/site/';
 const MODEL=/^gemini-[a-z0-9.-]+$/.test(process.env.OPPORTUNITY_GEMINI_MODEL||'')
   ? process.env.OPPORTUNITY_GEMINI_MODEL : 'gemini-3.5-flash-lite';
@@ -59,21 +60,24 @@ function sourceList(references){
   return references.filter(x=>x.url&&!seen.has(x.url)&&seen.add(x.url)).slice(0,14).map((x,i)=>({id:'S'+(i+1),label:bounded(x.label,130),url:x.url}));
 }
 async function retrieve(query){
-  const [feed,market,curated,cessi,remote,cep]=await Promise.all([
+  const plan=planPublicRadarQuery(query);
+  const [feed,market,curated,cessi,remote,cep,changeFeed]=await Promise.all([
     remoteJson(FEED).catch(()=>null),
     dataset('market-context-2026.json'),
     dataset('public-company-guides-2026.json'),
     dataset('discovery-companies-2026.json'),
     dataset('remote-targets-2026.json'),
-    dataset('cep-provincial-2022.json')
+    dataset('cep-provincial-2022.json'),
+    plan.comparison_intent?remoteJson(CHANGES).catch(()=>null):Promise.resolve(null)
   ]);
   const tokens=words(query);
   const allJobs=Array.isArray(feed?.atlas)?feed.atlas.slice(0,6500).filter(x=>x&&typeof x==='object'&&url(x.source_url)):null;
   const featured=(Array.isArray(curated?.targets)?curated.targets:[])
      .concat(Array.isArray(cessi?.companies)?cessi.companies:[]);
   // Never present source count as a population estimate.
-  const radar=allJobs?analyzePublicRadar(allJobs,query,feed?.generated_at):null;
-  const jobs=(radar?.selectedJobs||[]).map(jobView);
+  const radar=allJobs&&!plan.comparison_intent?analyzePublicRadar(allJobs,query,feed?.generated_at):null;
+  const delta=plan.comparison_intent?analyzePublicRadarChanges(changeFeed,allJobs,query,feed?.generated_at):null;
+  const jobs=(delta?delta.selectedJobs:(radar?.selectedJobs||[])).map(jobView);
   const companies=featured.map(c=>({c,p:matchScore(c,tokens)}))
     .sort((a,b)=>b.p-a.p).slice(0,8).map(x=>safeCompany(x.c));
   const remoteOptions=(Array.isArray(remote?.targets)?remote.targets:[])
@@ -93,6 +97,7 @@ async function retrieve(query){
   // Selected vacancies receive source links before general market context.
   const sourceRows=[
     ...(allJobs?[{label:'Radar público · snapshot generado por GitHub Actions',url:FEED}]:[]),
+    ...(delta?.available?[{label:'Comparación de dos capturas públicas consecutivas',url:CHANGES}]:[]),
     ...jobs.map(j=>({label:j.empresa+' · '+j.puesto,url:j.url})),
     ...companies.slice(0,4).map(c=>({label:c.empresa+' · ficha o portal',url:c.url})),
     ...figures.map(f=>({label:f.source_name+' · '+f.label,url:url(f.source_url)})),
@@ -105,7 +110,7 @@ async function retrieve(query){
     remoto_y_argentina_confirmada:allJobs.filter(j=>j.remote_mode==='REMOTE'&&j.argentina_eligible==='YES').length,
     por_area_de_clasificacion:Object.fromEntries([...new Set(allJobs.map(j=>String(j.track||'UNKNOWN')))].map(k=>[k,allJobs.filter(j=>(j.track||'UNKNOWN')===k).length]))
   }:null;
-  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',radar_analysis:radar?.summary||null,query_plan:radar?.plan||null,totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],
+  return {generated_at:bounded(feed?.generated_at,50)||'No disponible',dataset_status:allJobs?'disponible':'no disponible',radar_analysis:radar?.summary||null,change_analysis:delta?(({selectedJobs,...safe})=>safe)(delta):null,query_plan:plan,totals,figures:figures.map(x=>({etiqueta:x.label,valor:x.value,unidad:x.unit,periodo:x.period,alcance:x.scope,advertencia:x.caution})),comparison:Array.isArray(market?.comparison)?market.comparison:[],
     provincial_historico_2022:provincialRows,
     cep_2022_scope:provincialRows.length?'Son puestos registrados y establecimientos productivos históricos por provincia y actividad: NO son vacantes ni empresas únicas.':null,
     remote_company_paths:remoteOptions,jobs,companies,sources};
@@ -146,7 +151,9 @@ export default async function handler(req,res){
     'Para preguntas sobre sectores, compará las diferencias de alcance y períodos en las cifras.',
     'La lista de vacantes es una muestra de fuentes consultadas, NO un censo del mercado.',
     'Para conteos, preguntas de esta semana/ayer, remotos, elegibilidad y empresas usá SOLO radar_analysis y query_plan calculados por el servidor; NO calcules números nuevos ni infieras requisitos.',
-    'Si la consulta es sobre nuevas vacantes desde ayer, explicá que solo conocemos fecha de publicación respecto del snapshot, NO la primera detección: faltan snapshots históricos comparados.',
+    'Si query_plan.comparison_intent está presente, respondé únicamente con change_analysis para las diferencias. Si available=false, explicá que la comparación no está disponible. No inventes cambios.',
+    'Si change_analysis.available=true, sus conteos provienen de dos capturas consecutivas; nuevo observado no prueba primera publicación y ausente no significa vacante cerrada.',
+    'Para consultas comparativas usá change_analysis.coincidencias_con_filtros y empresas_en_resultados. NO uses radar_analysis ni fecha_publicacion como sustituto de primera observación.',
     'Cuando radar_analysis.coincidencias_filtro=0 no recomiendes avisos que no cumplan la consulta ni rellenes la lista. Recomendá ampliar un criterio de búsqueda.',
     'El ranking de jobs usa el score público más señales explícitas. Es una ayuda de exploración, NO una probabilidad de contratación.',
     'Si usás CEP XXI 2022, aclarás que sus cifras históricas por provincia no son ofertas vigentes.',
@@ -170,7 +177,7 @@ export default async function handler(req,res){
     const data=await response.json();
     const answer=bounded((data.candidates?.[0]?.content?.parts||[]).map(p=>typeof p.text==='string'?p.text:'').join('\n'),5000);
     if(!answer)return respond(res,502,{error:'Gemini no devolvió texto. Probá reformular la pregunta.'});
-    return respond(res,200,{answer,model:MODEL,sources:context.sources,generated_at:context.generated_at,feed_available:context.dataset_status==='disponible',radar_summary:context.radar_analysis?{coincidencias_filtro:context.radar_analysis.coincidencias_filtro,avisos_en_captura:context.radar_analysis.total_avisos_con_url_en_captura}:null,scope:'Fuentes públicas · no incluye Excel, contactos ni historial privado'});
+    return respond(res,200,{answer,model:MODEL,sources:context.sources,generated_at:context.generated_at,feed_available:context.dataset_status==='disponible',radar_summary:context.radar_analysis?{coincidencias_filtro:context.radar_analysis.coincidencias_filtro,avisos_en_captura:context.radar_analysis.total_avisos_con_url_en_captura}:null,change_summary:context.change_analysis?{available:context.change_analysis.available,coincidencias:context.change_analysis.coincidencias_con_filtros??null,kind:context.change_analysis.comparison_intent,previous_at:context.change_analysis.previous_generated_at??null,reason:context.change_analysis.unavailable_reason??null}:null,scope:'Fuentes públicas · no incluye Excel, contactos ni historial privado'});
   }catch{
     return respond(res,503,{error:'No fue posible completar la consulta a Gemini. No se generan respuestas simuladas.'});
   }finally{clearTimeout(timer);}
