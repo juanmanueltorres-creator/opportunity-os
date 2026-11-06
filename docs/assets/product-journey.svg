@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+<title id="title">OPPORTUNITY / OS — recorrido de producto</title>
+<desc id="desc">De una señal laboral a una decisión respaldada por evidencia. Descubrir, Verificar, Preparar, Decidir.</desc>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#07100e"/><stop offset="1" stop-color="#203929"/></linearGradient></defs>
+<rect width="1200" height="320" rx="22" fill="url(#bg)"/>
+<g fill="none" stroke="#ccf58a" stroke-width="1" stroke-opacity=".17">
+<circle cx="1060" cy="-48" r="170"/><circle cx="1060" cy="-48" r="128"/><circle cx="1060" cy="-48" r="86"/><circle cx="1060" cy="-48" r="44"/>
+<path d="M0 123H1200"/>
+</g>
+<path d="M54 40 h23" stroke="#ccf58a" stroke-width="5" stroke-linecap="round"/>
+<text x="92" y="48" fill="#f4f8f4" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" font-weight="760" letter-spacing=".5">OPPORTUNITY / OS</text>
+<text x="54" y="89" fill="#cadad0" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="17">De una señal laboral a una decisión respaldada por evidencia</text>
+<text x="54" y="121" fill="#ccf58a" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.9">RECORRIDO DE PRODUCTO</text>
+<g>
+<rect x="54" y="143" width="242" height="126" rx="16" fill="#203929" fill-opacity=".66" stroke="#ccf58a" stroke-opacity=".33" />
+<circle cx="83" cy="174" r="13" fill="#ccf58a" fill-opacity=".14" stroke="#ccf58a" stroke-opacity=".75" />
+<text x="83" y="179" fill="#ccf58a" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">1</text>
+<text x="76" y="218" fill="#f4f8f4" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="23" font-weight="720">Descubrir</text>
+<text x="76" y="242" fill="#c3d3cc" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="14">Radar y empresas</text>
+</g><path d="M 307 205 l 12 0 m -6 -6 l 6 6 -6 6" fill="none" stroke="#ccf58a" stroke-width="1.8" opacity=".83" stroke-linecap="round" stroke-linejoin="round"/>
+<g>
+<rect x="330" y="143" width="242" height="126" rx="16" fill="#203929" fill-opacity=".66" stroke="#ccf58a" stroke-opacity=".33" />
+<circle cx="359" cy="174" r="13" fill="#ccf58a" fill-opacity=".14" stroke="#ccf58a" stroke-opacity=".75" />
+<text x="359" y="179" fill="#ccf58a" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">2</text>
+<text x="352" y="218" fill="#f4f8f4" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="23" font-weight="720">Verificar</text>
+<text x="352" y="242" fill="#c3d3cc" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="14">Fuentes y requisitos</text>
+</g><path d="M 583 205 l 12 0 m -6 -6 l 6 6 -6 6" fill="none" stroke="#ccf58a" stroke-width="1.8" opacity=".83" stroke-linecap="round" stroke-linejoin="round"/>
+<g>
+<rect x="606" y="143" width="242" height="126" rx="16" fill="#203929" fill-opacity=".66" stroke="#ccf58a" stroke-opacity=".33" />
+<circle cx="635" cy="174" r="13" fill="#ccf58a" fill-opacity=".14" stroke="#ccf58a" stroke-opacity=".75" />
+<text x="635" y="179" fill="#ccf58a" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">3</text>
+<text x="628" y="218" fill="#f4f8f4" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="23" font-weight="720">Preparar</text>
+<text x="628" y="242" fill="#c3d3cc" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="14">CV con evidencia</text>
+</g><path d="M 859 205 l 12 0 m -6 -6 l 6 6 -6 6" fill="none" stroke="#ccf58a" stroke-width="1.8" opacity=".83" stroke-linecap="round" stroke-linejoin="round"/>
+<g>
+<rect x="882" y="143" width="242" height="126" rx="16" fill="#203929" fill-opacity=".66" stroke="#ccf58a" stroke-opacity=".33" />
+<circle cx="911" cy="174" r="13" fill="#ccf58a" fill-opacity=".14" stroke="#ccf58a" stroke-opacity=".75" />
+<text x="911" y="179" fill="#ccf58a" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">4</text>
+<text x="904" y="218" fill="#f4f8f4" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="23" font-weight="720">Decidir</text>
+<text x="904" y="242" fill="#c3d3cc" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="14">Acción humana</text>
+</g>
+<text x="54" y="301" fill="#a9bdb3" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="13">Exploración pública ≠ datos privados · Preparar ≠ enviar</text>
+</svg>
