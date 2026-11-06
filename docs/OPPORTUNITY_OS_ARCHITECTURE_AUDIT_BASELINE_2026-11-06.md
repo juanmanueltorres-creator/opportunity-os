@@ -1,9 +1,9 @@
 # Opportunity OS — Baseline de auditoría de arquitectura (2026-11-06)
 
-**Estado:** auditoría documental del código; baseline versionada para el ciclo de agentes. **No es prueba dinámica de producción**.  
-**Repositorio:** `juanmanueltorres-creator/opportunity-os`  
-**SHA de evidencia:** `7b03b1256e9b52280652b5ecf79c9d22117da9da` (`main`, 2026-11-06).  
-**Documento de origen:** informe de arquitectura HTML/PDF generado el 2026-11-06, “Opportunity OS — Arquitectura AS IS / TO BE”. Este Markdown preserva el diagnóstico, los diagramas conceptuales y el backlog ejecutable para futuras sesiones/agentes, sin depender de que la conversación original siga abierta.  
+**Estado:** auditoría documental del código; baseline versionada para el ciclo de agentes. **No es prueba dinámica de producción**.
+**Repositorio:** `juanmanueltorres-creator/opportunity-os`
+**SHA de evidencia:** `7b03b1256e9b52280652b5ecf79c9d22117da9da` (`main`, 2026-11-06).
+**Documento de origen:** informe de arquitectura HTML/PDF generado el 2026-11-06, “Opportunity OS — Arquitectura AS IS / TO BE”. Este Markdown preserva el diagnóstico, los diagramas conceptuales y el backlog ejecutable para futuras sesiones/agentes, sin depender de que la conversación original siga abierta.
 **Enmienda explícita:** la sección geográfica del informe original tomaba San Juan como caso regional relevante. **La prioridad corregida por el operador es: (1) remoto desde Argentina/Córdoba, (2) presencial/híbrido en Córdoba Capital, (3) relocalización a San Juan u otra provincia como alternativa secundaria**. La presente enmienda tiene prioridad sobre el orden territorial y la etapa P3 del informe histórico.
 
 ## 1. Dictamen ejecutivo
