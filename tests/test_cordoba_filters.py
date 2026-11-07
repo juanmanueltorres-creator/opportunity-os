@@ -104,3 +104,25 @@ def test_explicit_latam_title_can_confirm_remote_but_not_restricted_country():
     assert restricted is not None
     assert restricted.argentina_eligible == "NO"
     assert candidate_lane(restricted) == "EXCLUDED"
+
+
+def test_confirmed_priority_remote_first_with_stable_score_order():
+    # The caller can rank Córdoba onsite above remote. Geographic priority
+    # must still put evidenced Argentina-remote jobs first, without altering
+    # score order within either lane or promoting unknown remote eligibility.
+    jobs = [
+        offer(location="Córdoba, Argentina", policy="onsite", suffix="local-1"),
+        offer(location="Argentina", policy="remote", suffix="remote-1"),
+        offer(location="Córdoba, Argentina", policy="hybrid", suffix="local-2"),
+        offer(location="Remote LATAM", policy="remote", suffix="remote-2"),
+        offer(location="Worldwide", policy="remote", suffix="unknown"),
+        offer(location="San Juan, Argentina", policy="onsite", suffix="relocation"),
+    ]
+    matches = [classify(job) for job in jobs]
+    assert all(match is not None for match in matches)
+    confirmed, review = partition_cordoba_matches(matches)
+    assert [item.job.source_id for item in confirmed] == [
+        "remote-1", "remote-2", "local-1", "local-2",
+    ]
+    assert [item.job.source_id for item in review] == ["unknown"]
+    assert all(item.job.source_id != "relocation" for item in confirmed + review)
