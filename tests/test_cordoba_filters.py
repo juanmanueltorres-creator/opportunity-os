@@ -126,3 +126,26 @@ def test_confirmed_priority_remote_first_with_stable_score_order():
     ]
     assert [item.job.source_id for item in review] == ["unknown"]
     assert all(item.job.source_id != "relocation" for item in confirmed + review)
+
+
+def test_rank_to_shortlist_preserves_remote_priority_across_score_boundary():
+    """Integration boundary: daily_job_radar calls rank() then partition()."""
+    jobs = [
+        offer(title="Coordinador de operaciones", location="Córdoba, Argentina",
+              policy="onsite", suffix="high-score-local"),
+        offer(title="Desarrollador Python", location="Argentina",
+              policy="remote", suffix="remote-ar"),
+        offer(title="Desarrollador Python", location="Worldwide",
+              policy="remote", suffix="unknown-remote"),
+        offer(title="Coordinador de operaciones", location="San Juan, Argentina",
+              policy="onsite", suffix="relocation"),
+    ]
+    ranked = rank(jobs, now=NOW, limit=100)
+    confirmed, review = partition_cordoba_matches(ranked)
+    assert [candidate_lane(item) for item in confirmed] == [
+        "REMOTE_ARGENTINA", "CORDOBA_LOCAL",
+    ]
+    assert [item.job.source_id for item in review] == ["unknown-remote"]
+    assert "relocation" not in {
+        item.job.source_id for item in confirmed + review
+    }
