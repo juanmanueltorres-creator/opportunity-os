@@ -43,3 +43,22 @@ test('preserve original hub privacy and one canonical import',()=>{
   assert.match(hub,/El seguimiento personal es opcional/);
   assert.match(hub,/view!==\x27seguimiento\x27/);
 });
+
+test('search presets and recency controls preserve existing sources',()=>{
+  const quick=read('enhancements.js');
+  const html=read('index.html');
+  for(const label of ['GIS / SIG','Minería / Geología','Python / Datos','Soporte N1','QGIS / Teledetección','Logística / Depósito','Atención al cliente']) {
+    assert.ok(quick.includes(label),label);
+  }
+  assert.match(quick,/id="quickFreshness"/);
+  assert.match(quick,/Últimos 7 días/);
+  assert.match(quick,/&f_TPR=r/);
+  assert.match(quick,/&fromage=/);
+  assert.match(quick,/&sortBy=DD/);
+  assert.match(quick,/Computrabajo requiere elegir/);
+  assert.match(quick,/trabajo-de-trabajo-remoto-en-remoto/);
+  assert.match(quick,/quick-keyword-list/);
+  assert.match(html,/<option value="30" selected>Últimos 30 días/);
+  assert.match(html,/Fecha de publicación no confirmada/);
+  assert.match(html,/\$\('age'\)\.value='30'/);
+});
