@@ -60,5 +60,7 @@ test('search presets and recency controls preserve existing sources',()=>{
   assert.match(quick,/quick-keyword-list/);
   assert.match(html,/<option value="30" selected>Últimos 30 días/);
   assert.match(html,/Fecha de publicación no confirmada/);
+  assert.match(html,/Number.isFinite\(days\)&&days>=0&&days<=30/);
+  assert.match(html,/En Oportunidades podés ampliar la fecha/);
   assert.match(html,/\$\('age'\)\.value='30'/);
 });
