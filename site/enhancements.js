@@ -36,6 +36,21 @@
   ].join('');
   anchor.insertAdjacentElement('beforebegin', quick);
 
+  // Guidance remains optional: existing search routes and radar are unchanged.
+  const guide = document.createElement('details');
+  guide.className = 'quick-guide';
+  guide.innerHTML = [
+    '<summary>Cómo buscar en cada portal · palabras clave y booleanos</summary>',
+    '<div class="quick-guide-body">',
+    '<p>Empezá por la especialidad en toda Argentina, sin restringir provincia. Después comprobá ubicación, modalidad, idioma y si el aviso sigue activo.</p>',
+    '<p><strong>LinkedIn:</strong> admite <code>AND</code>, <code>OR</code>, <code>NOT</code>, comillas y paréntesis. Ejemplo: <code>(&quot;GIS&quot; OR &quot;SIG&quot;) AND (&quot;Python&quot; OR &quot;QGIS&quot;)</code>. <a href="https://www.linkedin.com/help/linkedin/answer/a524335" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
+    '<p><strong>Indeed:</strong> probá frases exactas como <code>&quot;soporte técnico&quot;</code> o alternativas como <code>GIS OR geología</code>. <a href="https://www.indeed.com/help/job-seekers/articles/204488950-improving-your-job-searches-tips-and-help" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
+    '<p><strong>Computrabajo:</strong> buscá términos concretos como <code>geología</code>, <code>GIS</code> o <code>soporte técnico</code>. No presupongas que acepta los mismos booleanos que LinkedIn. El enlace de remoto general no incorpora la palabra clave elegida.</p>',
+    '<p class="note">Estos enlaces abren búsquedas manuales, no forman parte de la ingesta automática del radar y no garantizan vacantes vigentes.</p>',
+    '</div>'
+  ].join('');
+  quick.querySelector('.quick-form').insertAdjacentElement('afterend', guide);
+
   const q = quick.querySelector('#quickQuery');
   const chips = quick.querySelector('#quickChips');
   const portals = quick.querySelector('#quickPortalLinks');
@@ -47,7 +62,8 @@
     return [
       ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2'],
       ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina'],
-      ['Computrabajo · remoto', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
+      ['Computrabajo · ' + value, 'https://ar.computrabajo.com/trabajo-de-' + compact],
+      ['Computrabajo · remoto general', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
       ['Workana · Freelance', 'https://www.workana.com/es/jobs?query=' + encodeURIComponent(value)]
     ];
   }
