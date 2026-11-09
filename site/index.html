@@ -357,7 +357,11 @@ async function launchGemini(selected){
 }
 $('briefFive').addEventListener('click',()=>launchGemini(todaySelected));
 function renderToday(){
+ // The short daily list must never imply that undated or stale listings are newly published.
  const ranked=jobs
+  .filter(j=>{const posted=j.published_at?new Date(j.published_at).getTime():NaN;
+    const days=(Date.now()-posted)/86400000;
+    return Number.isFinite(days)&&days>=0&&days<=30;})
   .map(j=>({j,rank:relevance(j)}))
   .filter(x=>Number.isFinite(x.rank))
   .sort((a,b)=>b.rank-a.rank||String(a.j.id).localeCompare(String(b.j.id)));
@@ -373,7 +377,7 @@ function renderToday(){
  const root=$('todayJobs');root.replaceChildren();
  $('briefFive').disabled=!todaySelected.length;
  if(!todaySelected.length){
-  root.append(el('p','No hay avisos del radar que superen los filtros de ajuste, territorio y seniority. Mejor cero que completar con empleos irrelevantes.','note'));
+  root.append(el('p','No hay avisos con fecha comprobable dentro de los últimos 30 días que superen los criterios de ajuste, territorio y seniority. En Oportunidades podés ampliar la fecha o revisar avisos sin fecha.','note'));
   return;
  }
  for(const {j} of candidates){
