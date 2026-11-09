@@ -13,6 +13,13 @@
 .quick-portals{grid-column:2;grid-row:1 / span 2;display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 .quick-link{border:1px solid #4b6c50;background:#1b3022;color:#d9f6bd;border-radius:5px;padding:11px 13px;text-decoration:none;font-size:12px;font-weight:680;line-height:1.4}
 .quick-link:hover{background:#28432a;border-color:var(--lime)}
+.quick-guide{margin-top:12px;border:1px solid #30483c;border-radius:7px;background:#0b1210}
+.quick-guide summary{cursor:pointer;padding:12px 15px;color:#d8e7da;font-size:12px;font-weight:650}
+.quick-guide summary:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.quick-guide-body{padding:0 15px 12px;color:#b9c9c0;font-size:12px;line-height:1.6}
+.quick-guide-body p{margin:8px 0}
+.quick-guide-body code{color:#e2eecf;overflow-wrap:anywhere}
+.quick-guide-body a{color:var(--lime)}
 .quick-utility{display:flex;flex-wrap:wrap;gap:14px;margin-top:15px}
 .quick-utility a{color:#afc8bb;font-size:11px;text-decoration:underline;text-decoration-color:#537161;text-underline-offset:4px}
 .quick-utility a:hover{color:var(--lime)}
