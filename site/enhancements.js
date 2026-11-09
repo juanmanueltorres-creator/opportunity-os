@@ -15,7 +15,15 @@
     { label: 'Gestión / Operaciones', term: 'encargado operaciones' },
     { label: 'Ventas técnicas', term: 'ventas técnicas' },
     { label: 'Gastronomía', term: 'encargado gastronómico' },
-    { label: 'Freelance', term: 'automatización Excel Python' }
+    { label: 'Freelance', term: 'automatización Excel Python' },
+    { label: 'QGIS / Teledetección', term: 'QGIS' },
+    { label: 'Ambiente / HSE', term: 'medio ambiente' },
+    { label: 'Agro / AgTech', term: 'AgTech' },
+    { label: 'QA / Testing', term: 'tester QA junior' },
+    { label: 'Administración', term: 'administrativo' },
+    { label: 'Logística / Depósito', term: 'auxiliar de depósito' },
+    { label: 'Diseño / Web', term: 'diseñador web' },
+    { label: 'Atención al cliente', term: 'atención al cliente' }
   ];
 
   const quick = document.createElement('section');
@@ -43,13 +51,37 @@
     '<summary>Cómo buscar en cada portal · palabras clave y booleanos</summary>',
     '<div class="quick-guide-body">',
     '<p>Empezá por la especialidad en toda Argentina, sin restringir provincia. Después comprobá ubicación, modalidad, idioma y si el aviso sigue activo.</p>',
+    '<p><strong>Ideas de palabras clave por rubro:</strong> elegí una de estas expresiones y pegala en el campo «Palabras clave» de arriba. Probá búsquedas separadas con sinónimos: una sola frase puede dar más resultados que juntar todas.</p>',
+    '<ul class="quick-keyword-list">',
+    '<li><strong>GIS / geociencias:</strong> <code>GIS</code>, <code>SIG</code>, <code>QGIS</code>, <code>analista geoespacial</code>, <code>teledetección</code>, <code>geología</code>, <code>hidrogeología</code>.</li>',
+    '<li><strong>Minería / ambiente:</strong> <code>técnico minero</code>, <code>geotecnia</code>, <code>medio ambiente</code>, <code>HSE</code>, <code>monitoreo ambiental</code>.</li>',
+    '<li><strong>Software / datos:</strong> <code>Python junior</code>, <code>backend Python</code>, <code>analista de datos</code>, <code>SQL</code>, <code>Power BI</code>, <code>QA junior</code>.</li>',
+    '<li><strong>Soporte / servicios:</strong> <code>soporte técnico N1</code>, <code>mesa de ayuda</code>, <code>help desk</code>, <code>soporte de aplicaciones</code>, <code>atención al cliente</code>.</li>',
+    '<li><strong>Gestión / comercio:</strong> <code>encargado de local</code>, <code>operaciones</code>, <code>compras</code>, <code>ventas técnicas</code>, <code>ejecutivo comercial</code>.</li>',
+    '<li><strong>Administración / logística:</strong> <code>administrativo</code>, <code>facturación</code>, <code>auxiliar de depósito</code>, <code>control de stock</code>, <code>logística</code>.</li>',
+    '<li><strong>Otros sectores:</strong> <code>AgTech</code>, <code>agronomía</code>, <code>diseñador web</code>, <code>gastronomía</code>, <code>freelance Python</code>.</li>',
+    '</ul>',
+    '<p><strong>Para búsquedas booleanas en LinkedIn:</strong> <code>(&quot;GIS&quot; OR &quot;SIG&quot; OR &quot;QGIS&quot;) AND (&quot;analista&quot; OR &quot;técnico&quot;)</code> o <code>(&quot;soporte técnico&quot; OR &quot;help desk&quot;) NOT &quot;senior&quot;</code>. Usá operadores en mayúsculas. En otros portales empezá con términos simples y sus filtros.</p>',
     '<p><strong>LinkedIn:</strong> admite <code>AND</code>, <code>OR</code>, <code>NOT</code>, comillas y paréntesis. Ejemplo: <code>(&quot;GIS&quot; OR &quot;SIG&quot;) AND (&quot;Python&quot; OR &quot;QGIS&quot;)</code>. <a href="https://www.linkedin.com/help/linkedin/answer/a524335" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
     '<p><strong>Indeed:</strong> probá frases exactas como <code>&quot;soporte técnico&quot;</code> o alternativas como <code>GIS OR geología</code>. <a href="https://www.indeed.com/help/job-seekers/articles/204488950-improving-your-job-searches-tips-and-help" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
     '<p><strong>Computrabajo:</strong> buscá términos concretos como <code>geología</code>, <code>GIS</code> o <code>soporte técnico</code>. No presupongas que acepta los mismos booleanos que LinkedIn. El enlace de remoto general no incorpora la palabra clave elegida.</p>',
-    '<p class="note">Estos enlaces abren búsquedas manuales, no forman parte de la ingesta automática del radar y no garantizan vacantes vigentes.</p>',
+    '<p class="note">Fecha: «Últimos 7 días» se aplica a LinkedIn e Indeed; Computrabajo requiere elegir «Fecha» en su página. Los resultados pueden incluir avisos republicados o actualizados. Estos accesos son búsquedas manuales, no conectores del radar.</p>',
     '</div>'
   ].join('');
   quick.querySelector('.quick-form').insertAdjacentElement('afterend', guide);
+
+  const freshness = document.createElement('div');
+  freshness.className = 'quick-freshness';
+  freshness.innerHTML = [
+    '<label for="quickFreshness">Fecha de publicación</label>',
+    '<select id="quickFreshness">',
+    '<option value="7" selected>Últimos 7 días</option>',
+    '<option value="30">Últimos 30 días</option>',
+    '<option value="">Cualquier fecha</option>',
+    '</select>',
+    '<span class="note">LinkedIn e Indeed usan este filtro en el enlace. En Computrabajo, ajustá «Fecha» dentro del portal. Una publicación actualizada puede ser más antigua.</span>'
+  ].join('');
+  guide.insertAdjacentElement('beforebegin', freshness);
 
   const q = quick.querySelector('#quickQuery');
   const chips = quick.querySelector('#quickChips');
@@ -57,13 +89,16 @@
   let selected = 0;
   function searchLinks(query) {
     const value = query.trim().slice(0, 120) || 'GIS';
+    const days = freshness.querySelector('#quickFreshness').value;
+    const linkedinDate = days ? '&f_TPR=r' + (Number(days) * 86400) + '&sortBy=DD' : '';
+    const indeedDate = days ? '&fromage=' + days + '&sort=date' : '';
     const compact = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return [
-      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2'],
-      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina'],
+      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2' + linkedinDate],
+      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina' + indeedDate],
       ['Computrabajo · ' + value, 'https://ar.computrabajo.com/trabajo-de-' + compact],
-      ['Computrabajo · remoto general', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
+      ['Computrabajo · remoto', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
       ['Workana · Freelance', 'https://www.workana.com/es/jobs?query=' + encodeURIComponent(value)]
     ];
   }
@@ -96,6 +131,7 @@
       chips.append(b);
     });
   }
+  freshness.querySelector('#quickFreshness').addEventListener('change', drawLinks);
   q.addEventListener('input', () => {
     selected = -1;
     chips.querySelectorAll('button').forEach(b => {
