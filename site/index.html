@@ -121,7 +121,7 @@ footer{border-top:1px solid var(--line);padding:25px 0 0;margin-top:35px;font:11
 <label class="field"><span>Idioma laboral exigido (explícito)</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés avanzado</option><option value="UNKNOWN">No informado</option></select></label>
 <label class="field"><span>Ubicación (opcional, nunca prefiltrada)</span><input id="location" type="search" placeholder="Salta, Jujuy, Neuquén, Europa..."></label>
 <label class="field"><span>Comprobación en fuente oficial</span><select id="sourceCheck"><option value="">Todas</option><option value="LISTED_ON_PUBLIC_ATS">Vistas en ATS oficial</option><option value="NOT_CHECKED">Sin comprobación directa</option></select></label>
-<label class="field"><span>Fecha de publicación</span><select id="age"><option value="">Todas las fechas</option><option value="7">Últimos 7 días (con fecha)</option><option value="30">Últimos 30 días (con fecha)</option><option value="UNKNOWN">Sin fecha comprobable</option></select></label>
+<label class="field"><span>Fecha de publicación</span><select id="age"><option value="">Todas las fechas</option><option value="7">Últimos 7 días (con fecha)</option><option value="30" selected>Últimos 30 días (con fecha)</option><option value="UNKNOWN">Sin fecha comprobable</option></select></label>
 <label class="field"><span>Mi seguimiento local</span><select id="progress"><option value="">Todas</option><option value="new">Sin marcar</option><option value="saved">Guardadas</option><option value="applied">Postuladas</option><option value="ignored">Descartadas</option></select></label>
 <button class="control" id="clear" type="button">Limpiar filtros</button>
 <p class="note">«Visto en ATS oficial» significa que el aviso figuraba en la lista pública del empleador en la fecha indicada; no garantiza que todavía reciba postulaciones. Agro incluye vacantes en empresas AgTech verificadas, aunque el puesto sea de diseño o software. El idioma del aviso es una estimación lingüística, no prueba el idioma laboral. Las marcas de seguimiento se guardan en este navegador; no se sincronizan con Supabase.</p>
@@ -384,6 +384,7 @@ function renderToday(){
   card.append(el('strong',(j.company||'Empresa')+' · '+(j.title||'Puesto')));
   card.append(el('p',(j.location||'Sin ubicación')+' · '+(j.work_language==='ES'?'Español laboral explícito':'Aviso en español; idioma laboral SIN CONFIRMAR')+' · '+(j.source_check==='LISTED_ON_PUBLIC_ATS'?
    'Visto en tablero oficial':'Sin comprobación directa')+
+   ' · '+(j.published_at?'Publicado: '+date(j.published_at):'Fecha de publicación no confirmada')+
    ' · '+(/\b(junior|jr\.?|trainee|entry.level)\b/.test(norm(j.title||''))?
      'Junior declarado':'Seniority no comprobado'),'note'));
   const a=el('a','Ver aviso original');a.href=safeUrl(j.source_url);
@@ -459,7 +460,7 @@ try{
 document.querySelectorAll('[data-lane]').forEach(b=>b.addEventListener('click',()=>{lane=b.dataset.lane;visibleLimit=30;render();}));
 document.querySelectorAll('[data-topic]').forEach(b=>b.addEventListener('click',()=>{activeTopic=b.dataset.topic;visibleLimit=30;render();}));
 $('more').addEventListener('click',()=>{visibleLimit+=30;render();});
-$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');$('mode').value='REMOTE';lane='ALL';activeTopic='';visibleLimit=30;render();});
+$('clear').addEventListener('click',()=>{['q','location','track','mode','eligible','language','listingLanguage','progress','age'].forEach(id=>$(id).value='');$('age').value='30';$('mode').value='REMOTE';lane='ALL';activeTopic='';visibleLimit=30;render();});
 $('export').addEventListener('click',()=>{
  const marked=jobs.filter(j=>status(j)!=='new');
  const rows=[['id','empresa','puesto','estado_local','url']];
