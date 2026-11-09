@@ -65,10 +65,23 @@
     '<p><strong>LinkedIn:</strong> admite <code>AND</code>, <code>OR</code>, <code>NOT</code>, comillas y paréntesis. Ejemplo: <code>(&quot;GIS&quot; OR &quot;SIG&quot;) AND (&quot;Python&quot; OR &quot;QGIS&quot;)</code>. <a href="https://www.linkedin.com/help/linkedin/answer/a524335" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
     '<p><strong>Indeed:</strong> probá frases exactas como <code>&quot;soporte técnico&quot;</code> o alternativas como <code>GIS OR geología</code>. <a href="https://www.indeed.com/help/job-seekers/articles/204488950-improving-your-job-searches-tips-and-help" target="_blank" rel="noopener noreferrer">Guía oficial ↗</a></p>',
     '<p><strong>Computrabajo:</strong> buscá términos concretos como <code>geología</code>, <code>GIS</code> o <code>soporte técnico</code>. No presupongas que acepta los mismos booleanos que LinkedIn. El enlace de remoto general no incorpora la palabra clave elegida.</p>',
-    '<p class="note">Estos enlaces abren búsquedas manuales, no forman parte de la ingesta automática del radar y no garantizan vacantes vigentes.</p>',
+    '<p class="note">Fecha: «Últimos 7 días» se aplica a LinkedIn e Indeed; Computrabajo requiere elegir «Fecha» en su página. Los resultados pueden incluir avisos republicados o actualizados. Estos accesos son búsquedas manuales, no conectores del radar.</p>',
     '</div>'
   ].join('');
   quick.querySelector('.quick-form').insertAdjacentElement('afterend', guide);
+
+  const freshness = document.createElement('div');
+  freshness.className = 'quick-freshness';
+  freshness.innerHTML = [
+    '<label for="quickFreshness">Fecha de publicación</label>',
+    '<select id="quickFreshness">',
+    '<option value="7" selected>Últimos 7 días</option>',
+    '<option value="30">Últimos 30 días</option>',
+    '<option value="">Cualquier fecha</option>',
+    '</select>',
+    '<span class="note">LinkedIn e Indeed usan este filtro en el enlace. En Computrabajo, ajustá «Fecha» dentro del portal. Una publicación actualizada puede ser más antigua.</span>'
+  ].join('');
+  guide.insertAdjacentElement('beforebegin', freshness);
 
   const q = quick.querySelector('#quickQuery');
   const chips = quick.querySelector('#quickChips');
@@ -76,11 +89,14 @@
   let selected = 0;
   function searchLinks(query) {
     const value = query.trim().slice(0, 120) || 'GIS';
+    const days = freshness.querySelector('#quickFreshness').value;
+    const linkedinDate = days ? '&f_TPR=r' + (Number(days) * 86400) + '&sortBy=DD' : '';
+    const indeedDate = days ? '&fromage=' + days + '&sort=date' : '';
     const compact = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return [
-      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2'],
-      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina'],
+      ['LinkedIn', 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(value) + '&location=Argentina&f_WT=2' + linkedinDate],
+      ['Indeed', 'https://ar.indeed.com/jobs?q=' + encodeURIComponent(value + ' remoto') + '&l=Argentina' + indeedDate],
       ['Computrabajo · ' + value, 'https://ar.computrabajo.com/trabajo-de-' + compact],
       ['Computrabajo · remoto', 'https://ar.computrabajo.com/trabajo-de-trabajo-remoto-en-remoto'],
       ['Workana · Freelance', 'https://www.workana.com/es/jobs?query=' + encodeURIComponent(value)]
@@ -115,6 +131,7 @@
       chips.append(b);
     });
   }
+  freshness.querySelector('#quickFreshness').addEventListener('change', drawLinks);
   q.addEventListener('input', () => {
     selected = -1;
     chips.querySelectorAll('button').forEach(b => {
