@@ -149,3 +149,36 @@ def test_rank_to_shortlist_preserves_remote_priority_across_score_boundary():
     assert "relocation" not in {
         item.job.source_id for item in confirmed + review
     }
+
+
+def test_prepartition_limit_600_can_hide_lower_scored_remote():
+    """R08/P3/UC01: reproduce a truncation blind spot, without changing runtime.
+
+    A higher-scored Córdoba-local cohort can occupy the entire initial
+    rank(limit=600) pool before remote-first partitioning takes effect.
+    This test records the current defect; it does NOT claim to fix it.
+    """
+    local_jobs = [
+        offer(title="Coordinador de operaciones", location="Córdoba, Argentina",
+              policy="onsite", suffix=f"local-{index:03d}")
+        for index in range(600)
+    ]
+    remote = offer(title="Desarrollador Python", location="Argentina",
+                   policy="remote", suffix="remote-beyond-limit")
+    local_match = classify(local_jobs[0])
+    remote_match = classify(remote)
+    assert local_match is not None and remote_match is not None
+    assert candidate_lane(local_match) == "CORDOBA_LOCAL"
+    assert candidate_lane(remote_match) == "REMOTE_ARGENTINA"
+    assert local_match.score > remote_match.score
+
+    jobs = local_jobs + [remote]
+    truncated = rank(jobs, now=NOW, limit=600)
+    confirmed, _review = partition_cordoba_matches(truncated)
+    assert len(truncated) == 600
+    assert all(item.job.source_id != remote.source_id for item in confirmed)
+
+    # The job is eligible and discoverable if truncation happens later.
+    complete = rank(jobs, now=NOW, limit=601)
+    complete_confirmed, _ = partition_cordoba_matches(complete)
+    assert complete_confirmed[0].job.source_id == remote.source_id
