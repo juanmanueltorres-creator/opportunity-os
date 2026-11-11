@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.models.domain import Opportunity
 from app.radar.daily_search import classify, rank
+from scripts.daily_job_radar import select_daily_candidate_pool
 from app.radar.cordoba_filters import (
     candidate_lane, is_cordoba_location, partition_cordoba_matches,
 )
@@ -182,3 +183,40 @@ def test_prepartition_limit_600_can_hide_lower_scored_remote():
     complete = rank(jobs, now=NOW, limit=601)
     complete_confirmed, _ = partition_cordoba_matches(complete)
     assert complete_confirmed[0].job.source_id == remote.source_id
+
+
+def test_daily_candidate_pool_keeps_remote_beyond_600_local_jobs():
+    """R08/P3/UC01: daily selector must not discard remote before partition."""
+    local_jobs = [
+        offer(title="Coordinador de operaciones", location="Córdoba, Argentina",
+              policy="onsite", suffix=f"local-fix-{index:03d}")
+        for index in range(600)
+    ]
+    remote = offer(title="Desarrollador Python", location="Argentina",
+                   policy="remote", suffix="remote-after-600")
+    # Exercise the same helper used by scripts/daily_job_radar.py.
+    pool = select_daily_candidate_pool(local_jobs + [remote], now=NOW)
+    confirmed, review = partition_cordoba_matches(pool)
+    assert len(pool) == 601
+    assert confirmed[0].job.source_id == remote.source_id
+    assert len(confirmed[:35]) == 35
+    assert not review
+
+
+def test_daily_candidate_pool_does_not_promote_unknown_or_relocation():
+    """R08/P3/UC05: broader pool must not bypass eligibility or relocation."""
+    jobs = [
+        offer(title="Desarrollador Python", location="Worldwide",
+              policy="remote", suffix="review-unknown"),
+        offer(title="Coordinador de operaciones", location="San Juan, Argentina",
+              policy="onsite", suffix="relocation-other-province"),
+        offer(title="Desarrollador Python", location="Argentina",
+              policy="remote", suffix="remote-confirmed"),
+    ]
+    confirmed, review = partition_cordoba_matches(
+        select_daily_candidate_pool(jobs, now=NOW)
+    )
+    assert [item.job.source_id for item in confirmed] == ["remote-confirmed"]
+    assert [item.job.source_id for item in review] == ["review-unknown"]
+    assert all(item.job.source_id != "relocation-other-province"
+               for item in confirmed + review)
