@@ -220,3 +220,16 @@ def test_daily_candidate_pool_does_not_promote_unknown_or_relocation():
     assert [item.job.source_id for item in review] == ["review-unknown"]
     assert all(item.job.source_id != "relocation-other-province"
                for item in confirmed + review)
+
+
+def test_synthetic_ranking_benchmark_smoke():
+    """R08/P3: benchmark harness must exercise real ranking without external IO."""
+    from scripts.benchmark_daily_radar_selection import run_case
+
+    result = run_case(12, repeats=1)
+    assert result["size"] == 12
+    assert result["legacy_limit_600"]["pool_size"] == 12
+    assert result["full_pool"]["pool_size"] == 12
+    assert result["full_pool"]["remote_in_top_35"] is True
+    assert result["full_pool"]["median_ms"] >= 0
+    assert result["full_pool"]["peak_traced_kib_max"] >= 0
