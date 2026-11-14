@@ -170,12 +170,35 @@
     }
     return results;
   }
+  // Unificado es el maestro operacional: EMPRESAS_400 incluye filiales y
+  // aliases deliberadamente relacionados con registros previos. No importar
+  // ambos del mismo libro como si fueran organizaciones independientes.
+  function selectWorkbookSheets(sheetNames) {
+    const names = Array.isArray(sheetNames) ? sheetNames : [];
+    return (names.includes('Unificado') ? ['Unificado'] : ['EMPRESAS_400'])
+      .concat('Directorio')
+      .filter(name => names.includes(name));
+  }
+  // Un estado de la hoja maestra conciliada con Gmail no debe ser
+  // reemplazado por otro de una hoja editorial anterior, aunque su estado
+  // parezca más "avanzado". Esto importa al importar archivos por separado.
+  function originAuthority(origin) {
+    const names=String(origin||'').split(' · ');
+    if(names.includes('Unificado'))return 3;
+    if(names.includes('Directorio'))return 2;
+    if(names.includes('EMPRESAS_400'))return 1;
+    return 0;
+  }
   function addRecords(incoming) {
     const merged=new Map(records.map(item=>[item.key,item]));
     incoming.forEach(item=>{
       const old=merged.get(item.key);
       if(!old){merged.set(item.key,item);return;}
-      const winner=stateRank[item.state]>stateRank[old.state]?item:old;
+      const oldAuthority=originAuthority(old.origin);
+      const newAuthority=originAuthority(item.origin);
+      const winner=newAuthority===oldAuthority
+        ? (stateRank[item.state]>stateRank[old.state]?item:old)
+        : (newAuthority>oldAuthority?item:old);
       merged.set(item.key,{
         ...old,
         type:item.type==='Organismo'||old.type==='Organismo'?'Organismo':'Empresa',
@@ -234,7 +257,7 @@
     if(/\.csv$/i.test(file.name))return asRows(csvRows(await file.text()),file.name);
     const XLSX=await excelLibrary();
     const wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:'array',dense:true});
-    const names=['EMPRESAS_400','Unificado','Directorio'];
+    const names=selectWorkbookSheets(wb.SheetNames);
     const found=[];
     names.filter(n=>wb.SheetNames.includes(n)).forEach(name=>{
       const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:false,defval:'',blankrows:false});
