@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Opportunity OS — Radar</title>
+<style>
+:root{--bg:#0b0e0f;--surface:#131819;--panel:#171d1e;--line:#303a39;--text:#e9efe9;--muted:#94a39e;--green:#d4f575;--soft:#223128;--warn:#f2b676}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+a{color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.top{border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:16px 34px;gap:20px}
+.brand{display:flex;align-items:center;gap:13px;font-weight:800;letter-spacing:-.04em;font-size:17px}.mark{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--green);color:var(--green);font-size:23px}.brand small{display:block;font-size:10px;letter-spacing:.18em;color:var(--muted);font-weight:600}
+.label,.eyebrow{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.13em;font-size:10px;text-transform:uppercase;color:var(--muted)}
+.status{display:flex;gap:9px;align-items:center;font:11px ui-monospace,monospace;color:var(--muted)}.dot{width:7px;height:7px;border-radius:50%;background:#59645c}.dot.ok{background:var(--green)}
+.wrap{max-width:1590px;margin:0 auto;padding:36px 34px 60px}.intro{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:32px}
+h1{font-size:clamp(31px,4vw,53px);letter-spacing:-.065em;line-height:1.05;margin:10px 0 10px;font-weight:650}
+.intro p{color:var(--muted);margin:0;max-width:700px}.outline{border:1px solid var(--line);color:var(--text);background:transparent;padding:10px 14px;border-radius:5px}
+.outline:hover{border-color:var(--green)}.accent{background:var(--green);border:1px solid var(--green);color:#111712;font-weight:700;padding:10px 14px;border-radius:5px}
+.connect{display:flex;align-items:center;gap:13px;padding:17px 20px;border:1px solid var(--line);background:var(--surface);margin-bottom:24px;flex-wrap:wrap}
+.connect strong{font-size:13px}.connect input{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:5px;padding:10px 12px;min-width:280px;flex:1}.connect .small{color:var(--muted);font-size:11px}
+.message{font-size:12px;color:var(--warn);min-height:18px}.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-bottom:24px}
+.stat{padding:17px 21px;min-width:0}.stat+.stat{border-left:1px solid var(--line)}.stat b{display:block;font-size:27px;font-weight:600;letter-spacing:-.04em}.stat span{font:10px ui-monospace,monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.workspace{display:grid;grid-template-columns:242px minmax(330px,1fr) 360px;gap:20px;align-items:start}
+.sidebar,.detail{border:1px solid var(--line);background:var(--surface);padding:20px;position:sticky;top:16px}
+.sidebar h2,.detail h2{font-size:12px;letter-spacing:.15em;text-transform:uppercase;margin:0 0 22px}
+.field{display:block;margin:0 0 15px}.field span{display:block;color:var(--muted);font-size:11px;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:10px;font-size:13px;min-height:39px}.field textarea{resize:vertical;min-height:100px}
+.check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:12px;margin:16px 0 20px}.check input{accent-color:var(--green)}
+.full{width:100%;margin-bottom:8px}.muted{color:var(--muted);font-size:12px}.footnote{font-size:11px;line-height:1.55;color:var(--muted);margin-top:15px}
+.feedhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}.feedhead h2{font-size:12px;letter-spacing:.13em;text-transform:uppercase;margin:0}.feed{min-width:0}
+.job{background:var(--surface);border:1px solid var(--line);padding:18px 20px;margin-bottom:10px;transition:border-color .15s,background .15s}
+.job.selected,.job:hover{border-color:#8caa77;background:#17201c}
+.jobtop,.jobbottom{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.job .company{color:var(--green);font-size:12px;font-weight:650}.job h3{font-size:18px;letter-spacing:-.035em;line-height:1.25;margin:7px 0 13px;font-weight:600}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tag{padding:4px 8px;color:var(--muted);border:1px solid var(--line);border-radius:3px;font-size:10px;letter-spacing:.02em}
+.tag.green{color:var(--green);border-color:#607d4f}.tag.warn{color:var(--warn);border-color:#806344}
+.jobbottom{border-top:1px solid var(--line);padding-top:12px}.jobbottom small{color:var(--muted)}.link{color:var(--green);font-size:12px;text-decoration:none;font-weight:650}.link:hover{text-decoration:underline}
+.detailsub{margin-bottom:5px;color:var(--green);font-size:12px}.detail h3{font-size:23px;line-height:1.18;letter-spacing:-.045em;margin:8px 0 12px}
+.detail .summary{border-top:1px solid var(--line);padding:14px 0;margin:16px 0 0}.info{display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:12px;border-bottom:1px solid #283231}.info span:first-child{color:var(--muted)}.info span:last-child{text-align:right}
+.reviewbox{padding-top:17px}.reviewbox h4{margin:0 0 9px;font-size:13px}.reviewbox p{margin:0 0 12px;color:var(--text);font-size:13px}.reviewbox ul{padding-left:18px;font-size:12px;color:var(--muted)}.reviewbox li{margin:5px 0}.reviewbox .caveat{font-size:11px;color:var(--warn)}.scroll{max-height:75vh;overflow-y:auto}
+.empty{padding:45px 30px;border:1px dashed var(--line);text-align:center;background:var(--surface)}.empty strong{display:block;font-size:18px;margin-bottom:8px}
+.notes{padding-top:12px;border-top:1px solid var(--line)}.load{display:block;width:100%;padding:12px 15px;margin:15px 0}
+@media(max-width:1200px){.workspace{grid-template-columns:220px 1fr}.detail{position:static;grid-column:2;grid-row:2}.sidebar{top:15px}}
+@media(max-width:720px){.wrap{padding:25px 14px 50px}.top{padding:13px 14px}.intro{display:block}.intro button{margin-top:17px}.workspace{display:block}.sidebar,.detail{position:static;margin-bottom:17px}.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.connect input{min-width:100%}.detail{margin-top:15px}h1{font-size:35px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark">◈</span><div>OPPORTUNITY / OS<small>RADAR DE OPORTUNIDADES</small></div></div>
+  <div class="status"><span id="connectionDot" class="dot"></span><span id="connectionLabel">SIN CONECTAR</span></div>
+</header>
+<main class="wrap">
+  <section class="intro"><div><div class="eyebrow">01 / DESCUBRIMIENTO &amp; DECISIÓN</div><h1>Menos ruido.<br>Más oportunidades.</h1><p>Vacantes respaldadas por fuentes, filtros útiles y análisis asistido. Una interfaz sobre el pipeline existente.</p></div><button class="outline" id="reload" type="button" disabled>Recargar lista ↻</button></section>
+  <form class="connect" id="connectionForm" autocomplete="off">
+    <div><strong>Acceso privado</strong><div class="small">Token de la API · solo en memoria de esta pestaña</div></div>
+    <input id="tokenInput" type="password" placeholder="OPPORTUNITY_API_TOKEN" aria-label="Token de API" autocomplete="off" required>
+    <button class="accent" id="connectButton" type="submit">Conectar</button>
+    <span id="connectMessage" class="message" role="status" aria-live="polite"></span>
+  </form>
+  <div class="stats">
+    <div class="stat"><span>Oportunidades en base</span><b id="statJobs">—</b></div>
+    <div class="stat"><span>Mostradas / cargadas</span><b id="statShown">—</b></div>
+    <div class="stat"><span>Postulaciones históricas</span><b id="statApps">—</b></div>
+    <div class="stat"><span>Motor IA</span><b id="statAi" style="font-size:17px;margin:5px 0">—</b></div>
+  </div>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="Filtros de oportunidades">
+      <h2>Filtros / 01</h2>
+      <label class="field"><span>Buscar cargo o empresa</span><input id="keyword" type="search" placeholder="Python, GIS, startup..."></label>
+      <label class="field"><span>Área de interés *</span><select id="track">
+        <option value="">Todas las áreas</option><option value="software">Software / Datos / IA</option><option value="gis">GIS / Geociencias / Minería</option><option value="management">Gestión / Operaciones</option><option value="design">Diseño / Web</option><option value="income">Gastronomía / Ingresos</option>
+      </select></label>
+      <label class="field"><span>Modalidad</span><select id="remote"><option value="">Todas</option><option value="REMOTE">Remoto</option><option value="HYBRID">Híbrido</option><option value="ONSITE">Presencial</option><option value="UNKNOWN">No informada</option></select></label>
+      <label class="field"><span>Ubicación *</span><select id="location"><option value="">Todas</option><option value="cordoba">Córdoba (texto del aviso)</option><option value="sanjuan">San Juan (texto del aviso)</option></select></label>
+      <label class="field"><span>Elegibilidad Argentina</span><select id="eligibility"><option value="">Todas</option><option value="YES">Confirmada</option><option value="UNKNOWN">Sin confirmar</option><option value="NO">No elegible</option></select></label>
+      <label class="field"><span>Idioma de trabajo</span><select id="language"><option value="">Todos</option><option value="ES">Español</option><option value="BILINGUAL">Bilingüe</option><option value="EN">Inglés</option><option value="UNKNOWN">Desconocido</option></select></label>
+      <label class="field"><span>Verificación</span><select id="verification"><option value="">Todas</option><option value="VERIFIED">Verificada</option><option value="PENDING">Pendiente</option><option value="STALE">Sin actualizar</option><option value="REJECTED">Cerrada / rechazada</option></select></label>
+      <label class="field"><span>Descubierta / publicada desde</span><select id="since"><option value="">Sin límite</option><option value="7">Últimos 7 días</option><option value="14">Últimos 14 días</option><option value="30">Últimos 30 días</option></select></label>
+      <label class="check"><input type="checkbox" id="exclude" checked>Excluir puestos ya postulados</label>
+      <button class="accent full" id="applyFilters" disabled>Aplicar filtros</button>
+      <button class="outline full" id="resetFilters" type="button">Limpiar filtros</button>
+      <p class="footnote">* Área y ciudad se filtran sobre los avisos cargados, por coincidencia de texto. Los demás filtros se aplican en la base. «No informado» no significa «No elegible».</p>
+      <hr style="border:0;border-top:1px solid var(--line);margin:21px 0">
+      <button class="outline full" id="refreshRemotive" type="button" disabled>Sincronizar Remotive</button>
+      <p class="footnote">Importa una fuente real mediante el conector existente. Requiere escritura PostgreSQL. Las vacantes nuevas quedan <strong>pendientes de verificación</strong>.</p>
+    </aside>
+    <section class="feed" aria-label="Ofertas laborales">
+      <div class="feedhead"><h2>Resultados / 02</h2><span class="label" id="feedLabel">ESPERANDO CONEXIÓN</span></div>
+      <div id="feedList"><div class="empty"><strong>Conectá tu radar</strong><div class="muted">Las oportunidades aparecerán acá desde Supabase. No se usan ejemplos ficticios.</div></div></div>
+      <button class="outline load" id="loadMore" hidden type="button">Cargar más resultados</button>
+      <p id="feedMessage" class="message" role="status" aria-live="polite"></p>
+    </section>
+    <aside class="detail" id="detail" aria-label="Detalle y análisis de la oferta">
+      <h2>Detalle / 03</h2>
+      <div id="detailBody"><p class="muted">Seleccioná una vacante para ver su información y pedir un análisis a Gemini.</p></div>
+    </aside>
+  </div>
+</main>
+<script>
+(() => {
+  'use strict';
+  let apiToken = '';
+  let aiEnabled = false;
+  let jobs = [];
+  let selectedId = null;
+  let nextOffset = 0;
+  let hasMore = false;
+  let busy = false;
+  const limit = 60;
+  const $ = id => document.getElementById(id);
+  const get = id => $(id).value;
+  const node = (name, text, cls) => {
+    const elem = document.createElement(name);
+    if (text !== undefined && text !== null) elem.textContent = String(text);
+    if (cls) elem.className = cls;
+    return elem;
+  };
+  const add = (parent, ...kids) => { kids.forEach(k => parent.append(k)); return parent; };
+  const safeUrl = s => { try { const url = new URL(s); return url.protocol === 'https:' ? url.href : null; } catch { return null; } };
+  const normal = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const tracks = {
+    software: /python|software|developer|desarroll|backend|frontend|fullstack|data|datos|automat|devops|ingenieria de sistemas|qa|machine learning|inteligencia artificial|integracion|sre|analista de sistemas/i,
+    gis: /geolog|geocien|geoesp|geograph|gis|\bsig\b|geospatial|mineri|mining|hidrogeo|qgis|arcgis|cartograf|topograf|geomat|sensores remotos/i,
+    management: /manager|gestion|gerente|coordinad|operacion|project|producto|product|business analyst|analista funcional|planning|planificacion|comercial|compras|abastecimiento/i,
+    design: /disen|design|webgl|three\.js|motion|creative|ux|ui|interactiv|branding/i,
+    income: /restaurant|gastronom|chef|cociner|pizzer|kitchen|deposito|almacen|stock|inventario|logistica/i,
+  };
+  const status = (t, connected) => {
+    $('connectionLabel').textContent = t;
+    $('connectionDot').classList.toggle('ok', !!connected);
+  };
+  async function request(path, method = 'GET', data) {
+    if (!apiToken) throw new Error('Primero conectá el token.');
+    const res = await fetch(path, {
+      method, cache: 'no-store',
+      headers: {'Authorization': 'Bearer ' + apiToken, ...(data ? {'Content-Type':'application/json'} : {})},
+      ...(data ? {body: JSON.stringify(data)} : {})
+    });
+    if (!res.ok) {
+      let message = 'HTTP ' + res.status;
+      try { const error = await res.json(); if (typeof error.detail === 'string') message = error.detail; } catch {}
+      throw new Error(message);
+    }
+    return await res.json();
+  }
+  const dateLabel = s => {
+    if (!s) return 'Fecha no informada';
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? 'Fecha no informada' : new Intl.DateTimeFormat('es-AR', {day:'2-digit', month:'short', year:'numeric'}).format(d);
+  };
+  async function connect(e) {
+    e.preventDefault();
+    apiToken = get('tokenInput').trim();
+    $('tokenInput').value = '';
+    $('connectMessage').textContent = 'Conectando…';
+    try {
+      const [state, summary] = await Promise.all([
+        request('/api/v1/dashboard/status'),
+        request('/api/v1/summary')
+      ]);
+      aiEnabled = !!state.ai_configured;
+      $('statAi').textContent = aiEnabled ? 'Gemini gratis' : 'Desactivado';
+      $('statJobs').textContent = summary.opportunities ?? '—';
+      $('statApps').textContent = summary.applications ?? '—';
+      $('connectMessage').textContent = '';
+      $('connectionForm').hidden = true;
+      ['reload','applyFilters','refreshRemotive'].forEach(id => $(id).disabled = false);
+      status('POSTGRES / CONECTADO', true);
+      await search(true);
+    } catch (err) {
+      apiToken = '';
+      status('SIN CONECTAR', false);
+      $('connectMessage').textContent = 'No se pudo conectar: ' + err.message;
+    }
+  }
+  function query() {
+    const params = new URLSearchParams({limit:String(limit),offset:String(nextOffset),exclude_applied:$('exclude').checked ? 'true' : 'false'});
+    const fields = [['keyword','keyword'],['remote','remote_mode'],['language','work_language'],['eligibility','argentina_eligible'],['verification','verification_status']];
+    fields.forEach(([id,param]) => {if (get(id).trim()) params.set(param, get(id).trim());});
+    const days = Number(get('since'));
+    if (days) {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      params.set('since', since.toISOString().slice(0,10));
+    }
+    return '/api/v1/opportunities?' + params.toString();
+  }
+  async function search(reset = true) {
+    if (busy || !apiToken) return;
+    busy = true;
+    $('feedMessage').textContent = 'Consultando base de datos…';
+    if (reset) { jobs = []; nextOffset = 0; selectedId = null; }
+    try {
+      const list = await request(query());
+      jobs.push(...list);
+      nextOffset += list.length;
+      hasMore = list.length === limit;
+      $('feedMessage').textContent = '';
+      render();
+    } catch(err) {
+      $('feedMessage').textContent = 'Error de consulta: ' + err.message;
+      if(reset) render();
+    } finally { busy = false; }
+  }
+  function filtered() {
+    return jobs.filter(j => {
+      const title = normal(j.title), location = normal(j.location);
+      const track = get('track'), city = get('location');
+      if (track && !tracks[track].test(title)) return false;
+      if (city === 'cordoba' && !location.includes('cordoba')) return false;
+      if (city === 'sanjuan' && !location.includes('san juan')) return false;
+      return true;
+    });
+  }
+  function badge(text, kind='') { return node('span', text, 'tag ' + kind); }
+  function jobCard(job) {
+    const article = node('article', null, 'job' + (job.id === selectedId ? ' selected' : ''));
+    const top = node('div',null,'jobtop');
+    add(top, node('span',job.company || 'Empresa sin especificar','company'), node('span',dateLabel(job.published_at || job.discovered_at),'label'));
+    const title = node('h3',job.title || 'Puesto sin título');
+    const meta = node('div',null,'meta');
+    add(meta,
+      badge(job.remote_mode === 'REMOTE' ? 'Remoto' : job.remote_mode === 'HYBRID' ? 'Híbrido' : job.remote_mode === 'ONSITE' ? 'Presencial' : 'Modalidad sin confirmar',job.remote_mode==='REMOTE'?'green':''),
+      badge(job.location || 'Ubicación no informada'),
+      badge(job.work_language === 'ES' ? 'Español' : job.work_language === 'EN' ? 'Inglés' : job.work_language === 'BILINGUAL' ? 'Bilingüe':'Idioma desconocido'),
+      badge(job.verification_status === 'VERIFIED' ? 'Verificada' : job.verification_status === 'REJECTED' ? 'Cerrada / rechazada' : 'Por verificar',job.verification_status === 'VERIFIED' ? 'green' : 'warn')
+    );
+    const bottom = node('div',null,'jobbottom');
+    add(bottom,node('small',job.source || 'Fuente no informada'));
+    const more = node('button','Ver detalle →','outline');
+    more.type='button';
+    more.addEventListener('click',()=>select(job.id));
+    bottom.append(more);
+    add(article,top,title,meta,bottom);
+    return article;
+  }
+  function render() {
+    const visible = filtered();
+    $('statShown').textContent = visible.length + ' / ' + jobs.length;
+    $('feedLabel').textContent = visible.length + ' MOSTRADAS · ' + jobs.length + ' CARGADAS';
+    $('feedList').replaceChildren();
+    if (!jobs.length || !visible.length) {
+      const empty = node('div',null,'empty');
+      add(empty,node('strong', jobs.length ? 'No hay coincidencias en los avisos cargados' : 'La base no devolvió oportunidades'),
+        node('p',jobs.length ? 'Probá quitar filtros locales o cargar más resultados.' : 'Podés importar Remotive si está configurada la conexión de escritura. No inventamos ofertas.','muted'));
+      $('feedList').append(empty);
+    } else visible.forEach(j => $('feedList').append(jobCard(j)));
+    $('loadMore').hidden = !hasMore;
+    if (selectedId) {
+      const job = jobs.find(j => j.id === selectedId);
+      if (job) showDetail(job);
+    } else $('detailBody').replaceChildren(node('p','Seleccioná una vacante para ver su información y pedir un análisis a Gemini.','muted'));
+  }
+  function select(id) {
+    selectedId=id;
+    render();
+    if (window.innerWidth < 1200) $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function info(title, value) {return add(node('div',null,'info'),node('span',title),node('span',value || 'No informado'));}
+  function showDetail(job) {
+    const root = $('detailBody');
+    root.replaceChildren();
+    add(root,node('div',job.company,'detailsub'),node('h3',job.title));
+    add(root,
+      info('Ubicación',job.location),
+      info('Modalidad',job.remote_mode),
+      info('Elegibilidad AR',job.argentina_eligible === 'YES'?'Confirmada':job.argentina_eligible === 'NO'?'No elegible':'Desconocida'),
+      info('Idioma',job.work_language),
+      info('Fecha',dateLabel(job.published_at || job.discovered_at)),
+      info('Estado',job.verification_status),
+      info('Fuente',job.source)
+    );
+    const url=safeUrl(job.canonical_url)||safeUrl(job.source_url);
+    if(url){const a=node('a','Abrir aviso original ↗','link');a.href=url;a.rel='noopener noreferrer';a.target='_blank';a.style.display='inline-block';a.style.marginTop='16px';root.append(a);}
+    const section=node('div',null,'summary');
+    add(section,node('h4','Análisis asistido','label'),node('p','Gemini 2.5 Flash-Lite (Free Tier) usa los datos del aviso guardado. No confirma si sigue abierto.','muted'));
+    const contextLabel=node('label',null,'field');
+    add(contextLabel,node('span','Tu perfil / contexto (opcional)'));
+    const textarea=node('textarea');
+    textarea.placeholder='Ej.: Geociencias, Python, GIS, QGIS, PostGIS, gestión de equipos. Busco remoto o Córdoba. Evitar roles senior exclusivos…';
+    textarea.maxLength=2400;textarea.id='candidateContext';textarea.value=window.sessionCandidateContext||'';
+    contextLabel.append(textarea);section.append(contextLabel);
+    const action=node('button',aiEnabled ? 'Analizar con Gemini gratis →':'Gemini Free Tier no habilitado','accent full');
+    action.type='button';action.disabled=!aiEnabled;
+    const result=node('div',null,'reviewbox');
+    action.addEventListener('click',async()=>{
+      action.disabled=true;
+      action.textContent='Analizando…';
+      result.replaceChildren(node('p','Procesando el aviso con Gemini…','muted'));
+      window.sessionCandidateContext=textarea.value; // Pestaña actual; nunca localStorage.
+      try {
+        const review=await request('/api/v1/dashboard/ai-review','POST',{opportunity_id:job.id,candidate_context:textarea.value});
+        result.replaceChildren();
+        add(result,node('h4','Compatibilidad: '+review.fit.toUpperCase()+' · '+review.recommendation.toUpperCase()),
+          node('p',review.summary));
+        if(review.strengths.length){result.append(node('h4','A favor'));const ul=node('ul');review.strengths.forEach(t=>ul.append(node('li',t)));result.append(ul);}
+        if(review.gaps.length){result.append(node('h4','A revisar'));const ul=node('ul');review.gaps.forEach(t=>ul.append(node('li',t)));result.append(ul);}
+        result.append(node('p',review.caveat,'caveat'));
+      } catch(err) {result.replaceChildren(node('p','No se pudo analizar: '+err.message,'caveat'));}
+      finally {action.disabled=false;action.textContent='Volver a analizar';}
+    });
+    section.append(action,result,node('p','Al analizar, el aviso y el contexto escrito se envían a Google Gemini. No incluyas datos sensibles: en el Free Tier Google puede usar ese contenido para mejorar sus productos. La interfaz no lo almacena.','footnote'));
+    root.append(section);
+  }
+  async function refresh() {
+    if (!apiToken) return;
+    const button=$('refreshRemotive');
+    button.disabled=true;button.textContent='Sincronizando…';
+    $('feedMessage').textContent='';
+    try {
+      const data=await request('/api/v1/source/refresh','POST',{source:'remotive'});
+      $('feedMessage').textContent='Remotive: '+data.created+' vacantes nuevas, '+data.existing+' existentes. Pendientes de verificación.';
+      await search(true);
+      const summary=await request('/api/v1/summary');
+      $('statJobs').textContent=summary.opportunities ?? '—';
+    } catch(err){$('feedMessage').textContent='No se pudo sincronizar Remotive: '+err.message;}
+    finally{button.disabled=false;button.textContent='Sincronizar Remotive';}
+  }
+  $('connectionForm').addEventListener('submit',connect);
+  $('applyFilters').addEventListener('click',()=>search(true));
+  $('reload').addEventListener('click',()=>search(true));
+  $('loadMore').addEventListener('click',()=>search(false));
+  $('refreshRemotive').addEventListener('click',refresh);
+  $('resetFilters').addEventListener('click',()=>{
+    ['keyword','track','remote','location','eligibility','language','verification','since'].forEach(id=>$(id).value='');
+    $('exclude').checked=true;
+    if(apiToken) search(true);
+  });
+})();
+</script>
+</body>
+</html>
