@@ -41,12 +41,20 @@ def test_buenos_aires_san_juan_and_other_cities_not_local():
         assert candidate_lane(item) == "EXCLUDED"
 
 
-def test_explicit_remote_argentina_or_latam_confirmed():
-    for location in ("Argentina", "Remote LATAM", "Latin America"):
+def test_explicit_argentina_remote_confirmed_latam_requires_review():
+    confirmed = classify(offer(title="Desarrollador Python",
+                               location="Argentina", policy="remote"))
+    assert confirmed is not None
+    assert confirmed.argentina_eligible == "YES"
+    assert candidate_lane(confirmed) == "REMOTE_ARGENTINA"
+
+    for location in ("Remote LATAM", "Latin America"):
         item = classify(offer(title="Desarrollador Python", location=location,
                               policy="remote"))
         assert item is not None
-        assert candidate_lane(item) == "REMOTE_ARGENTINA"
+        assert item.argentina_eligible == "UNKNOWN"
+        assert candidate_lane(item) == "REVIEW"
+        assert "sin confirmación" in (item.eligibility_evidence or "")
 
 
 def test_unknown_remote_countries_are_review_not_eligible():
@@ -82,20 +90,20 @@ def test_partition_keeps_review_separate_and_score_order():
     ]
     shortlisted = rank(candidate_jobs, now=NOW, limit=100)
     confirmed, review = partition_cordoba_matches(shortlisted)
-    assert {item.job.source_id for item in confirmed} == {"1", "4"}
-    assert {item.job.source_id for item in review} == {"2"}
+    assert {item.job.source_id for item in confirmed} == {"4"}
+    assert {item.job.source_id for item in review} == {"1", "2"}
     assert all(candidate_lane(item) != "EXCLUDED" for item in confirmed + review)
 
 
-def test_explicit_latam_title_can_confirm_remote_but_not_restricted_country():
+def test_latam_title_requires_review_and_restricted_country_excluded():
     accepted = classify(offer(
         title="Desarrollador Full-Stack para LATAM",
         location="Remote",
         policy="remote",
     ))
     assert accepted is not None
-    assert accepted.argentina_eligible == "YES"
-    assert candidate_lane(accepted) == "REMOTE_ARGENTINA"
+    assert accepted.argentina_eligible == "UNKNOWN"
+    assert candidate_lane(accepted) == "REVIEW"
     assert "título" in (accepted.eligibility_evidence or "")
     restricted = classify(offer(
         title="Python Developer LATAM",
@@ -123,9 +131,9 @@ def test_confirmed_priority_remote_first_with_stable_score_order():
     assert all(match is not None for match in matches)
     confirmed, review = partition_cordoba_matches(matches)
     assert [item.job.source_id for item in confirmed] == [
-        "remote-1", "remote-2", "local-1", "local-2",
+        "remote-1", "local-1", "local-2",
     ]
-    assert [item.job.source_id for item in review] == ["unknown"]
+    assert [item.job.source_id for item in review] == ["remote-2", "unknown"]
     assert all(item.job.source_id != "relocation" for item in confirmed + review)
 
 
@@ -233,3 +241,23 @@ def test_synthetic_ranking_benchmark_smoke():
     assert result["full_pool"]["remote_in_top_35"] is True
     assert result["full_pool"]["median_ms"] >= 0
     assert result["full_pool"]["peak_traced_kib_max"] >= 0
+
+def test_latam_is_not_argentina_confirmation_and_restrictions_win():
+    """R08/P3/UC01: do not equate a regional label with hiring eligibility."""
+    regional = classify(offer(title="Python Developer LATAM", location="Remote LATAM",
+                              policy="remote", suffix="regional"))
+    assert regional is not None
+    assert regional.argentina_eligible == "UNKNOWN"
+    assert candidate_lane(regional) == "REVIEW"
+
+    explicit = classify(offer(title="Python Developer", location="Argentina",
+                              policy="remote", suffix="argentina"))
+    assert explicit is not None
+    assert candidate_lane(explicit) == "REMOTE_ARGENTINA"
+
+    restricted = classify(offer(title="Python Developer",
+                                location="Argentina, US only",
+                                policy="remote", suffix="restricted"))
+    assert restricted is not None
+    assert restricted.argentina_eligible == "NO"
+    assert candidate_lane(restricted) == "EXCLUDED"
