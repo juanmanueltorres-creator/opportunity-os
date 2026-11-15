@@ -56,16 +56,21 @@ def partition_cordoba_matches(
 ) -> tuple[list[JobMatch], list[JobMatch]]:
     """Separate confirmed local/Argentina-remote from unverified candidates.
 
-    Preserves caller score ordering in both lanes. Excludes other Argentine
+    Confirmed remote-from-Argentina results come first, followed by local
+    Cordoba onsite/hybrid. Preserve caller score ordering within each group.
+    Excludes other Argentine
     on-site cities, other-country hybrid roles and explicit English-mandatory
     postings. UNKNOWN remote eligibility is review-only.
     """
-    confirmed: list[JobMatch] = []
+    remote_confirmed: list[JobMatch] = []
+    local_confirmed: list[JobMatch] = []
     review: list[JobMatch] = []
     for item in matches:
         lane = candidate_lane(item)
-        if lane in {"REMOTE_ARGENTINA", "CORDOBA_LOCAL"}:
-            confirmed.append(item)
+        if lane == "REMOTE_ARGENTINA":
+            remote_confirmed.append(item)
+        elif lane == "CORDOBA_LOCAL":
+            local_confirmed.append(item)
         elif lane == "REVIEW":
             review.append(item)
-    return confirmed, review
+    return remote_confirmed + local_confirmed, review

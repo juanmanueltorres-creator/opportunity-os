@@ -23,12 +23,23 @@ from app.radar.daily_persistence import persist
 from app.radar.source_evidence import source_evidence
 
 
+def select_daily_candidate_pool(jobs, *, now):
+    """Rank all discovered jobs before geographic partition and shortlist caps.
+
+    rank() already classifies/deduplicates every input before slicing, so
+    avoiding the arbitrary 600-result slice does not add classification calls.
+    It prevents lower-scored Argentina-remote opportunities from disappearing
+    before the remote-first partition. The final 35/40 output caps remain.
+    """
+    return rank(jobs, now=now, limit=len(jobs))
+
+
 async def main() -> int:
     output = Path("artifacts/daily-radar")
     output.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
     jobs, diagnostics = await discover()
-    candidate_pool = rank(jobs, now=now, limit=600)
+    candidate_pool = select_daily_candidate_pool(jobs, now=now)
     all_global = rank(
         jobs, now=now, limit=1800,
         include_worldwide_onsite=True, include_ineligible=True,

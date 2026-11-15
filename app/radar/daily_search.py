@@ -350,20 +350,26 @@ def classify(
 
     eligible = "UNKNOWN"
     evidence = None
-    if any(k in location for k in LATAM_MARKERS + ARGENTINA_MARKERS):
-        eligible = "YES"
-        evidence = "Ubicación declarada: " + (job.location or "")
-        score += 14 if remote else 8
-    elif NON_LATAM_EXCLUSIVE.search(location) or _restricted_location(location):
+    if NON_LATAM_EXCLUSIVE.search(location) or _restricted_location(location):
+        # Explicit country restrictions take precedence over broad regional tags.
         eligible = "NO"
         evidence = "Restricción geográfica explícita: " + (job.location or "")
         score -= 60
-    elif remote and any(marker in title for marker in LATAM_MARKERS + ("argentina",)):
-        # The employer explicitly advertises a LATAM/Argentina position in the TITLE.
-        # Do not infer this from the language, HQ, or vague 'worldwide' copy.
+    elif any(_contains_term(location, k) for k in ARGENTINA_MARKERS):
         eligible = "YES"
-        evidence = "Cobertura geográfica declarada en el título: " + job.title[:240]
+        evidence = "Ubicación declarada: " + (job.location or "")
+        score += 14 if remote else 8
+    elif any(_contains_term(location, k) for k in LATAM_MARKERS):
+        # LATAM is a research signal, not proof the employer hires in Argentina.
+        evidence = "Cobertura regional sin confirmación para Argentina: " + (job.location or "")
+        score += 4 if remote else 0
+    elif remote and _contains_term(title, "argentina"):
+        eligible = "YES"
+        evidence = "Cobertura declarada en el título: " + job.title[:240]
         score += 12
+    elif remote and any(_contains_term(title, marker) for marker in LATAM_MARKERS):
+        evidence = "Cobertura regional sin confirmación para Argentina en el título: " + job.title[:240]
+        score += 4
     elif remote:
         # "Worldwide"/global remote is NOT proof of employment eligibility from Argentina.
         score += 4
